@@ -1,0 +1,56 @@
+// Derives Ionic's CSS variables from the tokens defined in tokens.scss.
+// Do not hard-code color/spacing/radius values here — edit tokens.scss.
+//
+// For background on Ionic's theming variables, see:
+// https://ionicframework.com/docs/theming/
+
+@use 'sass:color';
+@use 'sass:map';
+@use 'sass:math';
+@use 'tokens';
+
+// Rounds a color's channels to whole numbers (color.mix can produce
+// fractional channels, which is valid CSS but noisy to read in DevTools).
+@function round-color($c) {
+  @return rgb(
+    math.round(color.channel($c, 'red', $space: rgb)),
+    math.round(color.channel($c, 'green', $space: rgb)),
+    math.round(color.channel($c, 'blue', $space: rgb))
+  );
+}
+
+// Comma-separated "r,g,b" string for a color — used for the
+// --ion-color-*-rgb variables Ionic uses with rgba() overlays.
+@function rgb-triple($c) {
+  @return math.round(color.channel($c, 'red', $space: rgb)) + ',' +
+    math.round(color.channel($c, 'green', $space: rgb)) + ',' +
+    math.round(color.channel($c, 'blue', $space: rgb));
+}
+
+:root {
+  @each $name, $c in tokens.$flux-colors {
+    $base: map.get($c, base);
+    $contrast: map.get($c, contrast);
+    // Same shade/tint formula Ionic's own theme generator uses: mix 12%
+    // black for shade, 10% white for tint.
+    $shade: round-color(color.mix(black, $base, 12%));
+    $tint: round-color(color.mix(white, $base, 10%));
+
+    --ion-color-#{$name}: #{$base};
+    --ion-color-#{$name}-rgb: #{rgb-triple($base)};
+    --ion-color-#{$name}-contrast: #{$contrast};
+    --ion-color-#{$name}-contrast-rgb: #{rgb-triple($contrast)};
+    --ion-color-#{$name}-shade: #{$shade};
+    --ion-color-#{$name}-tint: #{$tint};
+  }
+
+  @each $name, $value in tokens.$flux-radius {
+    --flux-radius-#{$name}: #{$value};
+  }
+
+  @each $name, $value in tokens.$flux-space {
+    --flux-space-#{$name}: #{$value};
+  }
+
+  --flux-font-family: #{tokens.$flux-font-family};
+}

@@ -1,0 +1,27 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Tasks</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (tasks.isLoading()) {
+    <div class="ion-text-center ion-padding">
+      <ion-spinner name="crescent"></ion-spinner>
+    </div>
+  } @else {
+    <ion-list>
+      @for (task of tasks.value(); track task.id) {
+        <ion-item [routerLink]="['/tabs/tasks', task.id]" button="true" detail="true">
+          <ion-label>
+            <h2>{{ task.title }}</h2>
+            @if (task.description) {
+              <p>{{ task.description }}</p>
+            }
+          </ion-label>
+          <ion-note slot="end">{{ task.status }}</ion-note>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

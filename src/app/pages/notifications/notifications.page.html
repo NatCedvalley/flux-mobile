@@ -1,0 +1,25 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Notifications</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (notifications.isLoading()) {
+    <div class="ion-text-center ion-padding">
+      <ion-spinner name="crescent"></ion-spinner>
+    </div>
+  } @else {
+    <ion-list>
+      @for (n of notifications.value(); track n.id) {
+        <ion-item>
+          <ion-label>
+            <h2>{{ n.title }}</h2>
+            <p>{{ n.body }}</p>
+          </ion-label>
+          <ion-note slot="end">{{ n.createdAt | date: 'short' }}</ion-note>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

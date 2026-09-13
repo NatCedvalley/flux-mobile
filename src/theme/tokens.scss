@@ -1,0 +1,66 @@
+// Single source of truth for Flux design tokens.
+//
+// Edit values here only — `variables.scss` derives every Ionic CSS variable
+// from this file, so a change here propagates to every Ionic component.
+//
+// These are placeholder values. When Claude Design mockups land in
+// docs/design/, replace the hex values below with the real brand palette.
+
+// Brand color palette. Each entry needs only a base color and a contrast
+// (text/icon) color — shade, tint and the *-rgb variants are computed from
+// these in variables.scss.
+$flux-colors: (
+  primary: (
+    base: #5260ff,
+    contrast: #ffffff,
+  ),
+  secondary: (
+    base: #0cd1e8,
+    contrast: #000000,
+  ),
+  tertiary: (
+    base: #7044ff,
+    contrast: #ffffff,
+  ),
+  success: (
+    base: #2dd55b,
+    contrast: #000000,
+  ),
+  warning: (
+    base: #ffc409,
+    contrast: #000000,
+  ),
+  danger: (
+    base: #c5000f,
+    contrast: #ffffff,
+  ),
+  light: (
+    base: #f4f5f8,
+    contrast: #000000,
+  ),
+  medium: (
+    base: #92949c,
+    contrast: #000000,
+  ),
+  dark: (
+    base: #222428,
+    contrast: #ffffff,
+  ),
+) !default;
+
+// Non-color tokens, applied directly as custom properties in variables.scss.
+$flux-radius: (
+  sm: 4px,
+  md: 8px,
+  lg: 16px,
+) !default;
+
+$flux-space: (
+  xs: 4px,
+  sm: 8px,
+  md: 16px,
+  lg: 24px,
+  xl: 32px,
+) !default;
+
+$flux-font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !default;

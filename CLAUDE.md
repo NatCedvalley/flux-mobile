@@ -77,8 +77,9 @@ Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run bu
 
 Edit `src/theme/tokens.scss` only — it's the single source of design tokens
 (brand color palette, spacing, radius, font family). `src/theme/variables.scss`
-derives every `--ion-color-*` CSS variable from it; don't edit that file's
-values directly. Dark mode follows the OS setting
+derives every `--ion-color-*` CSS variable from it, plus `--ion-font-family`
+(from `$flux-font-family`) and `--ion-padding` / `--ion-margin` (from the `md`
+spacing token); don't edit that file's values directly. Dark mode follows the OS setting
 (`@ionic/angular/css/palettes/dark.system.css` in `src/global.scss`).
 
 ## 7. Design mockups

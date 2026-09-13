@@ -53,4 +53,11 @@
   }
 
   --flux-font-family: #{tokens.$flux-font-family};
+
+  // Typography and spacing applied through Ionic's global variables, so every
+  // Ionic component and the .ion-padding / .ion-margin utilities use the tokens.
+  // :root outranks Ionic's own `html { --ion-font-family: ... }` default.
+  --ion-font-family: #{tokens.$flux-font-family};
+  --ion-padding: #{map.get(tokens.$flux-space, md)};
+  --ion-margin: #{map.get(tokens.$flux-space, md)};
 }

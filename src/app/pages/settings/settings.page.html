@@ -11,8 +11,12 @@
       <ion-note slot="end">System</ion-note>
     </ion-item>
     <ion-item>
+      <ion-label>Environment</ion-label>
+      <ion-note slot="end">{{ environmentName }}</ion-note>
+    </ion-item>
+    <ion-item>
       <ion-label>App version</ion-label>
-      <ion-note slot="end">{{ appVersion }}</ion-note>
+      <ion-note slot="end">{{ appVersion }} ({{ commit }})</ion-note>
     </ion-item>
   </ion-list>
 </ion-content>

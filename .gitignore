@@ -29,6 +29,11 @@ log.txt
 /out-tsc
 /bazel-out
 
+# Generated build info (scripts/write-build-info.mjs) and local secrets
+/src/environments/build-info.ts
+.env
+.env.*
+
 # Node
 /node_modules
 npm-debug.log

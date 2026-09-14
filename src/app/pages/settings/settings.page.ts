@@ -11,6 +11,7 @@ import {
 } from '@ionic/angular';
 
 import { environment } from '../../../environments/environment';
+import { buildInfo } from '../../../environments/build-info';
 
 @Component({
   selector: 'app-settings',
@@ -19,5 +20,7 @@ import { environment } from '../../../environments/environment';
   imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonLabel, IonNote],
 })
 export class SettingsPage {
-  protected readonly appVersion = environment.appVersion;
+  protected readonly environmentName = environment.name;
+  protected readonly appVersion = buildInfo.version;
+  protected readonly commit = buildInfo.commit;
 }

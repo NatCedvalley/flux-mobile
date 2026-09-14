@@ -67,13 +67,37 @@ Install once: `npm install`.
 
 | Platform | Command | Notes |
 |---|---|---|
-| Web | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100` |
-| Android | `npm run android` | Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet. |
-| iOS | `npm run ios` | **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. |
+| Web | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100`, dev environment |
+| Android | `npm run android` | Dev environment. Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet. |
+| iOS | `npm run ios` | Dev environment. **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. |
 
-Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run build` (production web build to `www/`), `npm run sync` (`ionic cap sync`, copies web build into both native projects).
+Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
+e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
+— see [§6 Environments](#6-environments).
 
-## 6. Theme
+Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production).
+
+## 6. Environments
+
+`src/environments/environment.ts` (dev), `environment.staging.ts` and
+`environment.prod.ts` hold the API URLs for each backend (`AppEnvironment` in
+`environment.model.ts`); `angular.json`'s `staging`/`production`/`development`
+build configurations pick which one is compiled in via `fileReplacements`.
+Staging URLs are still `example.com` placeholders, mirroring the same gap in
+the `flux-web` repo.
+
+`scripts/write-build-info.mjs` generates a gitignored
+`src/environments/build-info.ts` (app version, short git commit, and any
+`FLUX_*` environment variable) before every build/serve/test — see the
+`ionic:build:before` / `ionic:serve:before` / `pre*` scripts in
+`package.json`. This is the only place environment-specific values are
+injected; nothing is hardcoded and nothing here is committed. Since anything
+shipped in a mobile bundle can be extracted, only put client-side keys here
+(e.g. a Sentry DSN) — never a real server secret.
+
+The Settings page shows the active environment name and the build version.
+
+## 7. Theme
 
 Edit `src/theme/tokens.scss` only — it's the single source of design tokens
 (brand color palette, spacing, radius, font family). `src/theme/variables.scss`
@@ -82,13 +106,13 @@ derives every `--ion-color-*` CSS variable from it, plus `--ion-font-family`
 spacing token); don't edit that file's values directly. Dark mode follows the OS setting
 (`@ionic/angular/css/palettes/dark.system.css` in `src/global.scss`).
 
-## 7. Design mockups
+## 8. Design mockups
 
 Claude Design mockups live in [`docs/design/`](docs/design/README.md), one
 subfolder per screen. When a mockup finalizes a token value, update
 `src/theme/tokens.scss`.
 
-## 8. Out of scope so far
+## 9. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
 authentication, real API calls, push notifications, offline caching, CI

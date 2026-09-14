@@ -148,9 +148,11 @@ reproducible locally:
 | Test   | `npm test -- --configuration=ci`       |
 | Build  | `npm run build` (production web build) |
 
-Any failing step fails the job, which shows as a red check on the PR. The
-repo is private on a free GitHub plan, so branch protection / required
-checks aren't available — **don't merge a PR while its CI check is red.**
+Any failing step fails the job. The `main: require CI` ruleset (repo
+Settings → Rules) requires the `verify` check to pass on `main`, with no
+bypass actors, so a PR can't merge while CI is red. It also rejects a direct
+push to `main` unless that commit has already passed `verify`, so land
+changes through pull requests.
 
 Native Android/iOS builds aren't part of this workflow; they're covered by
 the Android and iOS signing slices.

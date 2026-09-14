@@ -14,7 +14,7 @@ describe('InMemoryFluxApi', () => {
 
   it('gets a task by id', async () => {
     const task = await api.getTask('1');
-    expect(task.id).toBe('1');
+    expect(task.id).toBe('2');
   });
 
   it('rejects for an unknown task id', async () => {

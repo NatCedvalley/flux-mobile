@@ -27,8 +27,12 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
-const outFile = fileURLToPath(new URL('../src/environments/build-info.ts', import.meta.url));
-mkdirSync(fileURLToPath(new URL('../src/environments', import.meta.url)), { recursive: true });
+const outFile = fileURLToPath(
+  new URL('../src/environments/build-info.ts', import.meta.url)
+);
+mkdirSync(fileURLToPath(new URL('../src/environments', import.meta.url)), {
+  recursive: true,
+});
 
 writeFileSync(
   outFile,
@@ -38,5 +42,5 @@ export const buildInfo = {
   commit: ${JSON.stringify(commit)},
   secrets: ${JSON.stringify(secrets, null, 2)} as Record<string, string>,
 };
-`,
+`
 );

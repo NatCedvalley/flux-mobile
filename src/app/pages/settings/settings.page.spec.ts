@@ -1,8 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { SettingsPage } from './settings.page';
-import { environment } from '../../../environments/environment';
 import { buildInfo } from '../../../environments/build-info';
+import { environment } from '../../../environments/environment';
+import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
   let component: SettingsPage;

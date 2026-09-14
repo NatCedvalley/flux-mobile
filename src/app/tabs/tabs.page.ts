@@ -1,7 +1,17 @@
 import { Component, EnvironmentInjector, inject } from '@angular/core';
-import { IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel } from '@ionic/angular';
+import {
+  IonTabs,
+  IonTabBar,
+  IonTabButton,
+  IonIcon,
+  IonLabel,
+} from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { listOutline, notificationsOutline, settingsOutline } from 'ionicons/icons';
+import {
+  listOutline,
+  notificationsOutline,
+  settingsOutline,
+} from 'ionicons/icons';
 
 @Component({
   selector: 'app-tabs',

@@ -9,15 +9,23 @@ import {
   IonLabel,
   IonNote,
 } from '@ionic/angular';
-
-import { environment } from '../../../environments/environment';
 import { buildInfo } from '../../../environments/build-info';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonLabel, IonNote],
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonItem,
+    IonLabel,
+    IonNote,
+  ],
 })
 export class SettingsPage {
   protected readonly environmentName = environment.name;

@@ -11,7 +11,6 @@ import {
   IonNote,
   IonSpinner,
 } from '@ionic/angular';
-
 import { FLUX_API } from '../../providers/flux-api.token';
 
 @Component({

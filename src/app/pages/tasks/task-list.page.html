@@ -12,7 +12,11 @@
   } @else {
     <ion-list>
       @for (task of tasks.value(); track task.id) {
-        <ion-item [routerLink]="['/tabs/tasks', task.id]" button="true" detail="true">
+        <ion-item
+          [routerLink]="['/tabs/tasks', task.id]"
+          button="true"
+          detail="true"
+        >
           <ion-label>
             <h2>{{ task.title }}</h2>
             @if (task.description) {

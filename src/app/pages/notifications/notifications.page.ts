@@ -1,5 +1,5 @@
-import { Component, inject, resource } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Component, inject, resource } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -11,7 +11,6 @@ import {
   IonNote,
   IonSpinner,
 } from '@ionic/angular';
-
 import { FLUX_API } from '../../providers/flux-api.token';
 
 @Component({

@@ -1,8 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-
-import { FLUX_API } from '../../providers/flux-api.token';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskDetailPage } from './task-detail.page';
 
 describe('TaskDetailPage', () => {
@@ -12,7 +11,10 @@ describe('TaskDetailPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TaskDetailPage],
-      providers: [provideRouter([]), { provide: FLUX_API, useClass: InMemoryFluxApi }],
+      providers: [
+        provideRouter([]),
+        { provide: FLUX_API, useClass: InMemoryFluxApi },
+      ],
     }).compileComponents();
   });
 

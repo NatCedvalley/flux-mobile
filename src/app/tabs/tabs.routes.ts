@@ -8,16 +8,20 @@ export const routes: Routes = [
     children: [
       {
         path: 'tasks',
-        loadChildren: () => import('../pages/tasks/tasks.routes').then((m) => m.routes),
+        loadChildren: () =>
+          import('../pages/tasks/tasks.routes').then((m) => m.routes),
       },
       {
         path: 'notifications',
         loadComponent: () =>
-          import('../pages/notifications/notifications.page').then((m) => m.NotificationsPage),
+          import('../pages/notifications/notifications.page').then(
+            (m) => m.NotificationsPage
+          ),
       },
       {
         path: 'settings',
-        loadComponent: () => import('../pages/settings/settings.page').then((m) => m.SettingsPage),
+        loadComponent: () =>
+          import('../pages/settings/settings.page').then((m) => m.SettingsPage),
       },
       {
         path: '',

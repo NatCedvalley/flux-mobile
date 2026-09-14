@@ -18,7 +18,9 @@ describe('InMemoryFluxApi', () => {
   });
 
   it('rejects for an unknown task id', async () => {
-    await expect(api.getTask('does-not-exist')).rejects.toThrow('Task not found: does-not-exist');
+    await expect(api.getTask('does-not-exist')).rejects.toThrow(
+      'Task not found: does-not-exist'
+    );
   });
 
   it('lists fixture notifications', async () => {

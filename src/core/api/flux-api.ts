@@ -8,7 +8,7 @@ import type { AppNotification, Task } from './types';
  * Covers only the endpoints the current placeholder pages need. Add methods
  * here as pages need them.
  */
-export interface FluxApi {
+export type FluxApi = {
   /** GET /api/tasks */
   listTasks(): Promise<Task[]>;
 
@@ -17,4 +17,4 @@ export interface FluxApi {
 
   /** GET /api/notifications */
   listNotifications(): Promise<AppNotification[]>;
-}
+};

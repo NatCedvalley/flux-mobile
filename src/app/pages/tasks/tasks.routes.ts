@@ -9,6 +9,7 @@ export const routes: Routes = [
   },
   {
     path: ':id',
-    loadComponent: () => import('./task-detail.page').then((m) => m.TaskDetailPage),
+    loadComponent: () =>
+      import('./task-detail.page').then((m) => m.TaskDetailPage),
   },
 ];

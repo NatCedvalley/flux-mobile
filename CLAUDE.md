@@ -14,8 +14,11 @@ over HTTP once that integration is built.
 - Zoneless (no zone.js; components default to `OnPush`)
 - Targets iOS and Android
 - Package manager: **npm**
-- Tests: **Vitest** (via `@angular/build:unit-test`), lint: **ESLint** via
-  `angular-eslint`
+- Tests: **Vitest** (via `@angular/build:unit-test`, coverage via
+  `@vitest/coverage-v8`), lint: **ESLint** via `angular-eslint`, format:
+  **Prettier**
+- A husky pre-commit hook runs `lint-staged` (ESLint `--fix` then Prettier)
+  on staged files and blocks the commit if either fails
 
 Bundle identifier / app name: `asia.justflux.mobile` / **Flux** (set in
 `capacitor.config.ts` and mirrored into `android/` and `ios/` by `cap sync`).
@@ -82,17 +85,17 @@ change.
 
 Install once: `npm install`.
 
-| Platform | Command | Notes |
-|---|---|---|
-| Web | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100`, dev environment |
-| Android | `npm run android` | Dev environment. Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet. |
-| iOS | `npm run ios` | Dev environment. **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. |
+| Platform | Command                           | Notes                                                                                                                                                                                            |
+| -------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Web      | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100`, dev environment                                                                                                                                                   |
+| Android  | `npm run android`                 | Dev environment. Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet.                                                |
+| iOS      | `npm run ios`                     | Dev environment. **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. |
 
 Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
 e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 — see [§6 Environments](#6-environments).
 
-Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
+Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/index.html` and `coverage/lcov.info`, no enforced threshold), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
 
 ## 6. Environments
 

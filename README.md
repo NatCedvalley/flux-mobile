@@ -22,7 +22,7 @@ See [CLAUDE.md](CLAUDE.md) for folder conventions and architecture.
   installed. The app's minimum supported version is API 24.
 - **JDK 17 or 21.** Gradle 8.14.3 cannot run on JDK 25. Point `JAVA_HOME`
   at the JDK, or pick it in Android Studio under
-  *Settings → Build Tools → Gradle → Gradle JDK*.
+  _Settings → Build Tools → Gradle → Gradle JDK_.
 - **`ANDROID_HOME`** set to your SDK folder, for example
   `C:\Users\<you>\AppData\Local\Android\Sdk` on Windows or
   `~/Library/Android/sdk` on macOS.
@@ -47,11 +47,11 @@ npm ci
 
 ## Run
 
-| Platform | Command | What it does |
-|---|---|---|
-| Browser | `npx ionic serve` | Serves the app at http://localhost:8100 with live reload. `npm start` also works. |
-| Android | `npm run android` | Builds the web app, syncs it into `android/`, builds the APK and launches it on a device or emulator you pick. |
-| iOS | `npm run ios` | Same flow for `ios/` and an iOS simulator. macOS only. |
+| Platform | Command           | What it does                                                                                                   |
+| -------- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| Browser  | `npx ionic serve` | Serves the app at http://localhost:8100 with live reload. `npm start` also works.                              |
+| Android  | `npm run android` | Builds the web app, syncs it into `android/`, builds the APK and launches it on a device or emulator you pick. |
+| iOS      | `npm run ios`     | Same flow for `ios/` and an iOS simulator. macOS only.                                                         |
 
 To target a specific device, list targets first, then pass one:
 
@@ -65,9 +65,14 @@ then `npx cap open android` or `npx cap open ios`.
 
 ## Other commands
 
-| Command | Purpose |
-|---|---|
-| `npm test` | Unit tests (Vitest). Add `-- --watch=false` for a single run. |
-| `npm run lint` | ESLint, including the framework-agnostic `src/core` import rules. |
-| `npm run build` | Production web build into `www/`. |
-| `npm run sync` | Copies `www/` and plugin config into both native projects. |
+| Command                                   | Purpose                                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `npm test`                                | Unit tests (Vitest). Add `-- --watch=false` for a single run.                                |
+| `npm run test:coverage`                   | Unit tests with coverage — text summary plus `coverage/index.html` and `coverage/lcov.info`. |
+| `npm run lint` / `npm run lint:fix`       | ESLint, including the framework-agnostic `src/core` import rules.                            |
+| `npm run format` / `npm run format:check` | Prettier.                                                                                    |
+| `npm run build`                           | Production web build into `www/`.                                                            |
+| `npm run sync`                            | Copies `www/` and plugin config into both native projects.                                   |
+
+A husky pre-commit hook runs `lint-staged` (ESLint `--fix` then Prettier) on
+staged files and blocks the commit if either fails.

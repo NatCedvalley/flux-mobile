@@ -97,6 +97,8 @@ e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 
 Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/index.html` and `coverage/lcov.info`, no enforced threshold), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
 
+To reproduce what CI runs on a PR locally, run `npm run format:check`, `npm run lint`, `npm test -- --configuration=ci` and `npm run build` — see [§9 CI](#9-ci).
+
 ## 6. Environments
 
 `src/environments/environment.ts` (dev), `environment.staging.ts` and
@@ -132,8 +134,31 @@ Claude Design mockups live in [`docs/design/`](docs/design/README.md), one
 subfolder per screen. When a mockup finalizes a token value, update
 `src/theme/tokens.scss`.
 
-## 9. Out of scope so far
+## 9. CI
+
+`.github/workflows/ci.yml` runs on every pull request: a single `verify` job
+on Node 22 / npm 12, with `actions/setup-node`'s npm cache keyed on
+`package-lock.json` so a typical run installs in a few minutes. Steps, each
+reproducible locally:
+
+| Step   | Command                                |
+| ------ | -------------------------------------- |
+| Format | `npm run format:check`                 |
+| Lint   | `npm run lint`                         |
+| Test   | `npm test -- --configuration=ci`       |
+| Build  | `npm run build` (production web build) |
+
+Any failing step fails the job. The `main: require CI` ruleset (repo
+Settings → Rules) requires the `verify` check to pass on `main`, with no
+bypass actors, so a PR can't merge while CI is red. It also rejects a direct
+push to `main` unless that commit has already passed `verify`, so land
+changes through pull requests.
+
+Native Android/iOS builds aren't part of this workflow; they're covered by
+the Android and iOS signing slices.
+
+## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-authentication, real API calls, push notifications, offline caching, CI
-config, app store assets, and release signing.
+authentication, real API calls, push notifications, offline caching, app
+store assets, and release signing.

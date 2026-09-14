@@ -45,21 +45,38 @@ src/
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
-(Promise-based, not RxJS, so it stays portable) plus the `Task` and
-`AppNotification` types it needs. `src/core/mock/in-memory-flux-api.ts`
-implements it over static fixtures and is what `main.ts` provides today —
-there is no real network layer yet.
+(Promise-based, not RxJS, so it stays portable). The `Task` and
+`AppNotification` types it uses are aliases, in `src/core/api/types/index.ts`,
+of DTOs generated from the backend's OpenAPI spec.
+`src/core/mock/in-memory-flux-api.ts` implements it over static fixtures and
+is what `main.ts` provides today — there is no real network layer yet.
 
-The Spring Boot backend does not yet expose an OpenAPI spec. When it does
-(via springdoc-openapi):
+### Regenerating API types
 
-1. Generated types land in `src/core/api/generated/`.
-2. `src/core/api/types/index.ts` re-exports from there instead of the
-   hand-written files.
-3. A real `HttpClient`-based `FluxApi` implementation replaces
-   `InMemoryFluxApi` in the `main.ts` provider.
+`npm run api:generate` rewrites `src/core/api/generated/` from the
+flux-operations spec at `http://localhost:9003/v3/api-docs`
+(`@hey-api/openapi-ts`, types only; config in `openapi-ts.config.ts`). The
+output is committed, so builds and CI never need a running backend.
+Regenerate and commit whenever the backend contract changes — type errors
+that follow are real contract drift. Never hand-edit `generated/` (it is also
+eslint-ignored).
 
-Call sites (`import { Task } from '@core/api'`) do not change.
+flux-operations must be running locally with springdoc's api-docs enabled.
+That is the default for the `dev` and `staging` profiles but off for `prod`,
+so with the usual local-prod script, run this from the `flux` backend repo:
+
+```bash
+SPRINGDOC_APIDOCS_ENABLED=true bash scripts/run-local-prod.sh operations
+```
+
+Every generated property is optional: springdoc emits no `required` lists,
+and the backend nulls out fields a user's role may not see.
+
+Only the flux-operations spec is generated today; add flux-iam (`:9001`) as a
+second input when authentication is built. A real `HttpClient`-based
+`FluxApi` implementation will later replace `InMemoryFluxApi` in the
+`main.ts` provider. Call sites (`import { Task } from '@core/api'`) do not
+change.
 
 ## 5. Run commands
 
@@ -75,7 +92,7 @@ Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
 e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 — see [§6 Environments](#6-environments).
 
-Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production).
+Other useful commands: `npm test` (Vitest), `npm run lint` (ESLint), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
 
 ## 6. Environments
 

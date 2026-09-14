@@ -1,5 +1,4 @@
-import type { AppNotification } from './types/notification';
-import type { Task } from './types/task';
+import type { AppNotification, Task } from './types';
 
 /**
  * Thin, framework-agnostic interface over the Flux backend. Promise-based

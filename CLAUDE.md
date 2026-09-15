@@ -291,7 +291,10 @@ Android applies: never give a signing variable a `FLUX_` prefix. `*.p12`,
 
 **Creating the signing assets.** Done once, outside CI, by someone with
 access to the company-owned Apple Developer account. No Mac is needed; the
-`openssl` commands work in Git Bash.
+`openssl` commands work in Git Bash. Run them in a folder **outside the
+repo** (e.g. `mkdir -p ~/flux-signing && cd ~/flux-signing`), move the files
+you download from Apple into it, and delete it once everything is in the
+vault: the private key must never end up in a commit.
 
 1. In the Apple Developer portal, register an explicit App ID for
    `asia.justflux.mobile` (Certificates, Identifiers & Profiles →
@@ -299,9 +302,12 @@ access to the company-owned Apple Developer account. No Mac is needed; the
 2. Create a private key and certificate signing request, using a company
    email address:
    `openssl genrsa -out flux-distribution.key 2048` then
-   `openssl req -new -key flux-distribution.key -out flux-distribution.csr -subj "/emailAddress=<company email>/CN=CedValley/C=MY"`.
+   `MSYS_NO_PATHCONV=1 openssl req -new -key flux-distribution.key -out flux-distribution.csr -subj "/emailAddress=<company email>/CN=CedValley/C=MY"`.
+   `MSYS_NO_PATHCONV=1` stops Git Bash from rewriting the `/`-prefixed
+   `-subj` value into a Windows path (`C:/Program Files/Git/emailAddress=…`),
+   which `openssl` rejects; drop it on macOS or Linux.
    Upload the CSR under Certificates → + → **Apple Distribution**, and
-   download `distribution.cer`.
+   download `distribution.cer` into the same folder.
 3. Build the `.p12`:
    `openssl x509 -inform DER -in distribution.cer -out distribution.pem` then
    `openssl pkcs12 -export -legacy -inkey flux-distribution.key -in distribution.pem -out flux-distribution.p12`.

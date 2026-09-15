@@ -1,0 +1,134 @@
+name: iOS simulator
+
+on:
+  pull_request:
+    paths:
+      - ios/**
+      - capacitor.config.ts
+      - package.json
+      - package-lock.json
+      - .github/workflows/ios-simulator.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ios-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install -g npm@12.0.2
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npx cap sync ios
+
+      - name: Show Xcode and scheme info
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project ios/App/App.xcodeproj
+
+      - name: Build for iOS simulator
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Built app not found at $APP_PATH"
+            ls -la "$RUNNER_TEMP/DerivedData/Build/Products" || true
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j \
+            | jq -r '.devices | to_entries[] | .value[] | select(.name=="iPhone 17") | .udid' \
+            | head -n1)
+          if [ -z "$UDID" ]; then
+            echo "No available iPhone 17 simulator found"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Install and launch app
+        run: |
+          xcrun simctl install "$UDID" "$APP_PATH"
+
+          LAUNCH_OUTPUT=$(xcrun simctl launch "$UDID" asia.justflux.mobile)
+          echo "$LAUNCH_OUTPUT"
+          PID=$(echo "$LAUNCH_OUTPUT" | sed -n 's/^asia\.justflux\.mobile: \([0-9][0-9]*\)$/\1/p')
+          if [ -z "$PID" ]; then
+            echo "Could not parse a PID from simctl launch output"
+            exit 1
+          fi
+          echo "PID=$PID" >> "$GITHUB_ENV"
+
+      - name: Confirm app is still running
+        run: |
+          sleep 20
+
+          if ! ps -p "$PID" > /dev/null; then
+            echo "App process $PID is not running"
+            exit 1
+          fi
+
+          if ! xcrun simctl spawn "$UDID" launchctl list | grep -q "UIKitApplication:asia.justflux.mobile"; then
+            echo "App not found running in the simulator's launchctl list"
+            exit 1
+          fi
+
+          echo "App is running (pid $PID), confirmed via ps and launchctl"
+
+      - name: Take screenshot
+        if: always() && env.UDID != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/artifacts/flux-ios-simulator.png"
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-screenshot
+          path: ${{ runner.temp }}/artifacts/flux-ios-simulator.png
+          if-no-files-found: warn
+
+      - name: Capture simulator app log
+        if: failure() && env.UDID != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          xcrun simctl spawn "$UDID" log show --last 5m --predicate 'process == "App"' \
+            > "$RUNNER_TEMP/artifacts/app.log" 2>&1 || true
+
+      - name: Upload simulator log artifact
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-log
+          path: ${{ runner.temp }}/artifacts/app.log
+          if-no-files-found: warn

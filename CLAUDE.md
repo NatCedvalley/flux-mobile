@@ -85,11 +85,11 @@ change.
 
 Install once: `npm install`.
 
-| Platform | Command                           | Notes                                                                                                                                                                                            |
-| -------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Web      | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100`, dev environment                                                                                                                                                   |
-| Android  | `npm run android`                 | Dev environment. Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet.                                                |
-| iOS      | `npm run ios`                     | Dev environment. **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. |
+| Platform | Command                           | Notes                                                                                                                                                                                                                                                                                                            |
+| -------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web      | `npm start` (alias `ionic serve`) | Opens `http://localhost:8100`, dev environment                                                                                                                                                                                                                                                                   |
+| Android  | `npm run android`                 | Dev environment. Needs `ANDROID_HOME` set and an AVD (or a device). Run once from Android Studio if `local.properties` hasn't been generated yet.                                                                                                                                                                |
+| iOS      | `npm run ios`                     | Dev environment. **macOS only.** Needs Xcode 26+. Run `npx cap sync ios` first if native files changed. Simulator runs need no Apple Developer account; a physical device or archive build does. Without a Mac, the `iOS simulator` CI workflow (see [§9 CI](#9-ci)) builds and launches the app on a simulator. |
 
 Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
 e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
@@ -154,8 +154,28 @@ bypass actors, so a PR can't merge while CI is red. It also rejects a direct
 push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
-Native Android/iOS builds aren't part of this workflow; they're covered by
-the Android and iOS signing slices.
+Native Android builds aren't part of this workflow; they're covered by the
+Android and iOS signing slices.
+
+### iOS simulator
+
+`.github/workflows/ios-simulator.yml` runs a separate `ios-simulator` job on
+a `macos-26` runner (Xcode 26.6 by default), to build and launch the app on
+an iOS simulator without a Mac. It triggers on pull requests that touch
+`ios/**`, `capacitor.config.ts`, `package.json`, `package-lock.json`, or the
+workflow file itself, and on manual `workflow_dispatch` runs. It is **not**
+a required check — a path-filtered check can never complete on PRs that skip
+it, which would leave them permanently unmergeable under `main: require CI`.
+
+Steps: `npm ci`, `npm run build`, `npx cap sync ios`, then `xcodebuild` for
+the `App` scheme against `-sdk iphonesimulator` with
+`CODE_SIGNING_ALLOWED=NO` (no signing needed for a simulator build). It then
+boots an iPhone 17 simulator, installs and launches the app
+(`asia.justflux.mobile`), and confirms the process is still running a few
+seconds later (`ps` plus `simctl spawn launchctl list`) rather than just
+checking that `simctl launch` returned. A screenshot is uploaded as an
+artifact on every run; the simulator's app log is uploaded only if the job
+fails.
 
 ## 10. Out of scope so far
 

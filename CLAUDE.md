@@ -154,8 +154,9 @@ bypass actors, so a PR can't merge while CI is red. It also rejects a direct
 push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
-Native Android builds aren't part of this workflow; they're covered by the
-Android and iOS signing slices.
+Native builds aren't part of this workflow. An unsigned iOS simulator build
+runs in its own workflow (below); signed Android and iOS builds are covered
+by the Android and iOS (FM-19) signing slices.
 
 ### iOS simulator
 
@@ -171,7 +172,7 @@ Steps: `npm ci`, `npm run build`, `npx cap sync ios`, then `xcodebuild` for
 the `App` scheme against `-sdk iphonesimulator` with
 `CODE_SIGNING_ALLOWED=NO` (no signing needed for a simulator build). It then
 boots an iPhone 17 simulator, installs and launches the app
-(`asia.justflux.mobile`), and confirms the process is still running a few
+(`asia.justflux.mobile`), and confirms the process is still running 20
 seconds later (`ps` plus `simctl spawn launchctl list`) rather than just
 checking that `simctl launch` returned. A screenshot is uploaded as an
 artifact on every run; the simulator's app log is uploaded only if the job

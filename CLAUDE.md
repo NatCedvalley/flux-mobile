@@ -219,9 +219,14 @@ are gitignored under `android/`.
 over company credentials (the key must be company-owned, not tied to a
 developer's account):
 
-1. `keytool -genkeypair -v -storetype PKCS12 -keystore flux-release.jks -alias flux -keyalg RSA -keysize 4096 -validity 10000`
+1. `keytool -genkeypair -v -storetype PKCS12 -keystore flux-release.jks -alias flux -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=CedValley, OU=Flux Mobile, O=CedValley, L=Subang Jaya, ST=Selangor, C=MY"`
    (PKCS12 uses the store password as the key password, so the two secrets
-   hold the same value).
+   hold the same value). Always pass `-dname` with company-only fields:
+   without it, keytool prompts for "first and last name", and that answer
+   is baked into the certificate for the key's whole life, visible to anyone
+   who inspects the APK. Check the `Owner:` line with
+   `keytool -list -v -keystore flux-release.jks -alias flux` before
+   uploading.
 2. Store the `.jks` file and its password in the company password vault.
    Losing it means installed builds can never be updated.
 3. `base64 -w0 flux-release.jks` and save the output as

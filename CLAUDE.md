@@ -290,7 +290,13 @@ Android applies: never give a signing variable a `FLUX_` prefix. `*.p12`,
 `*.cer`, `*.mobileprovision` and `*.p8` are gitignored repo-wide.
 
 **Creating the signing assets.** Done once, outside CI, by someone with
-access to the company-owned Apple Developer account. No Mac is needed; the
+access to the Apple Developer account (team `44UNNHB3V6`). That team is an
+**Individual** membership rather than an Organization one, a deliberate
+choice: its certificates carry the account holder's name instead of
+CedValley's, which is embedded in every build and would appear as the App
+Store seller. Moving to an Organization team later means a new Team ID
+(`DEVELOPMENT_TEAM` in `project.pbxproj`, `APPLE_TEAM_ID` in the workflow)
+and redoing these steps. No Mac is needed; the
 `openssl` commands work in Git Bash. Run them in a folder **outside the
 repo** (e.g. `mkdir -p ~/flux-signing && cd ~/flux-signing`), move the files
 you download from Apple into it, and delete it once everything is in the

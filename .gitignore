@@ -73,3 +73,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Android signing: keystores and key properties never belong in the repo,
+# anywhere in the tree (see CLAUDE.md §9, Android signed build)
+*.jks
+*.keystore
+key.properties

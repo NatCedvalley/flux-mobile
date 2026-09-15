@@ -7,8 +7,9 @@ android {
         applicationId "asia.justflux.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI passes -PfluxVersionCode / -PfluxVersionName (see android-release.yml)
+        versionCode((project.findProperty('fluxVersionCode') ?: '1') as Integer)
+        versionName((project.findProperty('fluxVersionName') ?: '1.0') as String)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing comes only from the environment, set by CI. Never prefix
+    // these with FLUX_: write-build-info.mjs copies FLUX_* vars into the JS bundle.
+    def signingStoreFile = System.getenv('ANDROID_SIGNING_STORE_FILE')
+    signingConfigs {
+        release {
+            if (signingStoreFile) {
+                storeFile file(signingStoreFile)
+                storePassword System.getenv('ANDROID_SIGNING_STORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_SIGNING_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_SIGNING_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (signingStoreFile) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

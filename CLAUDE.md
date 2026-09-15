@@ -155,8 +155,8 @@ push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
 Native builds aren't part of this workflow. An unsigned iOS simulator build
-runs in its own workflow (below); signed Android and iOS builds are covered
-by the Android and iOS (FM-19) signing slices.
+and a signed Android release build each run in their own workflow (below);
+signed iOS builds are covered by the iOS signing slice (FM-19).
 
 ### iOS simulator
 
@@ -178,8 +178,61 @@ checking that `simctl launch` returned. A screenshot is uploaded as an
 artifact on every run; the simulator's app log is uploaded only if the job
 fails.
 
+### Android signed build
+
+`.github/workflows/android-release.yml` produces a signed Android build for
+testers. It runs **only on manual `workflow_dispatch`** (Actions → Android
+release → Run workflow, or
+`gh workflow run android-release.yml -f configuration=production`), with a
+`configuration` input of `production` (default) or `staging` (staging API
+URLs are still placeholders — see [§6](#6-environments)).
+
+Steps: `npm ci`, the web build for that configuration, `npx cap sync android`,
+then `./gradlew bundleRelease assembleRelease` on JDK 21. It checks that the
+APK verifies with `apksigner` and the AAB with `jarsigner`, writes the signing
+certificate's SHA-256 to the job summary, and uploads
+`flux-<configuration>-<version>-<versionCode>.apk` and `.aab` as one
+`android-release` artifact (kept 30 days). Install the APK on a device with
+`adb install -r <apk>`.
+
+**Versioning.** `versionCode` is the workflow's `github.run_number`, and
+`versionName` is `package.json`'s `version` plus the run number, e.g.
+`0.0.1 (42)`. Both are passed as `-PfluxVersionCode` / `-PfluxVersionName`;
+`android/app/build.gradle` falls back to `1` / `1.0` for local builds.
+`run_number` restarts at 1 if the workflow file is renamed or recreated — if
+that ever happens, add an offset so `versionCode` keeps increasing, or
+installed builds won't accept the update.
+
+**Secrets.** The job uses the `android-release` GitHub Environment (repo
+Settings → Environments), which must hold four secrets:
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
+and `ANDROID_KEY_PASSWORD`. The job fails fast with a clear message if any is
+missing. The keystore is decoded into the runner's temp directory and handed
+to Gradle as `ANDROID_SIGNING_*` environment variables for that one step.
+Never give a signing variable a `FLUX_` prefix: `write-build-info.mjs` copies
+every `FLUX_*` variable into the app bundle (see [§6](#6-environments)).
+Without `ANDROID_SIGNING_STORE_FILE`, a local `assembleRelease` still works
+and produces an unsigned `app-release-unsigned.apk`. `*.jks` and `*.keystore`
+are gitignored under `android/`.
+
+**Creating the keystore.** Done once, outside CI, by someone with authority
+over company credentials (the key must be company-owned, not tied to a
+developer's account):
+
+1. `keytool -genkeypair -v -storetype PKCS12 -keystore flux-release.jks -alias flux -keyalg RSA -keysize 4096 -validity 10000`
+   (PKCS12 uses the store password as the key password, so the two secrets
+   hold the same value).
+2. Store the `.jks` file and its password in the company password vault.
+   Losing it means installed builds can never be updated.
+3. `base64 -w0 flux-release.jks` and save the output as
+   `ANDROID_KEYSTORE_BASE64`, plus the password (twice) and alias `flux`, in
+   the `android-release` Environment. Optionally add required reviewers there.
+
+When Play Store upload is added, this key becomes the Play App Signing
+**upload key**.
+
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
 authentication, real API calls, push notifications, offline caching, app
-store assets, and release signing.
+store assets, iOS release signing (FM-19), and Play Store upload.

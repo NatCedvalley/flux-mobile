@@ -74,8 +74,13 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# Android signing: keystores and key properties never belong in the repo,
-# anywhere in the tree (see CLAUDE.md §9, Android signed build)
+# Signing material: keystores, certificates, provisioning profiles and API
+# keys never belong in the repo, anywhere in the tree (see CLAUDE.md §9,
+# Android signed build and iOS release)
 *.jks
 *.keystore
 key.properties
+*.p12
+*.cer
+*.mobileprovision
+*.p8

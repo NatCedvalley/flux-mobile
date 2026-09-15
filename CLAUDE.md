@@ -154,9 +154,9 @@ bypass actors, so a PR can't merge while CI is red. It also rejects a direct
 push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
-Native builds aren't part of this workflow. An unsigned iOS simulator build
-and a signed Android release build each run in their own workflow (below);
-signed iOS builds are covered by the iOS signing slice (FM-19).
+Native builds aren't part of this workflow. An unsigned iOS simulator build,
+a signed Android release build and a signed iOS release build (with
+TestFlight upload) each run in their own workflow (below).
 
 ### iOS simulator
 
@@ -236,8 +236,99 @@ developer's account):
 When Play Store upload is added, this key becomes the Play App Signing
 **upload key**.
 
+### iOS release
+
+`.github/workflows/ios-release.yml` produces a signed App Store build and
+uploads it to TestFlight. It runs **only on manual `workflow_dispatch`**
+(Actions → iOS release → Run workflow, or
+`gh workflow run ios-release.yml -f configuration=production`), with a
+`configuration` input of `production` (default) or `staging`, and an `upload`
+boolean (default `true`; `-f upload=false` builds and signs without
+uploading).
+
+Steps on a `macos-26` runner: `npm ci`, the web build for that configuration,
+`npx cap sync ios`, then the signing certificate is imported into a temporary
+keychain and the provisioning profile installed. `xcodebuild archive` builds
+the `App` scheme's Release configuration, and `xcodebuild -exportArchive`
+exports an `.ipa` using `ios/App/ExportOptions.plist`. The job checks with
+`codesign` that the app is signed by an Apple Distribution certificate for
+team `44UNNHB3V6`, and that its version and build number are the expected
+ones, writes both to the job summary, and uploads
+`flux-<configuration>-<version>-<buildNumber>.ipa` as an `ios-release`
+artifact (kept 30 days). If `upload` is set, `xcrun altool --upload-app`
+sends it to App Store Connect; the build then appears under TestFlight once
+Apple finishes processing. The keychain, profile and API key are removed at
+the end of every run.
+
+**Signing settings.** The App target's **Release** config uses manual
+signing: `DEVELOPMENT_TEAM = 44UNNHB3V6`, identity `Apple Distribution`,
+profile `Flux App Store` (in `project.pbxproj`; the team ID is also in the
+workflow's `APPLE_TEAM_ID`). Debug keeps automatic signing, so simulator and
+device runs from Xcode or `npm run ios` are unaffected. These settings live
+in the target rather than on the `xcodebuild` command line, where they would
+also apply to the Capacitor Swift package targets and break the build.
+`Info.plist` sets `ITSAppUsesNonExemptEncryption` to `false` (the app only
+uses HTTPS), so TestFlight doesn't hold each build for an export compliance
+answer.
+
+**Versioning.** `CFBundleShortVersionString` is `package.json`'s `version`
+and `CFBundleVersion` is the workflow's `github.run_number`, passed as
+`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`; the project file's `1.0` /
+`1` are only local fallbacks. This is the Android scheme, except that iOS
+doesn't allow the `0.0.1 (42)` display form in the version string. Run
+numbers are per workflow, so an iOS build number and an Android
+`versionCode` for the same commit can differ. As with Android, if the
+workflow file is renamed or recreated, add an offset so the build number
+keeps increasing, or App Store Connect will reject the upload.
+
+**Secrets.** The job uses the `ios-release` GitHub Environment, which must
+hold six secrets: `IOS_DIST_CERT_P12_BASE64`, `IOS_DIST_CERT_PASSWORD`,
+`IOS_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_API_KEY_ID`,
+`APP_STORE_CONNECT_API_ISSUER_ID` and `APP_STORE_CONNECT_API_KEY_P8_BASE64`.
+The job fails fast with a clear message if any is missing. The same rule as
+Android applies: never give a signing variable a `FLUX_` prefix. `*.p12`,
+`*.cer`, `*.mobileprovision` and `*.p8` are gitignored repo-wide.
+
+**Creating the signing assets.** Done once, outside CI, by someone with
+access to the company-owned Apple Developer account. No Mac is needed; the
+`openssl` commands work in Git Bash.
+
+1. In the Apple Developer portal, register an explicit App ID for
+   `asia.justflux.mobile` (Certificates, Identifiers & Profiles →
+   Identifiers).
+2. Create a private key and certificate signing request, using a company
+   email address:
+   `openssl genrsa -out flux-distribution.key 2048` then
+   `openssl req -new -key flux-distribution.key -out flux-distribution.csr -subj "/emailAddress=<company email>/CN=CedValley/C=MY"`.
+   Upload the CSR under Certificates → + → **Apple Distribution**, and
+   download `distribution.cer`.
+3. Build the `.p12`:
+   `openssl x509 -inform DER -in distribution.cer -out distribution.pem` then
+   `openssl pkcs12 -export -legacy -inkey flux-distribution.key -in distribution.pem -out flux-distribution.p12`.
+   `-legacy` matters: the macOS keychain can't import a `.p12` made with
+   OpenSSL 3's default encryption.
+4. Under Profiles → +, create an **App Store Connect** distribution profile
+   for that App ID and certificate, named exactly `Flux App Store`, and
+   download it.
+5. In App Store Connect, create the app record for the bundle ID
+   (Apps → + → New App).
+6. In App Store Connect → Users and Access → Integrations → App Store Connect
+   API, create a team key with the **App Manager** role. Download the `.p8`
+   (it can only be downloaded once) and note the Key ID and Issuer ID.
+7. Store the key, `.p12` and its password, profile and `.p8` in the company
+   password vault.
+8. `base64 -w0` the `.p12`, `.mobileprovision` and `.p8`, and save them with
+   the `.p12` password, Key ID and Issuer ID as the six secrets in the
+   `ios-release` Environment. Optionally add required reviewers there.
+9. In App Store Connect → TestFlight, create an internal testing group and
+   add testers. They install builds with the TestFlight app on their device.
+
+**Renewal.** The distribution certificate and the profile expire after a
+year. Create a new certificate (steps 2–3), regenerate the profile under the
+same name `Flux App Store` (step 4), and replace the three affected secrets.
+
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
 authentication, real API calls, push notifications, offline caching, app
-store assets, iOS release signing (FM-19), and Play Store upload.
+store assets, and Play Store upload.

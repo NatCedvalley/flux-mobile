@@ -5,8 +5,9 @@
 
 import type { AppEnvironment } from './environment.model';
 
-// `localhost` is not reachable from an Android emulator (use 10.0.2.2 instead)
-// or from a physical device — this environment is for web/desktop dev only.
+// An Android emulator or USB-connected phone reaches these `localhost` URLs
+// once the ports are forwarded with `adb reverse` (see CLAUDE.md §5); the iOS
+// simulator shares the Mac's localhost. Debug builds allow the cleartext http.
 export const environment = {
   name: 'dev',
   production: false,

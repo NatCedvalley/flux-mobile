@@ -6,6 +6,14 @@
 
 <ion-content>
   <ion-list>
+    @if (account(); as account) {
+      <ion-item>
+        <ion-label>Signed in as</ion-label>
+        <ion-note slot="end">{{
+          account.displayName ?? account.email
+        }}</ion-note>
+      </ion-item>
+    }
     <ion-item>
       <ion-label>Theme</ion-label>
       <ion-note slot="end">System</ion-note>

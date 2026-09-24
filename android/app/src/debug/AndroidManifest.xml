@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into debug builds only: lets `npm run android` reach the local
+     dev backend over http (e.g. http://localhost:9001 via `adb reverse`).
+     Release builds use src/main alone and stay HTTPS-only. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>

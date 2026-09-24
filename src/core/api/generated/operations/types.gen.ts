@@ -4,6 +4,21 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type RegisterDeviceTokenRequest = {
+    token: string;
+    platform: 'IOS' | 'ANDROID';
+    appVersion?: string;
+};
+
+export type DeviceTokenResponse = {
+    id?: string;
+    platform?: 'IOS' | 'ANDROID';
+    appVersion?: string;
+    lastSeenAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
 export type UpdateWorkflowStatusRequest = {
     name?: string;
     category?: 'PLANNING' | 'TODO' | 'IN_PROGRESS' | 'DONE';
@@ -524,6 +539,10 @@ export type UploadPresignResponse = {
     getUrlExpiresAt?: string;
 };
 
+export type UnregisterDeviceTokenRequest = {
+    token: string;
+};
+
 export type CreateProjectRequest = {
     name: string;
     description?: string;
@@ -913,6 +932,19 @@ export type CreateAnnouncementRequest = {
     expiresAt?: string;
     maintenanceAction?: string;
     dismissible?: boolean;
+};
+
+export type PushPreferenceItem = {
+    type: 'ASSIGNMENT' | 'TASK_UPDATED' | 'COMMENT' | 'MENTION' | 'DESCRIPTION_MENTION' | 'TASK_CREATED' | 'TASK_DELETED' | 'TASK_ARCHIVED' | 'TASK_RESTORED' | 'RELEASE_CREATED';
+    enabled: boolean;
+};
+
+export type UpdatePushPreferencesRequest = {
+    preferences: Array<PushPreferenceItem>;
+};
+
+export type PushPreferencesResponse = {
+    preferences?: Array<PushPreferenceItem>;
 };
 
 export type ReorderWorkflowStatusRequest = {
@@ -1378,6 +1410,22 @@ export type PagedResponseAnnouncementResponse = {
     first?: boolean;
     last?: boolean;
 };
+
+export type RegisterData = {
+    body: RegisterDeviceTokenRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/push/devices';
+};
+
+export type RegisterResponses = {
+    /**
+     * Token registered
+     */
+    200: DeviceTokenResponse;
+};
+
+export type RegisterResponse = RegisterResponses[keyof RegisterResponses];
 
 export type DeleteStatusData = {
     body?: never;
@@ -2579,6 +2627,29 @@ export type PresignResponses = {
 };
 
 export type PresignResponse = PresignResponses[keyof PresignResponses];
+
+export type UnregisterData = {
+    body: UnregisterDeviceTokenRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/push/devices/unregister';
+};
+
+export type UnregisterErrors = {
+    /**
+     * Token not found, or not owned by the current user
+     */
+    404: unknown;
+};
+
+export type UnregisterResponses = {
+    /**
+     * Token removed
+     */
+    204: void;
+};
+
+export type UnregisterResponse = UnregisterResponses[keyof UnregisterResponses];
 
 export type ListProjectsData = {
     body?: never;
@@ -4734,6 +4805,38 @@ export type CancelResponses = {
 };
 
 export type CancelResponse = CancelResponses[keyof CancelResponses];
+
+export type GetPreferencesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/push/preferences';
+};
+
+export type GetPreferencesResponses = {
+    /**
+     * Preference list
+     */
+    200: PushPreferencesResponse;
+};
+
+export type GetPreferencesResponse = GetPreferencesResponses[keyof GetPreferencesResponses];
+
+export type UpdatePreferencesData = {
+    body: UpdatePushPreferencesRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/push/preferences';
+};
+
+export type UpdatePreferencesResponses = {
+    /**
+     * Preferences updated
+     */
+    200: PushPreferencesResponse;
+};
+
+export type UpdatePreferencesResponse = UpdatePreferencesResponses[keyof UpdatePreferencesResponses];
 
 export type ReorderStatusesData = {
     body: ReorderWorkflowStatusRequest;

@@ -39,9 +39,12 @@ src/
 - Import `src/core` code only via the `@core/*` path alias
   (`tsconfig.json`), never with a relative `../core/...` path — this is also
   eslint-enforced from `src/app`.
-- The only bridge between `src/app` and `src/core` is the `FLUX_API`
-  injection token (`src/app/providers/flux-api.token.ts`), provided in
-  `src/main.ts`. Everything else in `src/core` is plain data and interfaces.
+- The bridges between `src/app` and `src/core` are two injection tokens in
+  `src/app/providers/`, both provided in `src/main.ts`: `FLUX_API`
+  (`flux-api.token.ts`) and `TOKEN_STORE` (`token-store.token.ts`, see
+  [§4 Authentication](#authentication)). Everything else in `src/core` is
+  plain data, interfaces and classes that take their dependencies as
+  constructor arguments.
 - Business logic and API types belong in `src/core`. Angular services,
   components, and anything using signals/DI/RxJS belong in `src/app`.
 
@@ -52,34 +55,75 @@ src/
 `AppNotification` types it uses are aliases, in `src/core/api/types/index.ts`,
 of DTOs generated from the backend's OpenAPI spec.
 `src/core/mock/in-memory-flux-api.ts` implements it over static fixtures and
-is what `main.ts` provides today — there is no real network layer yet.
+is what `main.ts` provides today — the only real network calls so far are
+the sign-in ones below.
+
+A real `FluxApi` implementation will later replace `InMemoryFluxApi` in the
+`main.ts` provider. Call sites (`import { Task } from '@core/api'`) do not
+change.
+
+### Authentication
+
+Staff sign in with their web credentials through flux-iam's
+`POST /auth/login` (password grant; the app never talks to Keycloak). The
+logic is plain TypeScript in `src/core/auth/`:
+
+- `AuthClient` calls flux-iam (`login`, `refresh`, `getMe` for
+  `/accounts/me`) over an injected `fetch`, with a 10 s timeout. Failures
+  are `ApiError`s: `status` 0 means no response, and `body` is the backend's
+  `ErrorResponse`, which is hand-written because springdoc doesn't emit it.
+  Login always sends `rememberMe: true` (a Keycloak offline session: 30
+  days idle, 1 year max); there is no checkbox.
+- `AuthSession` holds the tokens and account and persists the tokens
+  through a `TokenStore`. On a cold start `restore()` refreshes an expired
+  access token (they live 5 minutes), then loads the account. A 4xx drops
+  the session; no response or a 5xx keeps it, so being offline never signs
+  anyone out.
+
+`src/app/auth/` wraps this for Angular: `AuthService` exposes the state as
+signals, `authGuard` keeps signed-out users on `/login`, and `guestGuard`
+sends signed-in users past it. `TOKEN_STORE` is a `SecureTokenStore`
+(`@aparajita/capacitor-secure-storage`: iOS Keychain with
+`afterFirstUnlockThisDeviceOnly`, Android Keystore-encrypted storage) on
+native, and an in-memory store on web, so a browser reload signs you out.
+Never call the plugin on web: its web fallback is plain localStorage.
+
+`capacitor.config.ts` enables `CapacitorHttp`, so on native `fetch` goes
+through the native HTTP stack. The WebView's origins (`https://localhost`
+on Android, `capacitor://localhost` on iOS) are therefore never subject to
+the backend's CORS list, but these requests don't appear in the WebView
+devtools Network tab.
 
 ### Regenerating API types
 
-`npm run api:generate` rewrites `src/core/api/generated/` from the
-flux-operations spec at `http://localhost:9003/v3/api-docs`
-(`@hey-api/openapi-ts`, types only; config in `openapi-ts.config.ts`). The
-output is committed, so builds and CI never need a running backend.
+`npm run api:generate` rewrites `src/core/api/generated/` from two specs,
+one folder each (`@hey-api/openapi-ts`, types only; config in
+`openapi-ts.config.ts`):
+
+| Service         | Spec                                | Output                 |
+| --------------- | ----------------------------------- | ---------------------- |
+| flux-operations | `http://localhost:9003/v3/api-docs` | `generated/operations` |
+| flux-iam        | `http://localhost:9001/v3/api-docs` | `generated/iam`        |
+
+The output is committed, so builds and CI never need a running backend.
 Regenerate and commit whenever the backend contract changes — type errors
 that follow are real contract drift. Never hand-edit `generated/` (it is also
 eslint-ignored).
 
-flux-operations must be running locally with springdoc's api-docs enabled.
-That is the default for the `dev` and `staging` profiles but off for `prod`,
-so with the usual local-prod script, run this from the `flux` backend repo:
+Both services must be running, with springdoc's api-docs enabled: the two
+jobs run in parallel and each wipes its own folder, so a run with one
+service down leaves a half-regenerated tree (check `git status`). Use the
+docker dev stack from the `flux` backend repo, whose `dev` profile has
+api-docs on — not `run-local-prod.sh`, which uses the production database:
 
 ```bash
-SPRINGDOC_APIDOCS_ENABLED=true bash scripts/run-local-prod.sh operations
+bash scripts/start-local.sh
 ```
 
-Every generated property is optional: springdoc emits no `required` lists,
-and the backend nulls out fields a user's role may not see.
-
-Only the flux-operations spec is generated today; add flux-iam (`:9001`) as a
-second input when authentication is built. A real `HttpClient`-based
-`FluxApi` implementation will later replace `InMemoryFluxApi` in the
-`main.ts` provider. Call sites (`import { Task } from '@core/api'`) do not
-change.
+Every generated response property is optional: springdoc only marks
+validated request fields (e.g. `LoginRequest.email`) as required, and the
+backend nulls out fields a user's role may not see. Check for missing
+fields rather than trusting the types (see `AuthSession`'s token check).
 
 ## 5. Run commands
 
@@ -96,6 +140,27 @@ e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 — see [§6 Environments](#6-environments).
 
 Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/index.html` and `coverage/lcov.info`, no enforced threshold), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
+
+### Reaching the local backend
+
+Sign-in talks to flux-iam at `iamBaseUrl` (dev: `http://localhost:9001`),
+run with the flux repo's `scripts/start-local.sh`.
+
+- **Web** (`npm start`, origin `http://localhost:8100`): flux-iam's CORS
+  list only has `http://localhost:4200` by default. In the flux repo, set
+  `CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8100` in
+  `.env` (what the containers read; also in `.env.local`, which
+  `start-local.sh` copies to `.env` when `.env` is missing), then recreate
+  flux-iam so it picks up the change — `docker restart` keeps the old
+  environment:
+  `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d flux-iam`.
+- **Android** (emulator or USB phone): forward the port so the device's
+  `localhost` is your machine's, then run the dev build:
+  `adb reverse tcp:9001 tcp:9001`. Debug builds allow cleartext http
+  (`android/app/src/debug/AndroidManifest.xml`); release builds don't.
+- **iOS simulator**: shares the Mac's `localhost`. A Debug-only build phase
+  ("Allow local HTTP in Debug") adds `NSAllowsLocalNetworking` to the built
+  `Info.plist`; Release builds never carry it.
 
 To reproduce what CI runs on a PR locally, run `npm run format:check`, `npm run lint`, `npm test -- --configuration=ci` and `npm run build` — see [§9 CI](#9-ci).
 
@@ -342,5 +407,8 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-authentication, real API calls, push notifications, offline caching, app
-store assets, and Play Store upload.
+the rest of authentication (sign-in and session restore exist — see
+[§4](#authentication); the Bearer interceptor, silent refresh while the app
+runs and logout come in FM-24, biometric unlock in FM-25), real API calls
+beyond sign-in, push notifications, offline caching, app store assets, and
+Play Store upload.

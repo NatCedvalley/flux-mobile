@@ -1,0 +1,59 @@
+<ion-content class="ion-padding">
+  <form
+    class="login"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+  >
+    <h1>Sign in to Flux</h1>
+
+    <ion-list lines="full">
+      <ion-item>
+        <ion-input
+          formControlName="email"
+          label="Email"
+          labelPlacement="stacked"
+          type="email"
+          autocomplete="username"
+          inputmode="email"
+          autocapitalize="off"
+          autocorrect="off"
+          enterkeyhint="next"
+        ></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input
+          formControlName="password"
+          label="Password"
+          labelPlacement="stacked"
+          type="password"
+          autocomplete="current-password"
+          enterkeyhint="go"
+        ></ion-input>
+      </ion-item>
+    </ion-list>
+
+    @if (errorMessage(); as message) {
+      <ion-text
+        color="danger"
+        role="alert"
+      >
+        <p class="login-error">{{ message }}</p>
+      </ion-text>
+    }
+
+    <ion-button
+      type="submit"
+      expand="block"
+      [disabled]="!canSubmit()"
+    >
+      @if (submitting()) {
+        <ion-spinner
+          name="crescent"
+          aria-label="Signing in"
+        ></ion-spinner>
+      } @else {
+        Sign in
+      }
+    </ion-button>
+  </form>
+</ion-content>

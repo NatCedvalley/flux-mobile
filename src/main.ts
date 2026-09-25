@@ -1,3 +1,4 @@
+import { inject, provideAppInitializer } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import {
   RouteReuseStrategy,
@@ -12,6 +13,7 @@ import { MemoryTokenStore } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { AppLockService } from './app/lock/app-lock.service';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
@@ -37,5 +39,7 @@ bootstrapApplication(AppComponent, {
           ? new SecureTokenStore()
           : new MemoryTokenStore(),
     },
+    // Decides whether a cold start is locked before the first route renders.
+    provideAppInitializer(() => inject(AppLockService).init()),
   ],
 });

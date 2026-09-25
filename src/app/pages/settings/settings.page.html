@@ -26,6 +26,15 @@
       <ion-label>App version</ion-label>
       <ion-note slot="end">{{ appVersion }} ({{ commit }})</ion-note>
     </ion-item>
+    @if (biometricsAvailable()) {
+      <ion-item>
+        <ion-toggle
+          [checked]="biometricUnlock()"
+          (ionChange)="setBiometricUnlock($event.detail.checked)"
+          >Biometric unlock</ion-toggle
+        >
+      </ion-item>
+    }
     <ion-item
       button
       detail="false"

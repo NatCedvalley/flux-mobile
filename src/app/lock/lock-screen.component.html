@@ -1,0 +1,23 @@
+<main
+  class="lock"
+  aria-labelledby="lock-title"
+>
+  <h1 id="lock-title">Flux is locked</h1>
+  <ion-text color="medium">
+    <p class="lock-hint">Unlock with your fingerprint or face to continue.</p>
+  </ion-text>
+  <ion-button
+    expand="block"
+    (click)="unlock()"
+  >
+    Unlock
+  </ion-button>
+  <ion-button
+    expand="block"
+    fill="clear"
+    [disabled]="signingOut()"
+    (click)="signInWithPassword()"
+  >
+    Sign in with password
+  </ion-button>
+</main>

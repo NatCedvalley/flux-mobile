@@ -112,6 +112,31 @@ on Android, `capacitor://localhost` on iOS) are therefore never subject to
 the backend's CORS list, but these requests don't appear in the WebView
 devtools Network tab.
 
+### Biometric unlock
+
+Opt-in from Settings, which shows the toggle only when the device has
+biometrics enrolled (`@aparajita/capacitor-biometric-auth`). It only gates
+local access to the stored session: the tokens and the server never see it.
+The rule is plain TypeScript in `src/core/lock/`: `AppLock` locks on every
+cold start and on a resume after `LOCK_TIMEOUT_MS` (5 minutes) in the
+background. `src/app/lock/AppLockService` feeds it Capacitor's
+`pause`/`resume` events from an app initializer (so a cold start is locked
+before the first route renders), and ignores the pause caused by Android's
+prompt, which runs in its own activity. `AppComponent` covers the app with
+`LockScreenComponent` while locked and signed in, and makes the router
+outlet `inert`. The prompt falls back to the device passcode. "Sign in with
+password" is `AuthService.logout()`.
+
+- The setting lives in `@capacitor/preferences` (it isn't a secret) and is
+  kept across logouts. Any sign-out also clears a pending lock, so a
+  password sign-in never meets the lock screen.
+- If biometrics are un-enrolled while the lock is on, it stands down rather
+  than locking with an unusable prompt: removing them needs the device
+  passcode anyway.
+- Native only. On web the lock is never available and the plugins are never
+  called.
+- iOS needs `NSFaceIDUsageDescription` in `Info.plist` (present).
+
 ### Regenerating API types
 
 `npm run api:generate` rewrites `src/core/api/generated/` from two specs,
@@ -425,7 +450,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-biometric unlock (FM-25; the rest of authentication is in
-[§4](#authentication)), real API calls beyond sign-in, push notifications
+real API calls beyond sign-in, push notifications
 (FM-7 also unregisters the device token in `AuthSession.logout()`), offline
 caching, app store assets, and Play Store upload.

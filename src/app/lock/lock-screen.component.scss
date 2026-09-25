@@ -1,0 +1,26 @@
+// Opaque and above everything, Ionic overlays included (they start at
+// z-index 20000), so nothing from the session shows through.
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ion-padding);
+  background: var(--ion-background-color, #fff);
+  color: var(--ion-text-color, #000);
+}
+
+.lock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-space-md);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.lock-hint {
+  margin: 0;
+}

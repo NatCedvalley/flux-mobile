@@ -154,6 +154,32 @@ describe('AppLockService', () => {
     expect(service.locked()).toBe(false);
   });
 
+  describe('passcode fallback', () => {
+    function onAndroid(version: number): void {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+        `Mozilla/5.0 (Linux; Android ${version}; Redmi Note 8 Pro) Mobile`
+      );
+    }
+
+    async function fallbackAllowed(): Promise<boolean | undefined> {
+      await service.authenticate();
+      return vi.mocked(BiometricAuth.authenticate).mock.calls[0][0]
+        ?.allowDeviceCredential;
+    }
+
+    it('is off on Android 10, whose passcode screen drops the result', async () => {
+      onAndroid(10);
+
+      expect(await fallbackAllowed()).toBe(false);
+    });
+
+    it('is on from Android 11', async () => {
+      onAndroid(11);
+
+      expect(await fallbackAllowed()).toBe(true);
+    });
+  });
+
   it('stays locked when the check is cancelled or fails', async () => {
     vi.mocked(BiometricAuth.authenticate).mockRejectedValue(
       new Error('userCancel')

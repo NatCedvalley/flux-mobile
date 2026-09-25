@@ -124,8 +124,12 @@ background. `src/app/lock/AppLockService` feeds it Capacitor's
 before the first route renders), and ignores the pause caused by Android's
 prompt, which runs in its own activity. `AppComponent` covers the app with
 `LockScreenComponent` while locked and signed in, and makes the router
-outlet `inert`. The prompt falls back to the device passcode. "Sign in with
-password" is `AuthService.logout()`.
+outlet `inert`. The prompt falls back to the device passcode, except on
+Android 10 and lower (read from the WebView user agent). There the passcode
+screen belongs to Settings (`ConfirmDeviceCredential`), which cancels the
+app's check as it opens and then drops the accepted PIN (`onCDCASuccess
+null!` in logcat, seen on a Redmi Note 8 Pro), so those phones get a
+biometrics-only prompt. "Sign in with password" is `AuthService.logout()`.
 
 - The setting lives in `@capacitor/preferences` (it isn't a secret) and is
   kept across logouts. Any sign-out also clears a pending lock, so a

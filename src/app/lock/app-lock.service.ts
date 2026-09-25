@@ -17,6 +17,17 @@ import { AuthService } from '../auth/auth.service';
 const PREFERENCE_KEY = 'biometricUnlock';
 
 /**
+ * Whether the prompt may fall back to the device passcode. Not on Android 10
+ * or lower: its passcode screen (Settings' ConfirmDeviceCredential) cancels
+ * the app's check as it opens, then drops the accepted PIN, so the fallback
+ * could never unlock. Those phones use biometrics or the password sign-in.
+ */
+function allowsPasscodeFallback(): boolean {
+  const android = /Android (\d+)/.exec(navigator.userAgent);
+  return !android || Number(android[1]) > 10;
+}
+
+/**
  * Angular face of `AppLock`: the Settings toggle, the biometric prompt, and
  * the app lifecycle events that decide when to lock. Native only: on web the
  * lock is never available, since tokens don't outlive a reload there.
@@ -94,8 +105,8 @@ export class AppLockService {
   }
 
   /**
-   * Prompts for biometrics, or the device passcode as a fallback, and
-   * unlocks on success. A cancel or failure leaves the app locked.
+   * Prompts for biometrics, or the device passcode as a fallback where it
+   * works, and unlocks on success. A cancel or failure leaves the app locked.
    */
   async authenticate(): Promise<void> {
     if (this.authenticating) {
@@ -107,7 +118,7 @@ export class AppLockService {
         reason: 'Unlock Flux',
         androidTitle: 'Unlock Flux',
         cancelTitle: 'Cancel',
-        allowDeviceCredential: true,
+        allowDeviceCredential: allowsPasscodeFallback(),
       });
       this.lock.unlock();
     } catch {

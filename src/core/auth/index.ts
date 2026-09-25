@@ -1,5 +1,11 @@
 // Public surface of the auth layer. Import from '@core/auth'.
-export { ApiError, isTransient, type ErrorResponse } from './api-error';
+export {
+  ApiError,
+  SESSION_EXPIRED_MESSAGE,
+  endsSession,
+  isTransient,
+  type ErrorResponse,
+} from './api-error';
 export { AuthClient, type FetchFn } from './auth-client';
 export { AuthSession, type AuthState } from './auth-session';
 export {

@@ -39,6 +39,15 @@ export class AuthClient {
     return this.request('POST', '/auth/refresh', { body });
   }
 
+  /**
+   * POST /auth/logout. Needs a live access token: the server revokes it, then
+   * ends the Keycloak session the refresh token belongs to.
+   */
+  async logout(accessToken: string, refreshToken: string): Promise<void> {
+    const body: RefreshTokenRequest = { refreshToken };
+    await this.request('POST', '/auth/logout', { body, accessToken });
+  }
+
   /** GET /accounts/me */
   getMe(accessToken: string): Promise<Account> {
     return this.request('GET', '/accounts/me', { accessToken });

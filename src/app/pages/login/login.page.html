@@ -6,6 +6,15 @@
   >
     <h1>Sign in to Flux</h1>
 
+    @if (endedMessage(); as message) {
+      <ion-text
+        color="danger"
+        role="alert"
+      >
+        <p class="login-error">{{ message }}</p>
+      </ion-text>
+    }
+
     <ion-list lines="full">
       <ion-item>
         <ion-input

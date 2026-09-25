@@ -79,10 +79,28 @@ logic is plain TypeScript in `src/core/auth/`:
   access token (they live 5 minutes), then loads the account. A 4xx drops
   the session; no response or a 5xx keeps it, so being offline never signs
   anyone out.
+- Refresh runs 30 s before expiry (a timer), on app resume (`resume()`,
+  since timers stop while the app is suspended), and after a 401 with no
+  error code. Concurrent callers share one refresh in flight. Only the
+  refresh backs off on a transient failure (3 retries, full jitter, 2 s
+  base, 30 s cap); the cold-start and logout refreshes try once.
+- `withAccessToken(call)` is the base for every authenticated call (FM-5's
+  real `FluxApi` wraps its requests in it). It hands `call` a live token,
+  and on a bare 401 refreshes and retries once. It ends the session on a
+  second 401, 401 `TOKEN_REVOKED`/`SESSION_EXPIRED`, 403
+  `ACCOUNT_SUSPENDED` or 423 `ACCOUNT_LOCKED` (`endsSession()` in
+  `api-error.ts`), keeping the server's `message` as `endedMessage` for the
+  login page. Any other error, transient or not, goes back to the caller
+  with the tokens kept, and a failed request is never replayed.
+- `logout()` refreshes first if the access token has expired (flux-iam's
+  `POST /auth/logout` needs a live one), calls it, then clears the store,
+  even when the server call fails.
 
 `src/app/auth/` wraps this for Angular: `AuthService` exposes the state as
-signals, `authGuard` keeps signed-out users on `/login`, and `guestGuard`
-sends signed-in users past it. `TOKEN_STORE` is a `SecureTokenStore`
+signals, opens `/login` whenever the session ends, and forwards Capacitor's
+`resume` event. `authGuard` keeps signed-out users on `/login`, and
+`guestGuard` sends signed-in users past it. Settings has the Log out item.
+`TOKEN_STORE` is a `SecureTokenStore`
 (`@aparajita/capacitor-secure-storage`: iOS Keychain with
 `afterFirstUnlockThisDeviceOnly`, Android Keystore-encrypted storage) on
 native, and an in-memory store on web, so a browser reload signs you out.
@@ -407,8 +425,7 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-the rest of authentication (sign-in and session restore exist — see
-[§4](#authentication); the Bearer interceptor, silent refresh while the app
-runs and logout come in FM-24, biometric unlock in FM-25), real API calls
-beyond sign-in, push notifications, offline caching, app store assets, and
-Play Store upload.
+biometric unlock (FM-25; the rest of authentication is in
+[§4](#authentication)), real API calls beyond sign-in, push notifications
+(FM-7 also unregisters the device token in `AuthSession.logout()`), offline
+caching, app store assets, and Play Store upload.

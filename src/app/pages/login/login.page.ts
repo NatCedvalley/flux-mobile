@@ -50,6 +50,8 @@ export class LoginPage {
     () => this.formStatus() === 'VALID' && !this.submitting()
   );
   protected readonly errorMessage = signal<string | null>(null);
+  /** Why the previous session ended, e.g. revoked from the web. */
+  protected readonly endedMessage = this.auth.endedMessage;
 
   protected async submit(): Promise<void> {
     if (!this.canSubmit()) {

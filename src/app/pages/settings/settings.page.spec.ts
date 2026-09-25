@@ -4,6 +4,7 @@ import { AlertController } from '@ionic/angular';
 import { buildInfo } from '../../../environments/build-info';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../auth/auth.service';
+import { AppLockService } from '../../lock/app-lock.service';
 import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
@@ -15,6 +16,11 @@ describe('SettingsPage', () => {
     onDidDismiss: ReturnType<typeof vi.fn>;
   };
   let alerts: { create: ReturnType<typeof vi.fn> };
+  let lock: {
+    available: ReturnType<typeof signal<boolean>>;
+    enabled: ReturnType<typeof signal<boolean>>;
+    setEnabled: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     auth = {
@@ -26,11 +32,17 @@ describe('SettingsPage', () => {
       onDidDismiss: vi.fn(),
     };
     alerts = { create: vi.fn().mockResolvedValue(alert) };
+    lock = {
+      available: signal(false),
+      enabled: signal(false),
+      setEnabled: vi.fn().mockResolvedValue(undefined),
+    };
     await TestBed.configureTestingModule({
       imports: [SettingsPage],
       providers: [
         { provide: AuthService, useValue: auth },
         { provide: AlertController, useValue: alerts },
+        { provide: AppLockService, useValue: lock },
       ],
     }).compileComponents();
   });
@@ -83,5 +95,33 @@ describe('SettingsPage', () => {
     await tapLogoutAndChoose('cancel');
 
     expect(auth.logout).not.toHaveBeenCalled();
+  });
+
+  function biometricToggle(): (HTMLElement & { checked?: boolean }) | null {
+    return (fixture.nativeElement as HTMLElement).querySelector('ion-toggle');
+  }
+
+  it('hides biometric unlock when the device has no biometrics', () => {
+    expect(biometricToggle()).toBeNull();
+  });
+
+  it('offers biometric unlock when the device has biometrics', () => {
+    lock.available.set(true);
+    lock.enabled.set(true);
+    fixture.detectChanges();
+
+    expect(biometricToggle()?.textContent).toContain('Biometric unlock');
+    expect(biometricToggle()?.checked).toBe(true);
+  });
+
+  it('saves the biometric unlock choice', () => {
+    lock.available.set(true);
+    fixture.detectChanges();
+
+    biometricToggle()?.dispatchEvent(
+      new CustomEvent('ionChange', { detail: { checked: true } })
+    );
+
+    expect(lock.setEnabled).toHaveBeenCalledWith(true);
   });
 });

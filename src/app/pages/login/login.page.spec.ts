@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { ApiError } from '@core/auth';
@@ -6,11 +7,14 @@ import { LoginPage } from './login.page';
 
 describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
-  let auth: { login: ReturnType<typeof vi.fn> };
+  let auth: {
+    login: ReturnType<typeof vi.fn>;
+    endedMessage: ReturnType<typeof signal<string | null>>;
+  };
   let router: Router;
 
   beforeEach(async () => {
-    auth = { login: vi.fn() };
+    auth = { login: vi.fn(), endedMessage: signal<string | null>(null) };
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
@@ -64,6 +68,13 @@ describe('LoginPage', () => {
     await submitWith('me@flux.test', 'secret');
 
     expect(text()).toContain("Can't reach Flux");
+  });
+
+  it('explains why the previous session ended', () => {
+    auth.endedMessage.set('Your session was revoked.');
+    fixture.detectChanges();
+
+    expect(text()).toContain('Your session was revoked.');
   });
 
   it('does not submit an invalid form', async () => {

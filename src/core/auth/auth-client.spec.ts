@@ -39,6 +39,21 @@ describe('AuthClient', () => {
     expect(JSON.parse(init.body)).toEqual({ refreshToken: 'r1' });
   });
 
+  it('logs out with a Bearer token and the refresh token', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(
+      new AuthClient(BASE_URL, fetchFn).logout('a1', 'r1')
+    ).resolves.toBeUndefined();
+
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(`${BASE_URL}/auth/logout`);
+    expect(init.method).toBe('POST');
+    expect(init.headers.Authorization).toBe('Bearer a1');
+    expect(JSON.parse(init.body)).toEqual({ refreshToken: 'r1' });
+  });
+
   it('loads the account with a Bearer token', async () => {
     const fetchFn = vi
       .fn()

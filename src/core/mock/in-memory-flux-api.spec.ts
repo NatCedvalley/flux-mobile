@@ -12,14 +12,20 @@ describe('InMemoryFluxApi', () => {
     expect(tasks.length).toBeGreaterThan(0);
   });
 
-  it('gets a task by id', async () => {
-    const task = await api.getTask('1');
+  it('gets a task by project and id', async () => {
+    const task = await api.getTask('p1', '1');
     expect(task.id).toBe('1');
   });
 
   it('rejects for an unknown task id', async () => {
-    await expect(api.getTask('does-not-exist')).rejects.toThrow(
-      'Task not found: does-not-exist'
+    await expect(api.getTask('p1', 'does-not-exist')).rejects.toThrow(
+      'Task not found: p1/does-not-exist'
+    );
+  });
+
+  it('rejects a task asked for under another project', async () => {
+    await expect(api.getTask('p2', '1')).rejects.toThrow(
+      'Task not found: p2/1'
     );
   });
 

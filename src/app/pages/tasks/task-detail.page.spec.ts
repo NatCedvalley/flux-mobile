@@ -20,7 +20,9 @@ describe('TaskDetailPage', () => {
 
   beforeEach(() => {
     fixture = TestBed.createComponent(TaskDetailPage);
-    fixture.componentRef.setInput('id', '1');
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('taskId', '1');
+    fixture.componentRef.setInput('backHref', '/tabs/projects');
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

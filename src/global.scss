@@ -26,12 +26,13 @@
 @import '@ionic/angular/css/flex-utils.css';
 
 /**
- * Ionic Dark Mode
+ * Dark mode
  * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
+ * Follows the OS setting. Ionic's own dark palettes aren't imported: the
+ * dark tokens in src/theme/variables.scss define both schemes.
  */
 
-/* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+/* Scroll areas sit on the app canvas; rows and cards sit on top of it. */
+ion-content {
+  --background: var(--flux-panel);
+}

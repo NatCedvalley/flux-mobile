@@ -1,67 +1,458 @@
 // Single source of truth for Flux design tokens.
 //
-// Edit values here only — `variables.scss` derives every Ionic CSS variable
-// from this file, so a change here propagates to every Ionic component.
+// Edit values here only — `variables.scss` derives every `--flux-*` and
+// Ionic CSS variable from this file, so a change here propagates to every
+// component.
 //
-// These are placeholder values. When Claude Design mockups land in
-// docs/design/, replace the hex values below with the real brand palette.
+// Values come from the Claude Design handoff in docs/design/mobile-v2/
+// (README.md, "Design tokens"), which uses the Radix UI colour scales. A
+// value is either shared by both schemes or a `(light: …, dark: …)` pair.
+// Keys follow the handoff's token names: gray `1` is `--n1` there and is
+// emitted as `--flux-n1`; see variables.scss for the full naming.
 
-// Brand color palette. Each entry needs only a base color and a contrast
-// (text/icon) color — shade, tint and the *-rgb variants are computed from
-// these in variables.scss.
-$flux-colors: (
-  primary: (
-    base: #5260ff,
-    contrast: #ffffff,
+@use 'sass:map';
+
+// Neutrals (Radix gray). Steps 7 and 10 aren't used by the design.
+$flux-gray: (
+  1: (
+    light: #fcfcfd,
+    dark: #111113,
   ),
-  secondary: (
-    base: #0cd1e8,
-    contrast: #000000,
+  2: (
+    light: #f9f9fb,
+    dark: #18191b,
   ),
-  tertiary: (
-    base: #7044ff,
-    contrast: #ffffff,
+  3: (
+    light: #f0f0f3,
+    dark: #212225,
   ),
-  success: (
-    base: #2dd55b,
-    contrast: #000000,
+  4: (
+    light: #e8e8ec,
+    dark: #272a2d,
   ),
-  warning: (
-    base: #ffc409,
-    contrast: #000000,
+  5: (
+    light: #e0e1e6,
+    dark: #2e3135,
   ),
-  danger: (
-    base: #c5000f,
-    contrast: #ffffff,
+  6: (
+    light: #d9d9e0,
+    dark: #363a3f,
   ),
-  light: (
-    base: #f4f5f8,
-    contrast: #000000,
+  8: (
+    light: #b9bbc6,
+    dark: #5a6169,
   ),
-  medium: (
-    base: #92949c,
-    contrast: #000000,
+  9: (
+    light: #8b8d98,
+    dark: #696e77,
   ),
-  dark: (
-    base: #222428,
-    contrast: #ffffff,
+  11: (
+    light: #60646c,
+    dark: #b0b4ba,
+  ),
+  12: (
+    light: #1c2024,
+    dark: #edeef0,
   ),
 ) !default;
 
-// Non-color tokens, applied directly as custom properties in variables.scss.
+// Alpha neutrals: what borders and washes use. Row dividers use a3,
+// structural dividers a4, control outlines a4/a5.
+$flux-gray-alpha: (
+  2: (
+    light: rgba(0, 0, 85, 0.024),
+    dark: rgba(216, 244, 246, 0.03),
+  ),
+  3: (
+    light: rgba(0, 0, 71, 0.06),
+    dark: rgba(221, 235, 253, 0.07),
+  ),
+  4: (
+    light: rgba(0, 0, 60, 0.09),
+    dark: rgba(211, 237, 248, 0.11),
+  ),
+  5: (
+    light: rgba(0, 8, 53, 0.12),
+    dark: rgba(217, 237, 254, 0.14),
+  ),
+  6: (
+    light: rgba(0, 0, 46, 0.15),
+    dark: rgba(214, 235, 253, 0.18),
+  ),
+  7: (
+    light: rgba(0, 6, 40, 0.2),
+    dark: rgba(217, 235, 254, 0.24),
+  ),
+  8: (
+    light: rgba(0, 4, 32, 0.27),
+    dark: rgba(217, 236, 254, 0.35),
+  ),
+  9: (
+    light: rgba(0, 3, 20, 0.45),
+    dark: rgba(223, 236, 253, 0.41),
+  ),
+  10: (
+    light: rgba(0, 3, 18, 0.5),
+    dark: rgba(229, 239, 254, 0.46),
+  ),
+  11: (
+    light: rgba(0, 6, 20, 0.62),
+    dark: rgba(240, 247, 254, 0.68),
+  ),
+) !default;
+
+// Primary (Radix indigo). Dark mode's active tab uses 11, not 9.
+$flux-indigo: (
+  9: #3e63dd,
+  10: (
+    light: #3358d4,
+    dark: #5472e4,
+  ),
+  11: (
+    light: #3a5bc7,
+    dark: #9eb1ff,
+  ),
+  a2: (
+    light: rgba(0, 64, 255, 0.03),
+    dark: rgba(21, 71, 255, 0.09),
+  ),
+  a3: (
+    light: rgba(0, 68, 255, 0.07),
+    dark: rgba(37, 85, 255, 0.2),
+  ),
+  a4: (
+    light: rgba(0, 68, 255, 0.12),
+    dark: rgba(55, 98, 255, 0.31),
+  ),
+) !default;
+
+// Semantic and status hues: 9 is the dot/fill (shared by both schemes), 11
+// the text colour, a3 the pill background. Status is never colour alone.
+$flux-hues: (
+  // To Do
+  blue: (
+      9: #0090ff,
+      11: (
+        light: #0d74ce,
+        dark: #70b8ff,
+      ),
+      a3: (
+        light: rgba(0, 128, 255, 0.11),
+        dark: rgba(0, 111, 255, 0.2),
+      ),
+    ),
+  // In Progress
+  amber: (
+      9: #ffc53d,
+      11: (
+        light: #ab6400,
+        dark: #ffca16,
+      ),
+      a2: rgba(255, 222, 0, 0.08),
+      a3: (
+        light: rgba(255, 222, 0, 0.22),
+        dark: rgba(255, 178, 0, 0.12),
+      ),
+    ),
+  // In Review
+  purple: (
+      9: #8e4ec6,
+      11: (
+        light: #8145b5,
+        dark: #d19dff,
+      ),
+      a3: (
+        light: rgba(120, 0, 255, 0.08),
+        dark: rgba(160, 80, 255, 0.2),
+      ),
+    ),
+  // QA
+  cyan: (
+      9: #00a2c7,
+      11: (
+        light: #107d98,
+        dark: #4ccce6,
+      ),
+      a3: (
+        light: rgba(0, 180, 240, 0.11),
+        dark: rgba(0, 190, 255, 0.18),
+      ),
+    ),
+  // Done
+  green: (
+      9: #30a46c,
+      11: (
+        light: #218358,
+        dark: #3dd68c,
+      ),
+      a2: rgba(0, 164, 51, 0.05),
+      a3: (
+        light: rgba(0, 164, 51, 0.1),
+        dark: rgba(0, 235, 110, 0.12),
+      ),
+    ),
+  // Overdue, Urgent, destructive
+  red: (
+      9: #e5484d,
+      11: (
+        light: #ce2c31,
+        dark: #ff9592,
+      ),
+      a3: (
+        light: rgba(255, 1, 13, 0.09),
+        dark: rgba(255, 80, 85, 0.2),
+      ),
+    ),
+  // Release
+  violet: (
+      9: #6e56cf,
+      11: (
+        light: #6550b9,
+        dark: #baa7ff,
+      ),
+      a3: (
+        light: rgba(60, 0, 255, 0.08),
+        dark: rgba(120, 90, 255, 0.2),
+      ),
+    )
+) !default;
+
+// Surfaces get lighter with elevation, never darker: in dark mode rows sit
+// on `surface` over the `panel` canvas.
+$flux-surfaces: (
+  // Content surface: headers, rows (light), tab bar (light)
+  bg: (
+      light: #ffffff,
+      dark: #111113,
+    ),
+  // App canvas behind cards and rows, and the dark tab bar
+  panel: (
+      light: #f9f9fb,
+      dark: #18191b,
+    ),
+  // Cards, sheets, and rows (dark)
+  surface: (
+      light: #ffffff,
+      dark: #212225,
+    )
+) !default;
+
+// Deterministic per-user avatar fills. Avatar text is always white.
+$flux-avatar-fills: (
+  #6e56cf,
+  #12a594,
+  #d6409f,
+  #00a2c7,
+  #f76b15,
+  #8e4ec6
+) !default;
+$flux-avatar-text: #ffffff !default;
+
+// Elevation. `var(--flux-*)` references resolve per scheme.
+$flux-shadows: (
+  card: (
+    0 0 0 1px var(--flux-na4),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+  ),
+  docked: 0 -4px 20px rgba(0, 0, 0, 0.06),
+  sheet: (
+    light: 0 -12px 40px rgba(0, 0, 0, 0.28),
+    dark: 0 -12px 40px rgba(0, 0, 0, 0.5),
+  ),
+  // Dark drops the indigo glow.
+  fab: (
+      light: (
+        0 1px 0 var(--flux-p10) inset,
+        0 10px 24px rgba(62, 99, 221, 0.4),
+      ),
+      dark: 0 10px 24px rgba(0, 0, 0, 0.5),
+    ),
+  segmented: (
+    light: 0 1px 2px rgba(0, 0, 0, 0.1),
+    dark: 0 1px 2px rgba(0, 0, 0, 0.4),
+  ),
+) !default;
+
+// Sheet and modal backdrop.
+$flux-scrim: (
+  light: rgba(0, 0, 0, 0.42),
+  dark: rgba(0, 0, 0, 0.55),
+) !default;
+
 $flux-radius: (
-  sm: 4px,
-  md: 8px,
-  lg: 16px,
+  pill: 99px,
+  chip: 8px,
+  button: 10px,
+  card: 12px,
+  card-lg: 14px,
+  docked: 13px,
+  segmented: 9px,
+  sheet: 22px,
 ) !default;
 
+// Vertical rhythm is 8 / 10 / 12 / 14 / 16; the screen and sheet gutter is 16.
 $flux-space: (
-  xs: 4px,
-  sm: 8px,
-  md: 16px,
-  lg: 24px,
-  xl: 32px,
+  2: 2px,
+  4: 4px,
+  6: 6px,
+  8: 8px,
+  10: 10px,
+  12: 12px,
+  14: 14px,
+  16: 16px,
+  24: 24px,
+  32: 32px,
 ) !default;
 
 $flux-font-family:
-  -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !default;
+  'Inter',
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  Helvetica,
+  Arial,
+  sans-serif !default;
+// Task keys, version numbers and inline code only.
+$flux-font-mono:
+  'CommitMono', ui-monospace, SFMono-Regular, Menlo, monospace !default;
+
+// Type scale. `line` is omitted where the handoff gives none; `mono: true`
+// uses $flux-font-mono. Minimum size is 10px (tab labels and badges only).
+$flux-type: (
+  body: (
+    size: 13px,
+    line: 20px,
+    weight: 450,
+  ),
+  screen-title: (
+    size: 22px,
+    line: 26px,
+    weight: 700,
+    tracking: -0.02em,
+  ),
+  screen-subtitle: (
+    size: 12px,
+    line: 16px,
+    weight: 450,
+  ),
+  sheet-title: (
+    size: 16px,
+    weight: 700,
+    tracking: -0.01em,
+  ),
+  detail-title: (
+    size: 19px,
+    line: 24px,
+    weight: 650,
+    tracking: -0.02em,
+  ),
+  project-name: (
+    size: 16px,
+    line: 19px,
+    weight: 650,
+    tracking: -0.01em,
+  ),
+  row-title: (
+    size: 15px,
+    line: 19px,
+    weight: 550,
+  ),
+  card-title: (
+    size: 14.5px,
+    line: 19px,
+    weight: 550,
+  ),
+  sheet-item: (
+    size: 15px,
+    weight: 550,
+  ),
+  segment-label: (
+    size: 13px,
+    weight: 500,
+  ),
+  segment-label-active: (
+    size: 13px,
+    weight: 600,
+  ),
+  meta: (
+    size: 11.5px,
+    line: 15px,
+    weight: 450,
+  ),
+  meta-strong: (
+    size: 11.5px,
+    line: 15px,
+    weight: 600,
+  ),
+  section-header: (
+    size: 11px,
+    weight: 700,
+    tracking: 0.05em,
+  ),
+  field-label: (
+    size: 11px,
+    weight: 650,
+    tracking: 0.04em,
+  ),
+  key: (
+    size: 11px,
+    weight: 550,
+    mono: true,
+  ),
+  // Initials in a 36px avatar. The handoff fixes the weight (650); the size
+  // is ours.
+  avatar: (
+      size: 13px,
+      weight: 650,
+    ),
+  tab-label: (
+    size: 10px,
+    weight: 550,
+  ),
+  tab-label-active: (
+    size: 10px,
+    weight: 650,
+  ),
+) !default;
+
+// Ionic's named colours, built from the scales above. Each needs only a
+// base and a contrast colour — shade, tint and the *-rgb variants are
+// computed in variables.scss.
+$flux-colors: (
+  primary: (
+    base: map.get($flux-indigo, 9),
+    contrast: #ffffff,
+  ),
+  secondary: (
+    base: map.get($flux-hues, blue, 9),
+    contrast: #ffffff,
+  ),
+  tertiary: (
+    base: map.get($flux-hues, violet, 9),
+    contrast: #ffffff,
+  ),
+  success: (
+    base: map.get($flux-hues, green, 9),
+    contrast: #ffffff,
+  ),
+  warning: (
+    base: map.get($flux-hues, amber, 9),
+    contrast: map.get($flux-gray, 12, light),
+  ),
+  danger: (
+    base: map.get($flux-hues, red, 9),
+    contrast: #ffffff,
+  ),
+  light: (
+    base: map.get($flux-gray, 3),
+    contrast: map.get($flux-gray, 12),
+  ),
+  medium: (
+    base: map.get($flux-gray, 9),
+    contrast: #ffffff,
+  ),
+  dark: (
+    base: map.get($flux-gray, 12),
+    contrast: map.get($flux-gray, 1),
+  ),
+) !default;

@@ -52,6 +52,6 @@ describe('auth guards', () => {
 
   it('guestGuard sends signed-in users to Tasks', async () => {
     signedIn = true;
-    expect(urlOf(await run(guestGuard))).toBe('/tabs/tasks');
+    expect(urlOf(await run(guestGuard))).toBe('/tabs/my-work');
   });
 });

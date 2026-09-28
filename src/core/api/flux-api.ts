@@ -12,8 +12,8 @@ export type FluxApi = {
   /** GET /api/tasks */
   listTasks(): Promise<Task[]>;
 
-  /** GET /api/tasks/{id} */
-  getTask(id: string): Promise<Task>;
+  /** GET /projects/{projectId}/tasks/{taskId}: tasks are project-scoped. */
+  getTask(projectId: string, taskId: string): Promise<Task>;
 
   /** GET /api/notifications */
   listNotifications(): Promise<AppNotification[]>;

@@ -7,6 +7,7 @@ on:
       - capacitor.config.ts
       - package.json
       - package-lock.json
+      - scripts/ci/**
       - .github/workflows/ios-simulator.yml
   workflow_dispatch:
 
@@ -33,9 +34,35 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      # The dev build points sign-in at localhost:9001, where the mock IAM
+      # below answers; the Debug app allows local HTTP (CLAUDE.md §5).
+      - run: npm run build:dev
 
       - run: npx cap sync ios
+
+      # fb-idb drives the simulator's UI for the swipe-back check. It breaks on
+      # Python 3.12+'s asyncio, hence 3.11.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install idb
+        run: |
+          brew tap facebook/fb
+          brew install facebook/fb/idb-companion
+          python -m pip install fb-idb
+
+      - name: Start mock IAM
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          node scripts/ci/mock-iam.mjs > "$RUNNER_TEMP/artifacts/mock-iam.log" 2>&1 &
+          for _ in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:9001/api/v1/accounts/me && exit 0
+            sleep 0.5
+          done
+          echo "Mock IAM did not start"
+          cat "$RUNNER_TEMP/artifacts/mock-iam.log"
+          exit 1
 
       - name: Show Xcode and scheme info
         run: |
@@ -104,6 +131,11 @@ jobs:
 
           echo "App is running (pid $PID), confirmed via ps and launchctl"
 
+      - name: Swipe back from task detail
+        env:
+          OUT_DIR: ${{ runner.temp }}/artifacts
+        run: scripts/ci/ios-swipe-back.sh
+
       - name: Take screenshot
         if: always() && env.UDID != ''
         run: |
@@ -115,7 +147,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-screenshot
-          path: ${{ runner.temp }}/artifacts/flux-ios-simulator.png
+          path: ${{ runner.temp }}/artifacts/*.png
           if-no-files-found: warn
 
       - name: Capture simulator app log
@@ -130,5 +162,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-log
-          path: ${{ runner.temp }}/artifacts/app.log
+          path: |
+            ${{ runner.temp }}/artifacts/app.log
+            ${{ runner.temp }}/artifacts/mock-iam.log
           if-no-files-found: warn

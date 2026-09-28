@@ -3,6 +3,7 @@ import type { AppNotification, FluxApi, Task } from '../api';
 const TASKS: Task[] = [
   {
     id: '1',
+    projectId: 'p1',
     title: 'Draft Q3 roadmap',
     description: 'Outline priorities for the next quarter.',
     status: 'in_progress',
@@ -11,6 +12,7 @@ const TASKS: Task[] = [
   },
   {
     id: '2',
+    projectId: 'p1',
     title: 'Review pull request #482',
     status: 'todo',
     dueDate: '2026-09-15',
@@ -18,6 +20,7 @@ const TASKS: Task[] = [
   },
   {
     id: '3',
+    projectId: 'p2',
     title: 'Fix login redirect bug',
     description: 'Repro only happens on expired sessions.',
     status: 'todo',
@@ -25,12 +28,14 @@ const TASKS: Task[] = [
   },
   {
     id: '4',
+    projectId: 'p2',
     title: 'Write onboarding docs',
     status: 'done',
     updatedAt: '2026-09-08T17:45:00.000Z',
   },
   {
     id: '5',
+    projectId: 'p1',
     title: 'Prepare release notes',
     status: 'in_progress',
     dueDate: '2026-09-18',
@@ -75,10 +80,14 @@ export class InMemoryFluxApi implements FluxApi {
     return Promise.resolve(TASKS);
   }
 
-  getTask(id: string): Promise<Task> {
-    const task = TASKS.find((t) => t.id === id);
+  getTask(projectId: string, taskId: string): Promise<Task> {
+    const task = TASKS.find(
+      (t) => t.projectId === projectId && t.id === taskId
+    );
     if (!task) {
-      return Promise.reject(new Error(`Task not found: ${id}`));
+      return Promise.reject(
+        new Error(`Task not found: ${projectId}/${taskId}`)
+      );
     }
     return Promise.resolve(task);
   }

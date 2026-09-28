@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<script src="assets/icons.js"></script>
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:400 700;src:url('assets/fonts/InterVariable.woff2') format('woff2')}
+@font-face{font-family:CommitMono;font-weight:100 900;src:url('assets/fonts/CommitMonoVariable.woff2') format('woff2')}
+body{margin:0;background:#EDEDF0;font-family:Inter,system-ui,sans-serif;font-feature-settings:'salt';-webkit-font-smoothing:antialiased;font-size:13px;line-height:20px;font-weight:450;color:#1C2024}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.tok{color-scheme:light;
+--n1:#FCFCFD;--n2:#F9F9FB;--n3:#F0F0F3;--n4:#E8E8EC;--n5:#E0E1E6;--n6:#D9D9E0;--n7:#CDCED6;--n8:#B9BBC6;--n9:#8B8D98;--n10:#80838D;--n11:#60646C;--n12:#1C2024;
+--na1:rgba(0,0,85,.012);--na2:rgba(0,0,85,.024);--na3:rgba(0,0,71,.06);--na4:rgba(0,0,60,.09);--na5:rgba(0,8,53,.12);--na6:rgba(0,0,46,.15);--na7:rgba(0,6,40,.2);--na8:rgba(0,4,32,.27);--na9:rgba(0,3,20,.45);--na10:rgba(0,3,18,.5);--na11:rgba(0,6,20,.62);--na12:rgba(0,4,9,.89);
+--p9:#3E63DD;--p10:#3358D4;--p11:#3A5BC7;--pa1:rgba(0,64,255,.01);--pa2:rgba(0,64,255,.03);--pa3:rgba(0,68,255,.07);--pa4:rgba(0,68,255,.12);--pa5:rgba(0,68,255,.18);--pa6:rgba(0,61,255,.24);--pa8:rgba(0,52,219,.45);--pa11:#3A5BC7;
+--bg:#fff;--surface:#fff;--card:#fff;
+--blue9:#0090FF;--blue11:#0D74CE;--bluea3:rgba(0,128,255,.11);--amber9:#FFC53D;--amber11:#AB6400;--ambera2:rgba(255,222,0,.08);--ambera3:rgba(255,222,0,.22);--ambera6:rgba(228,180,0,.5);--green9:#30A46C;--green11:#218358;--greena2:rgba(0,164,51,.05);--greena3:rgba(0,164,51,.1);--greena5:rgba(0,150,60,.25);--red9:#E5484D;--red11:#CE2C31;--reda3:rgba(255,1,13,.09);--purple9:#8E4EC6;--purple11:#8145B5;--purplea3:rgba(120,0,255,.08);--violet9:#6E56CF;--violet11:#6550B9;--violeta1:rgba(60,0,255,.01);--violeta3:rgba(60,0,255,.08);--violeta4:rgba(60,0,255,.12);--cyan9:#00A2C7;--cyan11:#107D98;--cyana3:rgba(0,180,240,.11);--pink9:#D6409F;--teal9:#12A594;--orange9:#F76B15}
+</style>
+</helmet>
+
+<div class="tok" style="padding:40px 44px;display:flex;flex-direction:column;gap:28px;color:var(--n12)">
+  <div style="max-width:760px;display:flex;flex-direction:column;gap:8px">
+    <div style="font:600 10px ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#60646C">RECREATION · FLUX-WEB (CURRENT)</div>
+    <div style="font-size:20px;font-weight:650;letter-spacing:-.03em;line-height:24px">Current web app, rebuilt from source</div>
+    <div style="font-size:13px;line-height:20px;color:#60646C;text-wrap:pretty">Reference for the mobile work. Rebuilt from <span style="font-family:CommitMono,monospace">main-layout.html</span>, <span style="font-family:CommitMono,monospace">sidebar.html</span>, <span style="font-family:CommitMono,monospace">task-list</span>, <span style="font-family:CommitMono,monospace">task-board</span>, <span style="font-family:CommitMono,monospace">task-detail*</span>, <span style="font-family:CommitMono,monospace">display-utils.ts</span>, the BuilderKit button/table/sidebar styles and the Tailwind theme (Inter 13/20, CommitMono, primary #3E63DD, neutral #8B8D98). Icons are the app's Lucide sprite; fonts are the app's own files.</div>
+  </div>
+
+  <!-- ================= TASK LIST ================= -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:550;color:#60646C">/projects/:id/tasks/list · flat view, topbar filter layout</div>
+    <div data-screen-label="Web · Task list" style="width:1440px;height:820px;display:flex;background:var(--bg);border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)">
+      <!-- Sidebar -->
+      <aside style="width:256px;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--na4);background:var(--n1)">
+        <div style="height:48px;flex:none;display:flex;align-items:center;padding:0 22px;gap:10px">
+          <img src="assets/flux-icon.svg" alt="Flux" style="width:28px;height:28px">
+          <div style="font-size:18px;font-weight:650;letter-spacing:-.03em;line-height:24px">flux</div>
+        </div>
+        <div style="flex:auto;display:flex;flex-direction:column;padding:8px 12px;gap:4px">
+          <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;height:32px;gap:4px;padding:0 6px;border-radius:6px;background:{{ n.bg }}">
+              <svg style="width:16px;height:16px;flex:none;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ n.icon }}"></use></svg>
+              <span style="flex:auto;padding:0 2px 0 4px;font-size:13px">{{ n.label }}</span>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;height:32px;gap:4px;padding:0 6px;margin-top:12px">
+            <span style="flex:auto;padding:0 2px;font-size:13px">Pinned projects</span>
+            <svg style="width:16px;height:16px;flex:none;color:var(--na11);transform:rotate(90deg);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg>
+          </div>
+          <div style="display:flex;align-items:center;height:32px;gap:4px;padding:0 6px;border-radius:6px"><span style="width:8px;height:8px;border-radius:99px;background:var(--blue9);margin:0 6px"></span><span style="flex:auto;font-size:13px">Checkout Platform</span></div>
+          <div style="display:flex;align-items:center;height:32px;gap:4px;padding:0 6px;border-radius:6px"><span style="width:8px;height:8px;border-radius:99px;background:var(--green9);margin:0 6px"></span><span style="flex:auto;font-size:13px">Mobile SDK</span></div>
+          <div style="display:flex;align-items:center;height:32px;gap:4px;padding:0 6px;border-radius:6px"><span style="width:8px;height:8px;border-radius:99px;background:var(--amber9);margin:0 6px"></span><span style="flex:auto;font-size:13px">Data Pipeline</span></div>
+          <div style="flex:auto"></div>
+          <div style="height:1px;background:var(--na4);margin:8px 0"></div>
+        </div>
+        <div style="padding:12px;flex:none">
+          <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:12px">
+            <div style="width:36px;height:36px;flex:none;border-radius:8px;background:var(--na4);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:650">AK</div>
+            <div style="flex:auto;min-width:0;display:flex;flex-direction:column">
+              <div style="font-size:13px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Aisha Khan</div>
+              <div style="font-size:12px;line-height:16px;color:var(--na11);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">aisha@fluxrms.io</div>
+            </div>
+            <svg style="width:16px;height:16px;flex:none;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg>
+          </div>
+        </div>
+      </aside>
+      <!-- Main -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--na4)">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--na11)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-panel-left"></use></svg></div>
+          <div style="flex:auto"></div>
+          <div style="display:flex;align-items:center;gap:4px;color:var(--na11)">
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-sun"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-languages"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;position:relative"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="position:absolute;top:0;right:0;min-width:14px;height:14px;padding:0 3px;border-radius:99px;background:var(--red9);color:#fff;font-size:9px;line-height:14px;font-weight:600;text-align:center">3</span></div>
+          </div>
+        </div>
+        <div style="flex:auto;min-height:0;display:flex;flex-direction:column;padding:20px 32px;overflow:hidden">
+          <!-- Toolbar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:20px;line-height:24px;font-weight:650;letter-spacing:-.03em">Tasks</div>
+              <div style="color:var(--na11)">Track and manage project tasks</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex:none">
+              <div style="width:224px;height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;background:#fff;box-shadow:0 0 0 1px var(--na4),0 1px 3px 0 var(--na5),0 1px 2px -1px var(--na5)">
+                <svg style="width:16px;height:16px;flex:none;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-search"></use></svg>
+                <span style="color:var(--na9);font-size:13px">Search by key or title...</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;font-weight:550"><svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-user"></use></svg>Assignee</div>
+              <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;font-weight:550"><svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-rows-3"></use></svg>Group: None</div>
+              <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--na4);border-radius:8px;padding:1px">
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--na4);color:var(--na12)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-list"></use></svg></div>
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-columns-3"></use></svg></div>
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:6px;font-weight:550"><svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-archive"></use></svg>Archive done</div>
+              <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:6px;font-weight:550;color:#fff;background:var(--p9);box-shadow:0 0 0 1px var(--p10),inset 0 1px rgba(255,255,255,.1),0 1px 3px 0 var(--na5)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-plus"></use></svg>Create task</div>
+            </div>
+          </div>
+          <!-- Filter topbar -->
+          <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;font-weight:550"><svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg>Filters</div>
+            <sc-for list="{{ filterChips }}" as="f" hint-placeholder-count="3">
+              <div style="display:inline-flex;height:32px;align-items:center;gap:6px;border-radius:6px;border:1px solid var(--na4);background:var(--n1);padding:0 12px;font-size:12px;font-weight:550;box-shadow:0 1px 2px rgba(0,0,0,.05)">{{ f.label }}<svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></div>
+            </sc-for>
+          </div>
+          <!-- Section A: Masters & Epics -->
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--na5);padding:8px 16px;background:#fff">
+                <svg style="width:16px;height:16px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-layers"></use></svg>
+                <span style="font-size:12px;line-height:16px;font-weight:650">Masters &amp; Epics</span>
+                <span style="border-radius:6px;background:var(--na3);padding:2px 6px;font-size:11px;line-height:16px;font-weight:550">2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--na5);padding:6px 16px;font-size:11px;line-height:16px;font-weight:550;text-transform:uppercase;letter-spacing:.02em;color:var(--na9)">
+                <span style="width:20px;flex:none;margin-right:2px"></span><span style="width:20px;flex:none"></span>
+                <span style="width:96px;flex:none">Key</span><span style="flex:1;min-width:0">Title</span><span style="width:128px;flex:none;text-align:right">Assignees</span><span style="width:112px;flex:none">Label</span><span style="width:96px;flex:none">Priority</span><span style="width:96px;flex:none">Status</span><span style="width:112px;flex:none">Planned</span><span style="width:96px;flex:none;text-align:right">Due</span>
+              </div>
+              <sc-for list="{{ containers }}" as="t" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--na3);padding:10px 16px;font-size:12px;line-height:16px">
+                  <span style="width:20px;height:20px;flex:none;margin-right:2px;display:flex;align-items:center;justify-content:center;color:var(--na9)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></span>
+                  <span style="width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></span>
+                  <span style="width:96px;flex:none;display:flex;align-items:center;gap:4px;font-family:CommitMono,monospace;font-weight:550;color:var(--pa11)"><svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.typeIcon }}"></use></svg>{{ t.key }}</span>
+                  <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;line-height:20px">{{ t.title }}</span>
+                  <span style="width:128px;flex:none;display:flex;justify-content:flex-end"><span style="display:flex"><sc-for list="{{ t.avatars }}" as="a" hint-placeholder-count="2"><span style="width:24px;height:24px;border-radius:99px;border:2px solid #fff;background:{{ a.bg }};color:#fff;font-size:10px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:{{ a.ml }}">{{ a.i }}</span></sc-for></span></span>
+                  <span style="width:112px;flex:none;display:flex"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:4px;background:var(--na3);padding:2px 6px;font-size:10px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:{{ t.labelColor }}"></span>{{ t.label }}</span></span>
+                  <span style="width:96px;flex:none;display:inline-flex;align-items:center;gap:2px;font-weight:550;color:{{ t.prioColor }}"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.prioIcon }}"></use></svg>{{ t.prio }}</span>
+                  <span style="width:96px;flex:none;display:flex"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 6px;font-weight:550;background:{{ t.statusBg }};color:{{ t.statusFg }}"><span style="width:6px;height:6px;border-radius:99px;background:{{ t.statusDot }}"></span>{{ t.status }}</span></span>
+                  <span style="width:112px;flex:none;font-family:CommitMono,monospace;font-size:11px;color:{{ t.plannedColor }};font-style:{{ t.plannedStyle }};white-space:nowrap">{{ t.planned }}</span>
+                  <span style="width:96px;flex:none;text-align:right;color:{{ t.dueColor }}">{{ t.due }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <!-- Section B: Tasks table -->
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--na5);padding:8px 16px;background:#fff">
+                <svg style="width:16px;height:16px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg>
+                <span style="font-size:12px;line-height:16px;font-weight:650">Tasks</span>
+                <span style="border-radius:6px;background:var(--na3);padding:2px 6px;font-size:11px;line-height:16px;font-weight:550">7</span>
+              </div>
+              <div style="display:flex;align-items:center;height:40px;gap:0;border-bottom:1px solid var(--na4);font-size:12px;font-weight:550;color:var(--na10)">
+                <span style="width:48px;flex:none;padding:0 8px;display:flex;align-items:center"><span style="width:16px;height:16px;border-radius:4px;border:1px solid var(--na7)"></span></span>
+                <span style="width:40px;flex:none"></span>
+                <span style="width:128px;flex:none;padding:0 8px">Key</span><span style="flex:1;padding:0 8px">Title</span><span style="width:128px;flex:none;padding:0 8px">Labels</span><span style="width:112px;flex:none;padding:0 8px">Priority</span><span style="width:128px;flex:none;padding:0 8px">Status</span><span style="width:160px;flex:none;padding:0 8px">Assignees</span><span style="width:128px;flex:none;padding:0 8px">Planned</span><span style="width:112px;flex:none;padding:0 8px">Due</span>
+              </div>
+              <sc-for list="{{ leaves }}" as="t" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;height:48px;border-bottom:1px solid var(--na3);white-space:nowrap">
+                  <span style="width:48px;flex:none;padding:0 8px;display:flex;align-items:center"><span style="width:16px;height:16px;border-radius:4px;border:1px solid var(--na7)"></span></span>
+                  <span style="width:40px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></span>
+                  <span style="width:128px;flex:none;padding:0 8px;display:inline-flex;align-items:center;gap:6px"><svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.typeIcon }}"></use></svg><span style="font-family:CommitMono,monospace;font-size:12px;font-weight:550;color:var(--pa11)">{{ t.key }}</span></span>
+                  <span style="flex:1 1 0px;min-width:0;display:block;padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.title }}</span>
+                  <span style="width:128px;flex:none;padding:0 8px;display:flex"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:4px;background:var(--na3);padding:2px 6px;font-size:10px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:{{ t.labelColor }}"></span>{{ t.label }}</span></span>
+                  <span style="width:112px;flex:none;padding:0 8px;display:inline-flex;align-items:center;gap:2px;font-size:12px;font-weight:550;color:{{ t.prioColor }}"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.prioIcon }}"></use></svg>{{ t.prio }}</span>
+                  <span style="width:128px;flex:none;padding:0 8px;display:flex"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:550;background:{{ t.statusBg }};color:{{ t.statusFg }}"><span style="width:6px;height:6px;border-radius:99px;background:{{ t.statusDot }}"></span>{{ t.status }}</span></span>
+                  <span style="width:160px;flex:none;padding:0 8px;display:flex"><sc-for list="{{ t.avatars }}" as="a" hint-placeholder-count="1"><span style="width:28px;height:28px;border-radius:99px;border:2px solid #fff;background:{{ a.bg }};color:#fff;font-size:12px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:{{ a.ml }}">{{ a.i }}</span></sc-for><span style="font-size:11px;color:var(--na9);font-style:italic;align-self:center">{{ t.unassigned }}</span></span>
+                  <span style="width:128px;flex:none;padding:0 8px;font-family:CommitMono,monospace;font-size:11px;color:{{ t.plannedColor }};font-style:{{ t.plannedStyle }}">{{ t.planned }}</span>
+                  <span style="width:112px;flex:none;padding:0 8px;font-size:12px;color:{{ t.dueColor }};font-weight:{{ t.dueWeight }}">{{ t.due }}</span>
+                </div>
+              </sc-for>
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:24px;padding:8px 16px;font-size:12px;color:var(--na10)"><span>Items per page: 20</span><span>1 – 7 of 7</span><span style="display:flex;gap:8px;color:var(--na7)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-left"></use></svg><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BOARD ================= -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:550;color:#60646C">/projects/:id/tasks/board · kanban keyed on workflow status</div>
+    <div data-screen-label="Web · Task board" style="width:1440px;height:720px;display:flex;background:var(--bg);border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)">
+      <aside style="width:56px;flex:none;display:flex;flex-direction:column;align-items:center;border-right:1px solid var(--na4);background:var(--n1)">
+        <div style="height:48px;display:flex;align-items:center;justify-content:center"><img src="assets/flux-icon.svg" alt="Flux" style="width:28px;height:28px"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;color:var(--na11)">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-layout-dashboard"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-building-2"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--na3);color:var(--n12)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-credit-card"></use></svg></div>
+        </div>
+        <div style="flex:auto"></div>
+        <div style="padding:8px"><div style="width:32px;height:32px;border-radius:8px;background:var(--na4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:650">AK</div></div>
+      </aside>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--na4)">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-panel-left"></use></svg></div>
+          <div style="flex:auto"></div>
+          <div style="display:flex;align-items:center;gap:4px;color:var(--na11)">
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-sun"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-languages"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bell"></use></svg></div>
+          </div>
+        </div>
+        <div style="flex:auto;min-height:0;display:flex;flex-direction:column;padding:20px 32px">
+          <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:20px;line-height:24px;font-weight:650;letter-spacing:-.03em">Tasks</div>
+              <div style="color:var(--na11)">Track and manage project tasks</div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:12px;flex:none">
+              <div style="width:256px;height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:6px;background:#fff;box-shadow:0 0 0 1px var(--na4),0 1px 3px 0 var(--na5)"><svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-search"></use></svg><span style="color:var(--na9)">Search by key or title...</span></div>
+              <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--na4);border-radius:8px;padding:1px">
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-list"></use></svg></div>
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--na4)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-columns-3"></use></svg></div>
+                <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--na11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:6px;font-weight:550"><svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-archive"></use></svg>Archive done (2)</div>
+              <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:6px;font-weight:550;color:#fff;background:var(--p9);box-shadow:0 0 0 1px var(--p10),inset 0 1px rgba(255,255,255,.1)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-plus"></use></svg>Create task</div>
+            </div>
+          </div>
+          <div style="display:flex;flex:auto;min-height:0;gap:16px;padding-bottom:16px">
+            <sc-for list="{{ columns }}" as="c" hint-placeholder-count="4">
+              <div style="width:280px;min-width:280px;flex:none;display:flex;flex-direction:column;border-radius:8px;border:1px solid var(--na4);background:var(--na1);min-height:0">
+                <div style="display:flex;align-items:center;gap:8px;border-top:2px solid {{ c.color }};border-radius:8px 8px 0 0;padding:10px 12px">
+                  <span style="width:8px;height:8px;border-radius:99px;background:{{ c.color }}"></span>
+                  <span style="font-size:12px;line-height:16px;font-weight:650">{{ c.name }}</span>
+                  <span style="margin-left:auto;border-radius:6px;background:var(--na3);padding:2px 6px;font-size:11px;line-height:16px;font-weight:550">{{ c.count }}</span>
+                </div>
+                <div style="display:flex;flex:auto;flex-direction:column;gap:8px;padding:8px;min-height:100px">
+                  <sc-for list="{{ c.tasks }}" as="t" hint-placeholder-count="2">
+                    <div style="display:flex;flex-direction:column;gap:6px;border-radius:8px;border:1px solid var(--na4);background:#fff;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <svg style="width:14px;height:14px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.typeIcon }}"></use></svg>
+                        <svg style="width:12px;height:12px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg>
+                        <span style="font-family:CommitMono,monospace;font-size:11px;font-weight:550;color:var(--pa11)">{{ t.key }}</span>
+                        <span style="flex:auto"></span>
+                        <span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:550;color:{{ t.prioColor }}"><svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-{{ t.prioIcon }}"></use></svg>{{ t.prio }}</span>
+                      </div>
+                      <div style="font-size:12px;line-height:1.375;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ t.title }}</div>
+                      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:10px">
+                        <span style="display:inline-flex;align-items:center;gap:4px;border-radius:4px;background:var(--na3);padding:2px 6px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:{{ t.labelColor }}"></span>{{ t.label }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+                        <span style="flex:auto"></span>
+                        <span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;color:{{ t.dueColor }}"><svg style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>{{ t.due }}</span>
+                        <span style="display:flex"><sc-for list="{{ t.avatars }}" as="a" hint-placeholder-count="1"><span style="width:24px;height:24px;border-radius:99px;border:2px solid #fff;background:{{ a.bg }};color:#fff;font-size:10px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:{{ a.ml }}">{{ a.i }}</span></sc-for></span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TASK DETAIL ================= -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:550;color:#60646C">/projects/:id/tasks/:taskId · two-pane detail with comments sidebar</div>
+    <div data-screen-label="Web · Task detail" style="width:1440px;height:820px;display:flex;background:var(--bg);border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)">
+      <aside style="width:56px;flex:none;display:flex;flex-direction:column;align-items:center;border-right:1px solid var(--na4);background:var(--n1)">
+        <div style="height:48px;display:flex;align-items:center;justify-content:center"><img src="assets/flux-icon.svg" alt="Flux" style="width:28px;height:28px"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;color:var(--na11)">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-layout-dashboard"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-building-2"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--na3);color:var(--n12)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg></div>
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-credit-card"></use></svg></div>
+        </div>
+        <div style="flex:auto"></div>
+        <div style="padding:8px"><div style="width:32px;height:32px;border-radius:8px;background:var(--na4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:650">AK</div></div>
+      </aside>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--na4)">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-panel-left"></use></svg></div>
+          <div style="flex:auto"></div>
+          <div style="display:flex;align-items:center;gap:4px;color:var(--na11)">
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-sun"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-languages"></use></svg></div>
+            <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bell"></use></svg></div>
+          </div>
+        </div>
+        <div style="flex:auto;min-height:0;display:flex;overflow:hidden">
+          <!-- LEFT PANEL -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+            <div style="height:40px;flex:none;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--na6);background:#fff;padding:0 32px">
+              <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;font-weight:550"><svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg>Back</div>
+              <div style="flex:auto"></div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-family:CommitMono,monospace;font-size:12px;font-weight:550;color:var(--pa11)">CEDTE-12</span>
+                <svg style="width:12px;height:12px;color:var(--na8);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg>
+                <svg style="width:14px;height:14px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+                <span style="font-family:CommitMono,monospace;font-size:12px;font-weight:650;color:var(--pa11)">CEDTE-49</span>
+                <svg style="width:12px;height:12px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-copy"></use></svg>
+                <span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:550;background:var(--ambera3);color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></span>
+              </div>
+              <svg style="width:14px;height:14px;color:var(--p9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bell-ring"></use></svg>
+              <svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg>
+            </div>
+            <div style="flex:1;min-height:0;overflow:hidden;padding:20px 32px">
+              <div style="max-width:1024px;margin:0 auto;display:flex;flex-direction:column">
+                <div style="font-size:20px;line-height:28px;font-weight:650;letter-spacing:-.02em">Task detail page cannot scroll vertically on phones</div>
+                <div style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--na4);border-radius:8px">
+                  <div style="padding:10px 12px"><div style="font-size:12px;line-height:16px;color:var(--na11)">Type</div><div style="margin-top:4px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550"><svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>Bug</div></div>
+                  <div style="padding:10px 12px;border-left:1px solid var(--na4)"><div style="font-size:12px;line-height:16px;color:var(--na11)">Priority</div><div style="margin-top:4px;display:inline-flex;align-items:center;gap:2px;font-size:12px;font-weight:550;color:var(--amber11)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-chevron-up"></use></svg>High</div></div>
+                  <div style="padding:10px 12px;border-left:1px solid var(--na4)"><div style="font-size:12px;line-height:16px;color:var(--na11)">Due date</div><div style="margin-top:4px;font-size:12px;font-weight:550">2026-09-19</div></div>
+                  <div style="padding:10px 12px;border-left:1px solid var(--na4)"><div style="font-size:12px;line-height:16px;color:var(--na11)">Parent task</div><div style="margin-top:4px;display:flex;gap:4px;font-size:12px;font-weight:550;min-width:0"><span style="color:var(--na11);flex:none">CEDTE-12</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mobile responsiveness pass</span></div></div>
+                </div>
+                <div style="margin-top:16px;display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--na4)"><span style="width:80px;flex:none;padding-top:4px;font-size:12px;line-height:16px;font-weight:550;color:var(--na11)">Assignees</span><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;border:1px solid var(--na5);background:var(--na2);padding:4px 6px;font-size:12px;line-height:1;font-weight:550">Aisha Khan <svg style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-x"></use></svg></span><span style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;border:1px solid var(--na5);background:var(--na2);padding:4px 6px;font-size:12px;line-height:1;font-weight:550">Tomás Rivera <svg style="width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-x"></use></svg></span><span style="font-size:12px;color:var(--na9)">Add assignee...</span></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--na4)"><span style="width:80px;flex:none;padding-top:4px;font-size:12px;line-height:16px;font-weight:550;color:var(--na11)">Labels</span><div style="display:flex;gap:6px;align-items:center"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:4px;background:var(--na3);padding:2px 6px;font-size:11px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:var(--pink9)"></span>mobile</span><span style="display:inline-flex;align-items:center;gap:4px;border-radius:4px;background:var(--na3);padding:2px 6px;font-size:11px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:var(--red9)"></span>regression</span><span style="font-size:12px;color:var(--na9)">Add label...</span></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--na4)"><span style="width:80px;flex:none;padding-top:4px;font-size:12px;line-height:16px;font-weight:550;color:var(--na11)">Release</span><div style="display:flex;gap:6px;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:99px;border:1px solid var(--na4);background:var(--bluea3);color:var(--blue11);padding:4px 12px 4px 12px;font-size:12px;font-weight:550"><span style="width:8px;height:8px;border-radius:99px;background:var(--blue9)"></span>v2.4.0</span><span style="font-size:12px;color:var(--na9)">Link a release...</span></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0"><span style="width:80px;flex:none;padding-top:2px;font-size:12px;line-height:16px;font-weight:550;color:var(--na11)">References</span><div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:550;height:24px;padding:0 8px;border-radius:6px"><svg style="width:12px;height:12px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-plus"></use></svg>Add reference</div></div>
+                </div>
+                <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+                  <span style="font-size:11px;line-height:16px;font-weight:650;text-transform:uppercase;letter-spacing:.02em;color:var(--na9)">Description</span>
+                  <div style="font-size:13px;line-height:20px;color:var(--n12);text-wrap:pretty">On iPhone Safari the task detail route fills the wrapper exactly and never overflows it, so the page cannot be scrolled below the metadata grid. Repro: open any task on a 390px viewport, try to reach Comments.</div>
+                </div>
+                <div style="margin-top:24px;display:flex;align-items:center;justify-content:space-between;padding-bottom:8px"><span style="font-size:11px;line-height:16px;font-weight:650;text-transform:uppercase;letter-spacing:.02em;color:var(--na9)">Subtasks</span></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px;border:1px dashed var(--na6);border-radius:8px;padding:24px;text-align:center"><svg style="width:32px;height:32px;color:var(--na7);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-git-branch"></use></svg><span style="font-size:12px;color:var(--na9)">No subtasks yet.</span><span style="font-size:11px;color:var(--na10)">Subtasks are available for Master and Epic task types.</span></div>
+                <div style="margin-top:24px;display:flex;align-items:center;gap:6px;padding-bottom:8px"><svg style="width:14px;height:14px;color:var(--na9);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg><span style="font-size:11px;line-height:16px;font-weight:650;text-transform:uppercase;letter-spacing:.02em;color:var(--na9)">Attachments</span></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px;border:1px dashed var(--na6);border-radius:8px;padding:24px;text-align:center"><svg style="width:32px;height:32px;color:var(--na7);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg><span style="font-size:12px;color:var(--na9)">No attachments yet.</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- RIGHT PANEL: comments -->
+          <div style="width:360px;flex:none;display:flex;flex-direction:column;border-left:1px solid var(--na6)">
+            <div style="height:40px;flex:none;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--na6);background:var(--na2);padding:0 16px">
+              <svg style="width:16px;height:16px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-message-circle"></use></svg>
+              <span style="font-size:13px;font-weight:650">Comments</span>
+              <span style="border-radius:99px;background:var(--na4);padding:0 6px;font-size:11px;line-height:20px;font-weight:550;color:var(--na11)">3</span>
+              <span style="flex:auto"></span>
+              <svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-maximize-2"></use></svg>
+            </div>
+            <div style="flex:1;min-height:0;background:var(--na2);padding:12px 16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+              <sc-for list="{{ comments }}" as="c" hint-placeholder-count="3">
+                <div style="border-radius:8px;border:1px solid var(--na4);background:#fff;padding:8px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="width:20px;height:20px;border-radius:99px;background:var(--pa3);color:var(--pa11);font-size:10px;font-weight:650;display:flex;align-items:center;justify-content:center">{{ c.i }}</span>
+                    <span style="font-size:12px;font-weight:550">{{ c.author }}</span>
+                    <span style="font-size:11px;color:var(--na9)">{{ c.when }}</span>
+                    <span style="flex:auto"></span>
+                    <svg style="width:14px;height:14px;color:var(--na11);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg>
+                  </div>
+                  <div style="margin-top:6px;font-size:13px;line-height:20px;text-wrap:pretty">{{ c.body }}</div>
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:4px;border-top:1px solid var(--na4);padding-top:6px">
+                    <span style="display:inline-flex;align-items:center;gap:4px;border-radius:99px;border:1px solid var(--na5);padding:2px 6px;font-size:12px">👍 {{ c.likes }}</span>
+                    <span style="width:24px;height:24px;border-radius:99px;border:1px solid var(--na5);display:inline-flex;align-items:center;justify-content:center;color:var(--na9)"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><use href="#i-smile-plus"></use></svg></span>
+                    <span style="flex:auto"></span>
+                    <span style="font-size:12px;font-weight:550;color:var(--na11);padding:0 4px">Reply</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:none;border-top:1px solid var(--na6);background:var(--na2);padding:12px 16px">
+              <div style="border-radius:6px;border:1px solid var(--na6);background:#fff;padding:8px 10px;min-height:64px;font-size:13px;color:var(--na9)">Write a comment... @ to mention</div>
+              <div style="margin-top:6px;display:flex;justify-content:flex-end"><span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:550;color:#fff;background:var(--p9);box-shadow:0 0 0 1px var(--p10)">Comment</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const N = 'var(--na11)', NA9 = 'var(--na9)';
+    const P = { CRITICAL:['chevrons-up','var(--red11)','Critical'], HIGH:['chevron-up','var(--amber11)','High'], MEDIUM:['minus','var(--blue11)','Medium'], LOW:['chevron-down',N,'Low'] };
+    const S = { OPEN:['Open','var(--bluea3)','var(--blue11)','var(--blue9)'], IN_PROGRESS:['In Progress','var(--ambera3)','var(--amber11)','var(--amber9)'], IN_REVIEW:['In Review','var(--purplea3)','var(--purple11)','var(--purple9)'], DONE:['Done','var(--greena3)','var(--green11)','var(--green9)'], PLANNING:['Planning','var(--cyana3)','var(--cyan11)','var(--cyan9)'], BACKLOG:['Backlog','var(--na3)',N,'var(--na8)'] };
+    const T = { MASTER:'crown', EPIC:'zap', BUG:'bug', FEATURE:'sparkles', TASK:'square-check', IMPROVEMENT:'trending-up' };
+    const AV = { AK:'var(--blue9)', TR:'var(--purple9)', MO:'var(--green9)', LS:'var(--amber9)', JP:'var(--teal9)' };
+    const mk = (key, type, title, prio, status, label, labelColor, av, due, planned, opts={}) => {
+      const p = P[prio], s = S[status];
+      return { key, typeIcon:T[type], title, prio:p[2], prioIcon:p[0], prioColor:p[1], status:s[0], statusBg:s[1], statusFg:s[2], statusDot:s[3], label, labelColor,
+        avatars: av.map((i,idx)=>({ i, bg:AV[i], ml: idx? '-8px':'0' })), unassigned: av.length? '' : 'No assignee',
+        due: due || '-', dueColor: opts.overdue ? 'var(--red11)' : (due ? 'var(--n12)' : 'var(--na8)'), dueWeight: opts.overdue ? 550 : 450,
+        planned: planned || 'Not scheduled', plannedColor: planned ? (opts.inprog ? 'var(--pa11)' : NA9) : NA9, plannedStyle: planned ? 'normal':'italic' };
+    };
+    const leaves = [
+      mk('CEDTE-49','BUG','Task detail page cannot scroll vertically on phones','HIGH','IN_PROGRESS','mobile','var(--pink9)',['AK','TR'],'19/09/2026','2026-09-10 → 2026-09-19',{inprog:true}),
+      mk('CEDTE-50','IMPROVEMENT','Comment cards need contrast against grey panel','MEDIUM','IN_REVIEW','ui','var(--violet9)',['MO'],'12/09/2026',''),
+      mk('CEDTE-55','FEATURE','Bulk archive every done task from board and list','HIGH','OPEN','archive','var(--amber9)',['LS'],'26/09/2026','2026-09-15 → 2026-09-26'),
+      mk('CEDTE-39','FEATURE','Single-task archive with cascading sub-tree','MEDIUM','DONE','archive','var(--amber9)',['AK'],'05/09/2026',''),
+      mk('CEDTE-33','IMPROVEMENT','Resizable comments panel on desktop','LOW','DONE','ui','var(--violet9)',['TR'],'',''),
+      mk('CEDTE-61','BUG','Board drop rejected silently after column collapse','CRITICAL','OPEN','board','var(--orange9)',[],'11/09/2026','',{overdue:true}),
+      mk('CEDTE-62','TASK','Sync view preferences from backend at sign-in','MEDIUM','BACKLOG','settings','var(--teal9)',['JP'],'',''),
+    ];
+    const containers = [
+      mk('CEDTE-12','EPIC','Mobile responsiveness pass','HIGH','PLANNING','mobile','var(--pink9)',['AK','TR'],'30/09/2026','2026-09-01 → 2026-09-30',{inprog:true}),
+      mk('CEDTE-1','MASTER','Release management v2','MEDIUM','PLANNING','roadmap','var(--blue9)',['MO'],'',''),
+    ];
+    const col = (name, color, tasks) => ({ name, color, count: tasks.length, tasks });
+    const columns = [
+      col('Open','var(--blue9)',[leaves[2],leaves[5]]),
+      col('In Progress','var(--amber9)',[leaves[0]]),
+      col('In Review','var(--purple9)',[leaves[1]]),
+      col('Done','var(--green9)',[leaves[3],leaves[4]]),
+    ];
+    return {
+      nav: [
+        { label:'Dashboard', icon:'layout-dashboard', bg:'transparent' },
+        { label:'Organizations', icon:'building-2', bg:'transparent' },
+        { label:'Projects', icon:'folder-kanban', bg:'var(--na3)' },
+        { label:'Billing', icon:'credit-card', bg:'transparent' },
+      ],
+      filterChips: [{label:'Status'},{label:'Priority'},{label:'Type'},{label:'Label'},{label:'Release'}],
+      containers, leaves, columns,
+      comments: [
+        { i:'T', author:'Tomás Rivera', when:'2h ago', body:'Reproduced on iOS 18 Safari. The outer wrapper has overflow hidden at lg but the mobile branch never gets overflow-y auto.', likes:2 },
+        { i:'A', author:'Aisha Khan', when:'1h ago', body:'Moving the scroll to the page container in task-detail.component.html. Comments will stack under the body on <lg.', likes:1 },
+        { i:'M', author:'Mei Okafor', when:'35m ago', body:'Same root cause as the board and list (CEDTE-49 covers all three).', likes:0 },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

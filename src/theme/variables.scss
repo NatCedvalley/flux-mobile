@@ -1,12 +1,22 @@
-// Derives Ionic's CSS variables from the tokens defined in tokens.scss.
-// Do not hard-code color/spacing/radius values here — edit tokens.scss.
+// Derives the `--flux-*` custom properties and Ionic's CSS variables from the
+// tokens defined in tokens.scss. Do not hard-code color/spacing/radius values
+// here — edit tokens.scss.
+//
+// Token names follow the design handoff (docs/design/mobile-v2/README.md)
+// with a `flux-` prefix: `--flux-n12` (gray 12), `--flux-na3` (gray alpha 3),
+// `--flux-p9` / `--flux-pa3` (indigo), `--flux-red11` / `--flux-reda3`
+// (hues), `--flux-bg` / `--flux-panel` / `--flux-surface`. Light values go
+// on :root, and dark values override them under prefers-color-scheme: dark.
+// Ionic's own dark palette isn't imported; the dark tokens replace it.
 //
 // For background on Ionic's theming variables, see:
 // https://ionicframework.com/docs/theming/
 
 @use 'sass:color';
+@use 'sass:list';
 @use 'sass:map';
 @use 'sass:math';
+@use 'sass:meta';
 @use 'tokens';
 
 // Rounds a color's channels to whole numbers (color.mix can produce
@@ -20,29 +30,109 @@
 }
 
 // Comma-separated "r,g,b" string for a color — used for the
-// --ion-color-*-rgb variables Ionic uses with rgba() overlays.
+// --ion-*-rgb variables Ionic uses with rgba() overlays.
 @function rgb-triple($c) {
   @return math.round(color.channel($c, 'red', $space: rgb)) + ',' +
     math.round(color.channel($c, 'green', $space: rgb)) + ',' +
     math.round(color.channel($c, 'blue', $space: rgb));
 }
 
-:root {
-  @each $name, $c in tokens.$flux-colors {
-    $base: map.get($c, base);
-    $contrast: map.get($c, contrast);
-    // Same shade/tint formula Ionic's own theme generator uses: mix 12%
-    // black for shade, 10% white for tint.
-    $shade: round-color(color.mix(black, $base, 12%));
-    $tint: round-color(color.mix(white, $base, 10%));
+// A token value is either shared by both schemes or a (light, dark) pair.
+@function is-pair($value) {
+  @return meta.type-of($value) == 'map';
+}
 
-    --ion-color-#{$name}: #{$base};
-    --ion-color-#{$name}-rgb: #{rgb-triple($base)};
-    --ion-color-#{$name}-contrast: #{$contrast};
-    --ion-color-#{$name}-contrast-rgb: #{rgb-triple($contrast)};
-    --ion-color-#{$name}-shade: #{$shade};
-    --ion-color-#{$name}-tint: #{$tint};
+@function pick($value, $scheme) {
+  @if is-pair($value) {
+    @return map.get($value, $scheme);
   }
+  @return $value;
+}
+
+// Every themeable token, flattened to its `--flux-*` name.
+@function flux-tokens() {
+  $tokens: ();
+  @each $step, $value in tokens.$flux-gray {
+    $tokens: map.set($tokens, 'n#{$step}', $value);
+  }
+  @each $step, $value in tokens.$flux-gray-alpha {
+    $tokens: map.set($tokens, 'na#{$step}', $value);
+  }
+  @each $step, $value in tokens.$flux-indigo {
+    // Solid steps become `p9`…, alpha steps `pa2`…
+    $tokens: map.set($tokens, 'p#{$step}', $value);
+  }
+  @each $hue, $steps in tokens.$flux-hues {
+    @each $step, $value in $steps {
+      $tokens: map.set($tokens, '#{$hue}#{$step}', $value);
+    }
+  }
+  @each $name, $value in tokens.$flux-surfaces {
+    $tokens: map.set($tokens, $name, $value);
+  }
+  @each $name, $value in tokens.$flux-shadows {
+    $tokens: map.set($tokens, 'shadow-#{$name}', $value);
+  }
+  $tokens: map.set($tokens, 'scrim', tokens.$flux-scrim);
+  @return $tokens;
+}
+
+@mixin ionic-colors($scheme) {
+  @each $name, $c in tokens.$flux-colors {
+    $base-token: map.get($c, base);
+    $contrast-token: map.get($c, contrast);
+    @if $scheme == light or is-pair($base-token) or is-pair($contrast-token) {
+      $base: pick($base-token, $scheme);
+      $contrast: pick($contrast-token, $scheme);
+      // Same shade/tint formula Ionic's own theme generator uses: mix 12%
+      // black for shade, 10% white for tint.
+      $shade: round-color(color.mix(black, $base, 12%));
+      $tint: round-color(color.mix(white, $base, 10%));
+
+      --ion-color-#{$name}: #{$base};
+      --ion-color-#{$name}-rgb: #{rgb-triple($base)};
+      --ion-color-#{$name}-contrast: #{$contrast};
+      --ion-color-#{$name}-contrast-rgb: #{rgb-triple($contrast)};
+      --ion-color-#{$name}-shade: #{$shade};
+      --ion-color-#{$name}-tint: #{$tint};
+    }
+  }
+}
+
+// Ionic's background/text globals and the stepped series its components
+// mix from them, computed the way Ionic's own dark palette does: step N is
+// N/1000 of the way from one colour to the other.
+@mixin ionic-surfaces($scheme) {
+  $bg: pick(map.get(tokens.$flux-surfaces, bg), $scheme);
+  $text: pick(map.get(tokens.$flux-gray, 12), $scheme);
+
+  --ion-background-color: #{$bg};
+  --ion-background-color-rgb: #{rgb-triple($bg)};
+  --ion-text-color: #{$text};
+  --ion-text-color-rgb: #{rgb-triple($text)};
+
+  @for $i from 1 through 19 {
+    $step: $i * 50;
+    --ion-background-color-step-#{$step}: #{round-color(
+        color.mix($text, $bg, math.div($step, 10) * 1%)
+      )};
+    --ion-text-color-step-#{$step}: #{round-color(
+        color.mix($bg, $text, math.div($step, 10) * 1%)
+      )};
+  }
+}
+
+:root {
+  @each $name, $value in flux-tokens() {
+    --flux-#{$name}: #{pick($value, light)};
+  }
+  // The handoff uses both names for indigo 11.
+  --flux-pa11: var(--flux-p11);
+
+  @each $value in tokens.$flux-avatar-fills {
+    --flux-avatar-#{list.index(tokens.$flux-avatar-fills, $value)}: #{$value};
+  }
+  --flux-avatar-text: #{tokens.$flux-avatar-text};
 
   @each $name, $value in tokens.$flux-radius {
     --flux-radius-#{$name}: #{$value};
@@ -52,12 +142,61 @@
     --flux-space-#{$name}: #{$value};
   }
 
-  --flux-font-family: #{tokens.$flux-font-family};
+  --flux-font-family: #{meta.inspect(tokens.$flux-font-family)};
+  --flux-font-mono: #{meta.inspect(tokens.$flux-font-mono)};
+
+  // Each type role as a `font` shorthand (`font: var(--flux-font-row-title)`)
+  // plus its letter-spacing, which the shorthand can't carry.
+  @each $role, $t in tokens.$flux-type {
+    $family: var(--flux-font-family);
+    @if map.get($t, mono) {
+      $family: var(--flux-font-mono);
+    }
+    $size: map.get($t, size);
+    @if map.get($t, line) {
+      $size: #{$size}/#{map.get($t, line)};
+    }
+    --flux-font-#{$role}: #{map.get($t, weight)} #{$size} #{$family};
+    --flux-tracking-#{$role}: #{map.get($t, tracking) or normal};
+  }
+
+  @include ionic-colors(light);
+  @include ionic-surfaces(light);
 
   // Typography and spacing applied through Ionic's global variables, so every
   // Ionic component and the .ion-padding / .ion-margin utilities use the tokens.
   // :root outranks Ionic's own `html { --ion-font-family: ... }` default.
-  --ion-font-family: #{tokens.$flux-font-family};
-  --ion-padding: #{map.get(tokens.$flux-space, md)};
-  --ion-margin: #{map.get(tokens.$flux-space, md)};
+  --ion-font-family: var(--flux-font-family);
+  --ion-padding: #{map.get(tokens.$flux-space, 16)};
+  --ion-margin: #{map.get(tokens.$flux-space, 16)};
+
+  // Component surfaces, per the handoff's Theming section. They reference
+  // the scheme-aware tokens, so they follow dark mode on their own.
+  --ion-border-color: var(--flux-na3);
+  --ion-item-background: var(--flux-bg);
+  --ion-toolbar-background: var(--flux-bg);
+  --ion-toolbar-border-color: var(--flux-na4);
+  --ion-tab-bar-background: var(--flux-bg);
+  --ion-tab-bar-color-selected: var(--flux-p9);
+  --ion-card-background: var(--flux-surface);
+  --ion-placeholder-color: var(--flux-n9);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    @each $name, $value in flux-tokens() {
+      @if is-pair($value) {
+        --flux-#{$name}: #{pick($value, dark)};
+      }
+    }
+
+    @include ionic-colors(dark);
+    @include ionic-surfaces(dark);
+
+    // Rows step up to `surface` over the `panel` canvas, the tab bar sits on
+    // `panel`, and the active tab uses indigo 11 for contrast.
+    --ion-item-background: var(--flux-surface);
+    --ion-tab-bar-background: var(--flux-panel);
+    --ion-tab-bar-color-selected: var(--flux-p11);
+  }
 }

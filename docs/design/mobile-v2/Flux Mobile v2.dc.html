@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<script src="assets/icons.js"></script>
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:400 700;src:url('assets/fonts/InterVariable.woff2') format('woff2')}
+@font-face{font-family:CommitMono;font-weight:100 900;src:url('assets/fonts/CommitMonoVariable.woff2') format('woff2')}
+body{margin:0;background:#EDEDF0;font-family:Inter,system-ui,sans-serif;font-feature-settings:'salt';-webkit-font-smoothing:antialiased;font-size:13px;line-height:20px;font-weight:450;color:#1C2024}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.tok{color-scheme:light;
+--n1:#FCFCFD;--n2:#F9F9FB;--n3:#F0F0F3;--n4:#E8E8EC;--n5:#E0E1E6;--n6:#D9D9E0;--n7:#CDCED6;--n8:#B9BBC6;--n9:#8B8D98;--n10:#80838D;--n11:#60646C;--n12:#1C2024;
+--na1:rgba(0,0,85,.012);--na2:rgba(0,0,85,.024);--na3:rgba(0,0,71,.06);--na4:rgba(0,0,60,.09);--na5:rgba(0,8,53,.12);--na6:rgba(0,0,46,.15);--na7:rgba(0,6,40,.2);--na8:rgba(0,4,32,.27);--na9:rgba(0,3,20,.45);--na10:rgba(0,3,18,.5);--na11:rgba(0,6,20,.62);--na12:rgba(0,4,9,.89);
+--p9:#3E63DD;--p10:#3358D4;--p11:#3A5BC7;--pa2:rgba(0,64,255,.03);--pa3:rgba(0,68,255,.07);--pa4:rgba(0,68,255,.12);--pa5:rgba(0,68,255,.18);--pa6:rgba(0,61,255,.24);--pa11:#3A5BC7;
+--bg:#fff;--surface:#fff;--panel:#F9F9FB;--frame:#1C2024;
+--blue9:#0090FF;--blue11:#0D74CE;--bluea3:rgba(0,128,255,.11);--amber9:#FFC53D;--amber11:#AB6400;--ambera2:rgba(255,222,0,.08);--ambera3:rgba(255,222,0,.22);--ambera6:rgba(228,180,0,.5);--green9:#30A46C;--green11:#218358;--greena2:rgba(0,164,51,.05);--greena3:rgba(0,164,51,.1);--red9:#E5484D;--red11:#CE2C31;--reda3:rgba(255,1,13,.09);--purple9:#8E4EC6;--purple11:#8145B5;--purplea3:rgba(120,0,255,.08);--violet9:#6E56CF;--violet11:#6550B9;--violeta3:rgba(60,0,255,.08);--cyan9:#00A2C7;--cyan11:#107D98;--cyana3:rgba(0,180,240,.11);--pink9:#D6409F;--teal9:#12A594;--orange9:#F76B15}
+.dark{color-scheme:dark;
+--n1:#111113;--n2:#18191B;--n3:#212225;--n4:#272A2D;--n5:#2E3135;--n6:#363A3F;--n7:#43484E;--n8:#5A6169;--n9:#696E77;--n10:#777B84;--n11:#B0B4BA;--n12:#EDEEF0;
+--na1:rgba(0,0,0,0);--na2:rgba(216,244,246,.03);--na3:rgba(221,235,253,.07);--na4:rgba(211,237,248,.11);--na5:rgba(217,237,254,.14);--na6:rgba(214,235,253,.18);--na7:rgba(217,235,254,.24);--na8:rgba(217,236,254,.35);--na9:rgba(223,236,253,.41);--na10:rgba(229,239,254,.46);--na11:rgba(240,247,254,.68);--na12:rgba(252,253,255,.93);
+--p9:#3E63DD;--p10:#5472E4;--p11:#9EB1FF;--pa2:rgba(21,71,255,.09);--pa3:rgba(37,85,255,.2);--pa4:rgba(55,98,255,.31);--pa5:rgba(63,102,255,.36);--pa6:rgba(74,110,255,.43);--pa11:#9EB1FF;
+--bg:#111113;--surface:#212225;--panel:#18191B;--frame:#0B0B0D;
+--blue11:#70B8FF;--bluea3:rgba(0,111,255,.2);--amber11:#FFCA16;--ambera3:rgba(255,178,0,.12);--green11:#3DD68C;--greena3:rgba(0,235,110,.12);--red11:#FF9592;--reda3:rgba(255,80,85,.2);--purple11:#D19DFF;--purplea3:rgba(160,80,255,.2);--violet11:#BAA7FF;--violeta3:rgba(120,90,255,.2);--cyan11:#4CCCE6;--cyana3:rgba(0,190,255,.18)}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Inter,system-ui,sans-serif;color:#1a1a1a}
+.dv-row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-bottom:36px}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.35 Inter,system-ui,sans-serif;color:rgba(0,0,0,.55);max-width:390px}
+.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 Inter,system-ui,sans-serif;color:rgba(0,0,0,.5)}
+.dv-h{font:600 11px/1.2 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:rgba(0,0,0,.45);margin:0 0 14px}
+.dv-lede{max-width:760px;font:400 12.5px/1.65 Inter,system-ui,sans-serif;color:rgba(0,0,0,.6);margin:0 0 26px}
+</style>
+</helmet>
+
+<section class="dv-turn tok" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Overhaul · one coherent system</span></div>
+<p class="dv-lede">Five rules drive this pass. One primary action per screen (a docked bar in detail, a single FAB in lists). Status is never colour alone — dot plus word, and the group header carries it so rows stay quiet. Two facts of metadata per row, maximum. Every choice becomes a bottom sheet instead of a menu, so the thumb never reaches the top of the screen. Chrome collapses: the three filter chips become one filter button with a count, and grouping moves into view options.</p>
+<p class="dv-h">A · Daily loop</p>
+<div class="dv-row">
+
+  <div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a><span>Home is My Work, not Projects. Cross-project, time-bucketed, overdue first. Project shown as a chip because status alone is ambiguous across projects.</span></div>
+  <div data-screen-label="3a My Work" style="width:390px;height:844px;border-radius:44px;background:var(--bg);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:10px">
+      <div style="flex:auto;min-width:0"><div style="font-size:22px;line-height:26px;font-weight:700;letter-spacing:-.02em">My Work</div><div style="font-size:12px;line-height:16px;color:var(--na11);margin-top:2px">Sunday, 13 September · 7 assigned</div></div>
+      <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-search"></use></svg></div>
+      <div style="width:36px;height:36px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:650">AR</div>
+    </div>
+    <div style="flex:none;padding:0 16px 12px;display:flex;gap:2px;height:36px;box-sizing:content-box">
+      <div style="display:flex;gap:2px;padding:3px;border-radius:11px;background:var(--na3);flex:auto"><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--n1);box-shadow:0 1px 2px rgba(0,0,0,.1);font-size:13px;font-weight:600">Focus</span><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">All assigned</span><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">Watching</span></div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--panel)">
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--reda3)"><svg style="width:14px;height:14px;color:var(--red11)" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--red11)">Overdue · 1</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--red11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task detail page cannot scroll on phones</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span><span style="color:var(--na7)">·</span><span style="font-weight:600;color:var(--red11)">Due yesterday</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-49</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--na2);border-bottom:1px solid var(--na3)"><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Today · 3</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apple Pay express checkout button</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span><span style="color:var(--na7)">·</span><span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;color:var(--red11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg>Urgent</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-61</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-square-check"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Review refund copy with Legal</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--purple11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--purple9)"></span>In Review</span><span style="color:var(--na7)">·</span><span>Due 5pm</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">BILL-12</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--cyana3);color:var(--cyan11);font-size:11px;font-weight:650">Billing</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-trending-up"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cache country list on the client</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--blue11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--blue9)"></span>To Do</span><span style="color:var(--na7)">·</span><span>Due today</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-58</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--na2);border-bottom:1px solid var(--na3)"><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Next 7 days · 3</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Saved cards in the payment sheet</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--blue11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--blue9)"></span>To Do</span><span style="color:var(--na7)">·</span><span>Thu 17 Sep</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-64</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--bg)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">3DS challenge window closes early</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--na11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--n8)"></span>Backlog</span><span style="color:var(--na7)">·</span><span>Fri 18 Sep</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-66</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+    </div>
+    <div style="position:absolute;right:18px;bottom:104px;width:56px;height:56px;border-radius:18px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 var(--p10) inset,0 10px 24px rgba(62,99,221,.4)"><svg style="width:24px;height:24px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg></div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:650">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:550">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--bg)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a><span>Project · List. One filter button with a count replaces three chips; grouping label is a text button. Swipe reveals only the next status in the workflow plus an overflow, so the gesture is learnable.</span></div>
+  <div data-screen-label="3b Project list" style="width:390px;height:844px;border-radius:44px;background:var(--bg);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;height:52px;display:flex;align-items:center;gap:6px;padding:0 8px 0 12px">
+      <div style="flex:auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 8px;border-radius:12px">
+        <div style="width:30px;height:30px;flex:none;border-radius:9px;background:var(--pa3);color:var(--pa11);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">CE</div>
+        <div style="min-width:0"><div style="font-size:16px;line-height:19px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Checkout Platform</div><div style="font-size:11px;line-height:14px;color:var(--na11)">Editor · 24 open</div></div>
+        <svg style="width:15px;height:15px;flex:none;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-chevrons-up-down"></use></svg>
+      </div>
+      <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-search"></use></svg></div>
+      <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></div>
+    </div>
+    <div style="flex:none;padding:2px 16px 10px">
+      <div style="display:flex;gap:2px;height:36px;padding:3px;border-radius:11px;background:var(--na3)"><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;background:var(--n1);box-shadow:0 1px 2px rgba(0,0,0,.1);font-size:13px;font-weight:600"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-list"></use></svg>List</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-square-kanban"></use></svg>Board</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>Calendar</span></div>
+    </div>
+    <div style="flex:none;height:38px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--na4)">
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:550;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-rows-3"></use></svg>Grouped by status<svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></span>
+      <span style="flex:auto"></span>
+      <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:8px;background:var(--pa3);color:var(--pa11);font-size:12.5px;font-weight:600"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-sliders-horizontal"></use></svg>Filters<span style="min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--p9);color:#fff;font-size:10px;line-height:16px;font-weight:700;text-align:center">2</span></span>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--panel)">
+      <div style="flex:none;display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:var(--ambera2);border-bottom:1px solid var(--na3)"><span style="width:7px;height:7px;border-radius:99px;background:var(--amber9)"></span><span style="font-size:12px;font-weight:700;color:var(--amber11)">In Progress</span><span style="font-size:12px;color:var(--na10)">4</span><span style="flex:auto"></span><span style="font-size:11px;font-weight:600;color:var(--amber11)">WIP limit 5</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apple Pay express checkout button</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-61</span><span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;color:var(--red11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg>Urgent</span><span>Due today</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;font-size:10.5px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span>
+      </div>
+      <sc-if value="{{ swipeRevealed }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:none;position:relative;height:62px;overflow:hidden;border-bottom:1px solid var(--na3)">
+        <div style="position:absolute;inset:0;display:flex;justify-content:flex-end">
+          <div style="width:92px;flex:none;background:var(--purple9);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:650"><svg style="width:19px;height:19px" viewBox="0 0 24 24"><use href="#i-eye"></use></svg>In Review</div>
+          <div style="width:64px;flex:none;background:var(--n6);color:var(--n12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:650"><svg style="width:19px;height:19px" viewBox="0 0 24 24"><use href="#i-ellipsis"></use></svg>More</div>
+        </div>
+        <div style="position:absolute;inset:0 156px 0 0;display:flex;align-items:center;gap:11px;padding:0 12px 0 16px;background:var(--bg);box-shadow:2px 0 8px rgba(0,0,0,.1)">
+          <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+          <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task detail page cannot scroll</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-49</span><span style="font-weight:600;color:var(--red11)">Due yesterday</span></div></div>
+        </div>
+      </div>
+      </sc-if>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-square-check"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Retire the legacy card tokeniser</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-55</span><span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;color:var(--amber11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-arrow-up"></use></svg>High</span><span>Thu 17 Sep</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--teal9);color:#fff;font-size:10.5px;font-weight:650;display:flex;align-items:center;justify-content:center">MK</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:9px;height:36px;padding:0 16px;background:var(--bluea3);border-top:1px solid var(--na3);border-bottom:1px solid var(--na3)"><span style="width:7px;height:7px;border-radius:99px;background:var(--blue9)"></span><span style="font-size:12px;font-weight:700;color:var(--blue11)">To Do</span><span style="font-size:12px;color:var(--na10)">9</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Saved cards in the payment sheet</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-64</span><span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;color:var(--amber11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-arrow-up"></use></svg>High</span><span>Thu 17 Sep</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;font-size:10.5px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-trending-up"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cache country list on the client</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-58</span><span style="display:inline-flex;align-items:center;gap:2px;color:var(--na11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-minus"></use></svg>Medium</span><span>Due today</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--na4);color:var(--na11);display:flex;align-items:center;justify-content:center"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-user"></use></svg></span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Currency symbol wrong for JPY totals</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-60</span><span style="display:inline-flex;align-items:center;gap:2px;color:var(--na11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-minus"></use></svg>Medium</span><span>No due date</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--pink9);color:#fff;font-size:10.5px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:62px;padding:0 16px;background:var(--bg)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-square-check"></use></svg>
+        <div style="flex:auto;min-width:0"><div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Add contract tests for the refund API</div><div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-62</span><span style="display:inline-flex;align-items:center;gap:2px;color:var(--na11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-arrow-down"></use></svg>Low</span><span>Mon 21 Sep</span></div></div>
+        <span style="width:28px;height:28px;flex:none;border-radius:99px;background:var(--teal9);color:#fff;font-size:10.5px;font-weight:650;display:flex;align-items:center;justify-content:center">MK</span>
+      </div>
+    </div>
+    <div style="position:absolute;right:18px;bottom:104px;width:56px;height:56px;border-radius:18px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 var(--p10) inset,0 10px 24px rgba(62,99,221,.4)"><svg style="width:24px;height:24px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg></div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:550">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:650">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--bg)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a><span>Project · Board. Columns are 78% of the viewport so the next one always peeks; a column rail at the top gives position and lets you jump without swiping through.</span></div>
+  <div data-screen-label="3c Project board" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;background:var(--bg)">
+      <div style="height:52px;display:flex;align-items:center;gap:6px;padding:0 8px 0 12px">
+        <div style="flex:auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 8px;border-radius:12px">
+          <div style="width:30px;height:30px;flex:none;border-radius:9px;background:var(--pa3);color:var(--pa11);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">CE</div>
+          <div style="min-width:0"><div style="font-size:16px;line-height:19px;font-weight:650;letter-spacing:-.01em">Checkout Platform</div><div style="font-size:11px;line-height:14px;color:var(--na11)">Board · drag to move</div></div>
+          <svg style="width:15px;height:15px;flex:none;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-chevrons-up-down"></use></svg>
+        </div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-search"></use></svg></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-sliders-horizontal"></use></svg></div>
+      </div>
+      <div style="padding:2px 16px 10px">
+        <div style="display:flex;gap:2px;height:36px;padding:3px;border-radius:11px;background:var(--na3)"><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-list"></use></svg>List</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;background:var(--n1);box-shadow:0 1px 2px rgba(0,0,0,.1);font-size:13px;font-weight:600"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-square-kanban"></use></svg>Board</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>Calendar</span></div>
+      </div>
+      <div style="display:flex;gap:16px;padding:0 16px 10px;border-bottom:1px solid var(--na4);font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden">
+        <span style="display:inline-flex;align-items:center;gap:5px;color:var(--na10)"><span style="width:6px;height:6px;border-radius:99px;background:var(--n8)"></span>Backlog 11</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;color:var(--blue11);border-bottom:2px solid var(--blue9);padding-bottom:2px;margin-bottom:-4px"><span style="width:6px;height:6px;border-radius:99px;background:var(--blue9)"></span>To Do 9</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;color:var(--na10)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress 4</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;color:var(--na10)"><span style="width:6px;height:6px;border-radius:99px;background:var(--purple9)"></span>Review 2</span>
+      </div>
+    </div>
+    <div style="flex:auto;min-height:0;display:flex;gap:12px;padding:14px 0 0 16px;overflow:hidden">
+      <div style="width:296px;flex:none;display:flex;flex-direction:column;gap:10px;min-height:0">
+        <div style="flex:none;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:99px;background:var(--blue9)"></span><span style="font-size:13px;font-weight:700">To Do</span><span style="font-size:12px;color:var(--na10)">9</span><span style="flex:auto"></span><svg style="width:18px;height:18px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-ellipsis"></use></svg></div>
+        <div style="flex:auto;min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+          <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4),0 1px 2px rgba(0,0,0,.04);padding:12px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg><span style="font-family:CommitMono,monospace;font-size:11px;font-weight:550;color:var(--pa11)">CEDTE-64</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:650;color:var(--amber11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-arrow-up"></use></svg>High</span></div>
+            <div style="font-size:14.5px;line-height:19px;font-weight:550;text-wrap:pretty">Saved cards in the payment sheet</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <span style="display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--violeta3);color:var(--violet11);font-size:10.5px;font-weight:650">v2.4.0</span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--na11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-message-circle"></use></svg>3</span>
+              <span style="flex:auto"></span>
+              <span style="font-size:11.5px;color:var(--na11)">Thu 17</span>
+              <span style="width:26px;height:26px;border-radius:99px;background:var(--violet9);color:#fff;font-size:10px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span>
+            </div>
+          </div>
+          <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4),0 1px 2px rgba(0,0,0,.04);padding:12px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-trending-up"></use></svg><span style="font-family:CommitMono,monospace;font-size:11px;font-weight:550;color:var(--pa11)">CEDTE-58</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--na11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-minus"></use></svg>Medium</span></div>
+            <div style="font-size:14.5px;line-height:19px;font-weight:550;text-wrap:pretty">Cache country list on the client</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <span style="display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--na3);color:var(--na11);font-size:10.5px;font-weight:650">perf</span>
+              <span style="flex:auto"></span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--red11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-clock"></use></svg>Today</span>
+              <span style="width:26px;height:26px;border-radius:99px;background:var(--na3);color:var(--na10);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-user"></use></svg></span>
+            </div>
+          </div>
+          <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4),0 1px 2px rgba(0,0,0,.04);padding:12px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg><span style="font-family:CommitMono,monospace;font-size:11px;font-weight:550;color:var(--pa11)">CEDTE-60</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--na11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-minus"></use></svg>Medium</span></div>
+            <div style="font-size:14.5px;line-height:19px;font-weight:550;text-wrap:pretty">Currency symbol wrong for JPY totals</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--na11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg>2</span>
+              <span style="flex:auto"></span>
+              <span style="width:26px;height:26px;border-radius:99px;background:var(--pink9);color:#fff;font-size:10px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span>
+            </div>
+          </div>
+          <div style="flex:none;height:44px;border-radius:14px;border:1px dashed var(--na6);display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:550;color:var(--na11)"><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg>Add task to To Do</div>
+        </div>
+      </div>
+      <div style="width:296px;flex:none;display:flex;flex-direction:column;gap:10px;min-height:0;opacity:.5">
+        <div style="flex:none;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:99px;background:var(--amber9)"></span><span style="font-size:13px;font-weight:700">In Progress</span><span style="font-size:12px;color:var(--na10)">4</span></div>
+        <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:12px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg><span style="font-family:CommitMono,monospace;font-size:11px;font-weight:550;color:var(--pa11)">CEDTE-61</span></div>
+          <div style="font-size:14.5px;line-height:19px;font-weight:550">Apple Pay express checkout button</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:550">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:650">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--bg)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3d"><div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a><span>Project · Calendar. Stripe pills match the project's pill-style preference; unscheduled work sits in a collapsed sheet you can drag up, which is where drag-to-schedule starts.</span></div>
+  <div data-screen-label="3d Project calendar" style="width:390px;height:844px;border-radius:44px;background:var(--bg);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;height:52px;display:flex;align-items:center;gap:6px;padding:0 8px 0 12px">
+      <div style="flex:auto;min-width:0;display:flex;align-items:center;gap:9px;height:44px;padding:0 8px;border-radius:12px">
+        <div style="width:30px;height:30px;flex:none;border-radius:9px;background:var(--pa3);color:var(--pa11);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">CE</div>
+        <div style="min-width:0"><div style="font-size:16px;line-height:19px;font-weight:650;letter-spacing:-.01em">Checkout Platform</div><div style="font-size:11px;line-height:14px;color:var(--na11)">Calendar · September 2026</div></div>
+        <svg style="width:15px;height:15px;flex:none;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-chevrons-up-down"></use></svg>
+      </div>
+      <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-sliders-horizontal"></use></svg></div>
+    </div>
+    <div style="flex:none;padding:2px 16px 10px">
+      <div style="display:flex;gap:2px;height:36px;padding:3px;border-radius:11px;background:var(--na3)"><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-list"></use></svg>List</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-square-kanban"></use></svg>Board</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;background:var(--n1);box-shadow:0 1px 2px rgba(0,0,0,.1);font-size:13px;font-weight:600"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>Calendar</span></div>
+    </div>
+    <div style="flex:none;height:42px;display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid var(--na4)">
+      <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-chevron-left"></use></svg></div>
+      <span style="font-size:15px;font-weight:650;letter-spacing:-.01em">September 2026</span>
+      <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+      <span style="flex:auto"></span>
+      <span style="display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--na5);font-size:12.5px;font-weight:600">Today</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border-radius:8px;background:var(--na3);font-size:12.5px;font-weight:600;margin-left:6px">Month<svg style="width:13px;height:13px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></span>
+    </div>
+    <div style="flex:none;display:grid;grid-template-columns:repeat(7,1fr);padding:8px 8px 4px;font-size:10.5px;font-weight:650;color:var(--na10);text-align:center;letter-spacing:.04em">
+      <span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+    </div>
+    <div style="flex:auto;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:1px;padding:0 8px 8px;overflow:hidden">
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na8)">31</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">1</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">2</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">3</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--green9);background:var(--greena2);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-41</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">4</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">5</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">6</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">7</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--amber9);background:var(--ambera2);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-55</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">8</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">9</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">10</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--purple9);background:var(--purplea3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">BILL-12</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">11</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--red9);background:var(--reda3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap;color:var(--red11)">CEDTE-49</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">12</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--pa2);box-shadow:inset 0 0 0 1.5px var(--p9);border-radius:4px"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:99px;background:var(--p9);color:#fff;font-size:11px;font-weight:700">13</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--amber9);background:var(--ambera2);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-61</div><div style="margin-top:2px;height:15px;border-radius:3px;border-left:3px solid var(--blue9);background:var(--bluea3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-58</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">14</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">15</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">16</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">17</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--blue9);background:var(--bluea3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-64</div><div style="margin-top:2px;font-size:9.5px;font-weight:600;color:var(--na10);padding-left:3px">+2 more</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">18</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--n8);background:var(--na2);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-66</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">19</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">20</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">21</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--blue9);background:var(--bluea3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">CEDTE-62</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">22</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">23</span><div style="margin-top:3px;height:15px;border-radius:3px;border-left:3px solid var(--violet9);background:var(--violeta3);font-size:9.5px;line-height:15px;font-weight:600;padding-left:3px;overflow:hidden;white-space:nowrap">v2.4.0</div></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">24</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3)"><span style="font-size:11px;color:var(--na10)">25</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">26</span></div>
+      <div style="padding:4px 3px;border-top:1px solid var(--na3);background:var(--na1)"><span style="font-size:11px;color:var(--na8)">27</span></div>
+    </div>
+    <div style="flex:none;background:var(--surface);border-top:1px solid var(--na5);box-shadow:0 -6px 24px rgba(0,0,0,.07);padding:8px 16px 0">
+      <div style="display:flex;justify-content:center;padding-bottom:6px"><span style="width:36px;height:4px;border-radius:99px;background:var(--na6)"></span></div>
+      <div style="display:flex;align-items:center;gap:8px;height:40px"><svg style="width:16px;height:16px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-inbox"></use></svg><span style="font-size:14px;font-weight:600">Unscheduled</span><span style="min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--na4);color:var(--na11);font-size:11px;line-height:18px;font-weight:650;text-align:center">4</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">Drag onto a day</span><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-chevron-up"></use></svg></div>
+    </div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:550">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:650">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--bg)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+</div>
+
+<p class="dv-h">B · Task depth</p>
+<div class="dv-row">
+
+  <div class="dv-opt" id="3e"><div class="dv-olabel"><a class="dv-oid" href="#3e">3e</a><span>Detail · Details. The status pill is the only header control that changes data; everything else is a labelled row you tap to edit. The one primary action is docked at the thumb: the next status in the workflow, named.</span></div>
+  <div data-screen-label="3e Task detail · Details" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;background:var(--bg);border-bottom:1px solid var(--na4)">
+      <div style="height:48px;display:flex;align-items:center;gap:2px;padding:0 8px">
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg></div>
+        <div style="flex:auto;display:flex;align-items:center;gap:6px"><svg style="width:14px;height:14px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg><span style="font-family:CommitMono,monospace;font-size:13.5px;font-weight:650;color:var(--pa11)">CEDTE-49</span><svg style="width:13px;height:13px;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-copy"></use></svg></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--p9)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-bell-ring"></use></svg></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></div>
+      </div>
+      <div style="padding:0 16px 12px;font-size:19px;line-height:24px;font-weight:650;letter-spacing:-.02em;text-wrap:pretty">Task detail page cannot scroll vertically on phones</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:0 16px 12px">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 8px 0 10px;border-radius:9px;background:var(--ambera3);color:var(--amber11);font-size:13px;font-weight:650"><span style="width:7px;height:7px;border-radius:99px;background:var(--amber9)"></span>In Progress<svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></span>
+        <span style="display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 9px;border-radius:9px;border:1px solid var(--na4);font-size:12.5px;font-weight:600;color:var(--red11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg>Urgent</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 9px;border-radius:9px;border:1px solid var(--na4);font-size:12.5px;font-weight:550;color:var(--na11)">Bug</span>
+      </div>
+      <div style="display:flex;gap:20px;padding:0 16px">
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:650;color:var(--n12);box-shadow:inset 0 -2px 0 var(--p9)">Details</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Comments<span style="min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--na4);color:var(--na11);font-size:10.5px;line-height:17px;font-weight:650;text-align:center">4</span></span>
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Activity</span>
+      </div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:12px 16px 0">
+      <div style="flex:none;display:flex;gap:10px">
+        <div style="flex:1;min-width:0;border-radius:12px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:10px 12px"><div style="font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--na10)">Assignee</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px"><span style="width:24px;height:24px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;font-size:9.5px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span><span style="font-size:13.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Amara Ruiz</span></div></div>
+        <div style="flex:1;min-width:0;border-radius:12px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:10px 12px"><div style="font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--na10)">Reporter</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px"><span style="width:24px;height:24px;flex:none;border-radius:99px;background:var(--pink9);color:#fff;font-size:9.5px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span><span style="font-size:13.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Jae Doyle</span></div></div>
+      </div>
+      <div style="flex:none;border-radius:12px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-bottom:1px solid var(--na3)"><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg><span style="font-size:13px;color:var(--na11)">Due date</span><span style="flex:auto"></span><span style="font-size:13.5px;font-weight:650;color:var(--red11)">12 Sep · overdue</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+        <div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-bottom:1px solid var(--na3)"><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:13px;color:var(--na11)">Release</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--violeta3);color:var(--violet11);font-size:11.5px;font-weight:650">v2.4.0 Payments</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+        <div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 12px;border-bottom:1px solid var(--na3)"><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span style="font-size:13px;color:var(--na11)">Parent</span><span style="flex:auto"></span><span style="font-family:CommitMono,monospace;font-size:11.5px;font-weight:550;color:var(--pa11)">CEDTE-30</span><span style="font-size:13px;color:var(--na11);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mobile polish</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+        <div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 12px"><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-tag"></use></svg><span style="font-size:13px;color:var(--na11)">Labels</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--na3);color:var(--na11);font-size:11.5px;font-weight:600">mobile</span><span style="display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--na3);color:var(--na11);font-size:11.5px;font-weight:600">a11y</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+      </div>
+      <div style="flex:none;border-radius:12px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--na10)">Description</span><span style="flex:auto"></span><svg style="width:15px;height:15px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-pencil"></use></svg></div>
+        <div style="font-size:13.5px;line-height:21px;color:var(--n12);text-wrap:pretty">On iOS Safari the detail pane keeps the page height fixed, so anything below the description is unreachable. Repro: open any task from the list on a 390pt viewport and try to scroll to the comment box.</div>
+        <div style="margin-top:8px;font-size:13px;font-weight:600;color:var(--pa11)">Show more</div>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:10px;border-radius:12px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);height:46px;padding:0 12px"><svg style="width:16px;height:16px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg><span style="font-size:13px;color:var(--na11)">Attachments</span><span style="flex:auto"></span><span style="font-size:13.5px;font-weight:600">2</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+    </div>
+    <div style="flex:none;background:var(--bg);border-top:1px solid var(--na4);box-shadow:0 -4px 20px rgba(0,0,0,.06)">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px 0">
+        <div style="width:48px;height:48px;flex:none;border-radius:13px;border:1px solid var(--na5);display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-message-circle"></use></svg></div>
+        <div style="flex:auto;height:48px;border-radius:13px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:650;box-shadow:0 1px 0 var(--p10) inset,0 6px 16px rgba(62,99,221,.3)"><svg style="width:18px;height:18px" viewBox="0 0 24 24"><use href="#i-eye"></use></svg>Move to In Review</div>
+      </div>
+      <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3f"><div class="dv-olabel"><a class="dv-oid" href="#3f">3f</a><span>Detail · Comments. Thread reads newest last, composer docked above the safe area. The title row collapses to one line on scroll so context survives without eating the screen.</span></div>
+  <div data-screen-label="3f Task detail · Comments" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;background:var(--bg);border-bottom:1px solid var(--na4);box-shadow:0 1px 8px rgba(0,0,0,.05)">
+      <div style="height:48px;display:flex;align-items:center;gap:2px;padding:0 8px">
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg></div>
+        <div style="flex:auto;min-width:0"><div style="display:flex;align-items:center;gap:6px"><span style="font-family:CommitMono,monospace;font-size:12px;font-weight:650;color:var(--pa11)">CEDTE-49</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:650;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span></div><div style="font-size:13px;line-height:17px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task detail page cannot scroll vertically</div></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></div>
+      </div>
+      <div style="display:flex;gap:20px;padding:0 16px">
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Details</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:40px;font-size:13.5px;font-weight:650;color:var(--n12);box-shadow:inset 0 -2px 0 var(--p9)">Comments<span style="min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--pa4);color:var(--pa11);font-size:10.5px;line-height:17px;font-weight:650;text-align:center">4</span></span>
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Activity</span>
+      </div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:14px;padding:16px 16px 0">
+      <div style="flex:none;display:flex;gap:10px">
+        <span style="width:30px;height:30px;flex:none;border-radius:99px;background:var(--pink9);color:#fff;font-size:11px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:13px;font-weight:650">Jae Doyle</span><span style="font-size:11.5px;color:var(--na10)">Reporter · 2d</span></div>
+          <div style="margin-top:5px;border-radius:12px;border-top-left-radius:4px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:10px 12px;font-size:13.5px;line-height:20px;text-wrap:pretty">Reproduced on an iPhone 14 and a Pixel 7. Only happens when the description is longer than the viewport.</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:99px;background:var(--pa3);color:var(--pa11);font-size:12px;font-weight:600">👍 2</span><span style="width:26px;height:26px;border-radius:99px;border:1px solid var(--na5);display:flex;align-items:center;justify-content:center;color:var(--na10)"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-smile-plus"></use></svg></span></div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;gap:10px">
+        <span style="width:30px;height:30px;flex:none;border-radius:99px;background:var(--teal9);color:#fff;font-size:11px;font-weight:650;display:flex;align-items:center;justify-content:center">MK</span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:13px;font-weight:650">Mira Kaur</span><span style="font-size:11.5px;color:var(--na10)">Lead · 1d</span></div>
+          <div style="margin-top:5px;border-radius:12px;border-top-left-radius:4px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:10px 12px;font-size:13.5px;line-height:20px;text-wrap:pretty">Pulling this into <span style="color:var(--pa11);font-weight:600">v2.4.0</span> — it blocks the release checklist.</div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;gap:10px">
+        <span style="width:30px;height:30px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;font-size:11px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:13px;font-weight:650">Amara Ruiz</span><span style="font-size:11.5px;color:var(--na10)">You · 3h</span></div>
+          <div style="margin-top:5px;border-radius:12px;border-top-left-radius:4px;background:var(--pa2);box-shadow:0 0 0 1px var(--pa4);padding:10px 12px;font-size:13.5px;line-height:20px;text-wrap:pretty">Root cause is the fixed <span style="font-family:CommitMono,monospace;font-size:12.5px;background:var(--na3);padding:1px 4px;border-radius:4px">100vh</span> on the detail shell. Patch is up, moving to review after QA on device.</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:550;color:var(--na11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg>patch-diff.png</span></div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;padding:2px 0 0 40px"><span style="width:8px;height:8px;border-radius:99px;background:var(--na6)"></span><span style="font-size:12px;color:var(--na10)">Mira Kaur is typing…</span></div>
+    </div>
+    <div style="flex:none;background:var(--bg);border-top:1px solid var(--na4);box-shadow:0 -4px 20px rgba(0,0,0,.06)">
+      <div style="display:flex;align-items:flex-end;gap:8px;padding:10px 12px 0">
+        <div style="flex:auto;min-width:0;min-height:44px;border-radius:14px;background:var(--n2);box-shadow:0 0 0 1px var(--na5);display:flex;align-items:center;gap:8px;padding:0 8px 0 12px">
+          <span style="flex:auto;font-size:14px;color:var(--na9)">Write a comment…</span>
+          <span style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na10)"><svg style="width:18px;height:18px" viewBox="0 0 24 24"><use href="#i-at-sign"></use></svg></span>
+          <span style="width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na10)"><svg style="width:18px;height:18px" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg></span>
+        </div>
+        <div style="width:44px;height:44px;flex:none;border-radius:14px;background:var(--pa4);color:var(--pa11);display:flex;align-items:center;justify-content:center"><svg style="width:19px;height:19px" viewBox="0 0 24 24"><use href="#i-send"></use></svg></div>
+      </div>
+      <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3g"><div class="dv-olabel"><a class="dv-oid" href="#3g">3g</a><span>Detail · Activity. Day-grouped, one line per change, field names in bold and values as the same chips used elsewhere so the history is scannable rather than read.</span></div>
+  <div data-screen-label="3g Task detail · Activity" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;background:var(--bg);border-bottom:1px solid var(--na4);box-shadow:0 1px 8px rgba(0,0,0,.05)">
+      <div style="height:48px;display:flex;align-items:center;gap:2px;padding:0 8px">
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg></div>
+        <div style="flex:auto;min-width:0"><div style="display:flex;align-items:center;gap:6px"><span style="font-family:CommitMono,monospace;font-size:12px;font-weight:650;color:var(--pa11)">CEDTE-49</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:650;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span></div><div style="font-size:13px;line-height:17px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task detail page cannot scroll vertically</div></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-ellipsis-vertical"></use></svg></div>
+      </div>
+      <div style="display:flex;gap:20px;padding:0 16px">
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Details</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:40px;font-size:13.5px;font-weight:500;color:var(--na11)">Comments<span style="min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--na4);color:var(--na11);font-size:10.5px;line-height:17px;font-weight:650;text-align:center">4</span></span>
+        <span style="display:inline-flex;align-items:center;height:40px;font-size:13.5px;font-weight:650;color:var(--n12);box-shadow:inset 0 -2px 0 var(--p9)">Activity</span>
+      </div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 16px">
+      <div style="flex:none;height:36px;display:flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10)">Today</div>
+      <div style="flex:none;display:flex;gap:12px;padding-bottom:14px">
+        <div style="width:26px;flex:none;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--ambera3);color:var(--amber11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-circle-dot"></use></svg></span><span style="flex:auto;width:1.5px;background:var(--na4);margin-top:4px"></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Amara Ruiz</span> moved status <span style="display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 6px;border-radius:5px;background:var(--bluea3);color:var(--blue11);font-size:11.5px;font-weight:650;vertical-align:middle">To Do</span> <svg style="width:12px;height:12px;color:var(--na9);vertical-align:middle" viewBox="0 0 24 24"><use href="#i-arrow-right"></use></svg> <span style="display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 6px;border-radius:5px;background:var(--ambera3);color:var(--amber11);font-size:11.5px;font-weight:650;vertical-align:middle">In Progress</span></div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">08:12</div></div>
+      </div>
+      <div style="flex:none;display:flex;gap:12px;padding-bottom:14px">
+        <div style="width:26px;flex:none;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--na3);color:var(--na11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-user"></use></svg></span><span style="flex:auto;width:1.5px;background:var(--na4);margin-top:4px"></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Mira Kaur</span> assigned to <span style="font-weight:650">Amara Ruiz</span></div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">07:55</div></div>
+      </div>
+      <div style="flex:none;display:flex;gap:12px;padding-bottom:14px">
+        <div style="width:26px;flex:none;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--violeta3);color:var(--violet11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-package"></use></svg></span><span style="flex:auto;width:1.5px;background:var(--na4);margin-top:4px"></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Mira Kaur</span> set release to <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:5px;background:var(--violeta3);color:var(--violet11);font-size:11.5px;font-weight:650;vertical-align:middle">v2.4.0 Payments</span></div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">07:54</div></div>
+      </div>
+      <div style="flex:none;height:36px;display:flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10);border-top:1px solid var(--na4)">Friday 11 September</div>
+      <div style="flex:none;display:flex;gap:12px;padding-bottom:14px">
+        <div style="width:26px;flex:none;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--reda3);color:var(--red11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg></span><span style="flex:auto;width:1.5px;background:var(--na4);margin-top:4px"></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Mira Kaur</span> raised priority <span style="color:var(--na11)">High</span> <svg style="width:12px;height:12px;color:var(--na9);vertical-align:middle" viewBox="0 0 24 24"><use href="#i-arrow-right"></use></svg> <span style="font-weight:650;color:var(--red11)">Urgent</span></div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">16:40</div></div>
+      </div>
+      <div style="flex:none;display:flex;gap:12px;padding-bottom:14px">
+        <div style="width:26px;flex:none;display:flex;flex-direction:column;align-items:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--na3);color:var(--na11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg></span><span style="flex:auto;width:1.5px;background:var(--na4);margin-top:4px"></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Jae Doyle</span> attached <span style="font-weight:550">ios-safari.mp4</span></div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">16:12</div></div>
+      </div>
+      <div style="flex:none;display:flex;gap:12px">
+        <div style="width:26px;flex:none;display:flex;justify-content:center"><span style="width:26px;height:26px;border-radius:99px;background:var(--greena3);color:var(--green11);display:flex;align-items:center;justify-content:center"><svg style="width:14px;height:14px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg></span></div>
+        <div style="flex:auto;min-width:0;padding-top:3px"><div style="font-size:13.5px;line-height:19px"><span style="font-weight:650">Jae Doyle</span> created this bug</div><div style="font-size:11.5px;color:var(--na10);margin-top:2px">16:08</div></div>
+      </div>
+    </div>
+    <div style="flex:none;background:var(--bg);border-top:1px solid var(--na4);box-shadow:0 -4px 20px rgba(0,0,0,.06)">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px 0">
+        <div style="width:48px;height:48px;flex:none;border-radius:13px;border:1px solid var(--na5);display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-message-circle"></use></svg></div>
+        <div style="flex:auto;height:48px;border-radius:13px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:650;box-shadow:0 1px 0 var(--p10) inset,0 6px 16px rgba(62,99,221,.3)"><svg style="width:18px;height:18px" viewBox="0 0 24 24"><use href="#i-eye"></use></svg>Move to In Review</div>
+      </div>
+      <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3h"><div class="dv-olabel"><a class="dv-oid" href="#3h">3h</a><span>Status sheet. Statuses grouped by category, current one marked, illegal transitions greyed with the reason stated. Done reveals the resolution field inline rather than throwing a second dialog.</span></div>
+  <div data-screen-label="3h Status sheet" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:auto;min-height:0;position:relative;background:var(--bg)">
+      <div style="padding:8px 16px 0;opacity:.5">
+        <div style="height:40px;display:flex;align-items:center;gap:8px"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg><span style="font-family:CommitMono,monospace;font-size:13px;font-weight:650;color:var(--pa11)">CEDTE-49</span></div>
+        <div style="font-size:19px;line-height:24px;font-weight:650;letter-spacing:-.02em;margin-top:4px">Task detail page cannot scroll vertically on phones</div>
+      </div>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.42)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:22px 22px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.28);padding:8px 0 0">
+        <div style="display:flex;justify-content:center;padding-bottom:8px"><span style="width:36px;height:4px;border-radius:99px;background:var(--na6)"></span></div>
+        <div style="padding:0 16px 10px"><div style="font-size:16px;font-weight:700;letter-spacing:-.01em">Move task</div><div style="font-size:12.5px;color:var(--na11);margin-top:2px">CEDTE-49 · Checkout Platform workflow</div></div>
+        <div style="padding:0 16px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10)">To do</div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3)"><span style="width:9px;height:9px;border-radius:99px;background:var(--n8)"></span><span style="font-size:15px;font-weight:550">Backlog</span></div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3)"><span style="width:9px;height:9px;border-radius:99px;background:var(--blue9)"></span><span style="font-size:15px;font-weight:550">To Do</span></div>
+        <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10)">In progress</div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3);background:var(--ambera2)"><span style="width:9px;height:9px;border-radius:99px;background:var(--amber9)"></span><span style="font-size:15px;font-weight:650;color:var(--amber11)">In Progress</span><span style="font-size:12px;color:var(--na10)">current</span><span style="flex:auto"></span><svg style="width:18px;height:18px;color:var(--amber11)" viewBox="0 0 24 24"><use href="#i-check"></use></svg></div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3)"><span style="width:9px;height:9px;border-radius:99px;background:var(--purple9)"></span><span style="font-size:15px;font-weight:550">In Review</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:99px;background:var(--pa3);color:var(--pa11);font-size:11.5px;font-weight:650">Suggested next</span></div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3)"><span style="width:9px;height:9px;border-radius:99px;background:var(--cyan9);opacity:.45"></span><span style="font-size:15px;font-weight:550;color:var(--na8)">QA</span><span style="flex:auto"></span><span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--na9)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-lock"></use></svg>Needs review first</span></div>
+        <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10)">Done</div>
+        <div style="display:flex;align-items:center;gap:11px;height:52px;padding:0 16px;border-top:1px solid var(--na3)"><span style="width:9px;height:9px;border-radius:99px;background:var(--green9)"></span><span style="font-size:15px;font-weight:550">Done</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">Resolution required</span><svg style="width:15px;height:15px;color:var(--na8)" viewBox="0 0 24 24"><use href="#i-chevron-right"></use></svg></div>
+        <div style="padding:14px 16px 0;border-top:1px solid var(--na4);margin-top:8px"><div style="height:48px;border-radius:13px;border:1px solid var(--na5);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Cancel</div></div>
+        <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+
+<p class="dv-h">C · Capture and context</p>
+<div class="dv-row">
+
+  <div class="dv-opt" id="3i"><div class="dv-olabel"><a class="dv-oid" href="#3i">3i</a><span>Create is a sheet, not a page: title is the only required field, everything else is an optional chip that expands in place. Project and type sit at the top because they change what the rest of the form allows.</span></div>
+  <div data-screen-label="3i Create task sheet" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--n12)"><span style="font-size:15px;font-weight:600;color:#fff">9:41</span><span style="display:flex;align-items:center;gap:6px;color:#fff"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:#fff;border-radius:1px"></span><span style="width:3px;height:6px;background:#fff;border-radius:1px"></span><span style="width:3px;height:8px;background:#fff;border-radius:1px"></span><span style="width:3px;height:10px;background:#fff;border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid #fff;border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:#fff;border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;height:22px;background:var(--n12)"></div>
+    <div style="flex:auto;min-height:0;background:var(--bg);border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">
+      <div style="flex:none;display:flex;align-items:center;height:52px;padding:0 8px 0 16px;border-bottom:1px solid var(--na4)">
+        <span style="font-size:15px;font-weight:550;color:var(--na11)">Cancel</span>
+        <span style="flex:auto;text-align:center;font-size:16px;font-weight:700;letter-spacing:-.01em">New task</span>
+        <span style="display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:9px;background:var(--p9);color:#fff;font-size:14px;font-weight:650;margin-right:8px">Create</span>
+      </div>
+      <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:none;display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-bottom:1px solid var(--na3)">
+          <div style="width:26px;height:26px;flex:none;border-radius:8px;background:var(--pa3);color:var(--pa11);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">CE</div>
+          <span style="font-size:14.5px;font-weight:600">Checkout Platform</span>
+          <svg style="width:14px;height:14px;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-chevrons-up-down"></use></svg>
+          <span style="flex:auto"></span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--na5);font-size:13px;font-weight:600"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>Bug<svg style="width:13px;height:13px;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-chevron-down"></use></svg></span>
+        </div>
+        <div style="flex:none;padding:16px 16px 6px">
+          <div style="display:flex;align-items:center;gap:1px;font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.01em"><span>Refund total rounds down by one cent</span><span style="width:2px;height:22px;background:var(--p9)"></span></div>
+          <div style="font-size:11.5px;color:var(--na10);margin-top:6px">Required · 38 characters</div>
+        </div>
+        <div style="flex:none;padding:6px 16px 14px;font-size:14px;line-height:21px;color:var(--na9);border-bottom:1px solid var(--na3)">Add a description, steps to reproduce, or paste a log…</div>
+        <div style="flex:none;display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px 0 8px;border-radius:10px;background:var(--pa3);color:var(--pa11);font-size:13px;font-weight:600"><span style="width:22px;height:22px;border-radius:99px;background:var(--violet9);color:#fff;font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span>Amara Ruiz</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:10px;background:var(--reda3);color:var(--red11);font-size:13px;font-weight:600"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg>Urgent</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:10px;border:1px dashed var(--na6);color:var(--na11);font-size:13px;font-weight:550"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>Due date</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:10px;border:1px dashed var(--na6);color:var(--na11);font-size:13px;font-weight:550"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-package"></use></svg>Release</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:10px;border:1px dashed var(--na6);color:var(--na11);font-size:13px;font-weight:550"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-tag"></use></svg>Labels</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:10px;border:1px dashed var(--na6);color:var(--na11);font-size:13px;font-weight:550"><svg style="width:15px;height:15px" viewBox="0 0 24 24"><use href="#i-layers"></use></svg>Parent</span>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;gap:10px;margin:0 16px;padding:11px 12px;border-radius:12px;background:var(--bluea3)"><svg style="width:16px;height:16px;flex:none;color:var(--blue11)" viewBox="0 0 24 24"><use href="#i-info"></use></svg><span style="font-size:12.5px;line-height:17px;color:var(--blue11)">New bugs start in <span style="font-weight:650">To Do</span> and notify the project lead.</span></div>
+        <div style="flex:none;display:flex;align-items:center;gap:10px;padding:16px 16px 0"><span style="width:44px;height:26px;border-radius:99px;background:var(--na5);padding:3px;display:flex"><span style="width:20px;height:20px;border-radius:99px;background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span><span style="font-size:13.5px;font-weight:550">Keep the sheet open to add another</span></div>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--na4);background:var(--n2)">
+        <div style="display:flex;align-items:center;gap:18px;height:48px;padding:0 18px;color:var(--na11)">
+          <svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-paperclip"></use></svg>
+          <svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-camera"></use></svg>
+          <svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-at-sign"></use></svg>
+          <svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-mic"></use></svg>
+          <span style="flex:auto"></span>
+          <span style="font-size:13px;font-weight:600;color:var(--pa11)">Done</span>
+        </div>
+        <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3j"><div class="dv-olabel"><a class="dv-oid" href="#3j">3j</a><span>Project switcher. Pinned first, role stated on every row because it decides what the next screen lets you do, and a read-only project says so before you open it.</span></div>
+  <div data-screen-label="3j Project switcher" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--n12)"><span style="font-size:15px;font-weight:600;color:#fff">9:41</span><span style="display:flex;align-items:center;gap:6px;color:#fff"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:#fff;border-radius:1px"></span><span style="width:3px;height:6px;background:#fff;border-radius:1px"></span><span style="width:3px;height:8px;background:#fff;border-radius:1px"></span><span style="width:3px;height:10px;background:#fff;border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid #fff;border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:#fff;border-radius:1.5px"></span></span></span></div>
+    <div style="flex:auto;min-height:0;position:relative;background:rgba(0,0,0,.45)">
+      <div style="position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--bg);border-radius:22px 22px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden">
+        <div style="flex:none;display:flex;justify-content:center;padding:8px 0"><span style="width:36px;height:4px;border-radius:99px;background:var(--na6)"></span></div>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px 10px"><span style="font-size:16px;font-weight:700;letter-spacing:-.01em">Switch project</span><span style="font-size:13.5px;font-weight:600;color:var(--pa11)">Done</span></div>
+        <div style="flex:none;margin:0 16px 12px;height:40px;border-radius:11px;background:var(--n3);display:flex;align-items:center;gap:8px;padding:0 12px"><svg style="width:17px;height:17px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-search"></use></svg><span style="font-size:14px;color:var(--na9)">Search 12 projects</span></div>
+        <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:none;display:flex;align-items:center;gap:6px;height:30px;padding:0 16px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-pin"></use></svg>Pinned</div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;background:var(--pa2);border-top:1px solid var(--na3);border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">CE</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Checkout Platform</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Editor · 24 open · 2 overdue</div></div>
+            <svg style="width:19px;height:19px;color:var(--p9)" viewBox="0 0 24 24"><use href="#i-circle-check"></use></svg>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--cyan9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">BI</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Billing &amp; Invoicing</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Lead · 16 open</div></div>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:6px;height:34px;padding:0 16px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na10);background:var(--na2);border-bottom:1px solid var(--na3)">All projects</div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--teal9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">ID</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Identity &amp; Access</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Manager · 31 open</div></div>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--orange9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">PA</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Partner API</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Commenter · 8 open</div></div>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--n4);color:var(--na11);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">MA</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Marketing Site</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Viewer · read-only</div></div>
+            <svg style="width:16px;height:16px;color:var(--na9)" viewBox="0 0 24 24"><use href="#i-lock"></use></svg>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid var(--na3)">
+            <div style="width:38px;height:38px;flex:none;border-radius:11px;background:var(--purple9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">DA</div>
+            <div style="flex:auto;min-width:0"><div style="font-size:15px;font-weight:650">Data Platform</div><div style="font-size:11.5px;color:var(--na11);margin-top:1px">Editor · 22 open</div></div>
+          </div>
+        </div>
+        <div style="flex:none;height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3k"><div class="dv-olabel"><a class="dv-oid" href="#3k">3k</a><span>Releases. Each row answers one question — will it ship on time — so the bar is scope completion and the date carries the risk colour. Overdue scope is called out in words, not just red.</span></div>
+  <div data-screen-label="3k Releases" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;background:var(--bg)">
+      <div style="padding:6px 16px 10px;display:flex;align-items:center;gap:10px">
+        <div style="flex:auto"><div style="font-size:22px;line-height:26px;font-weight:700;letter-spacing:-.02em">Releases</div><div style="font-size:12px;line-height:16px;color:var(--na11);margin-top:2px">Checkout Platform · 4 active</div></div>
+        <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:21px;height:21px" viewBox="0 0 24 24"><use href="#i-search"></use></svg></div>
+      </div>
+      <div style="display:flex;gap:8px;padding:0 16px 12px">
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 11px;border-radius:9px;background:var(--pa3);color:var(--pa11);font-size:13px;font-weight:600">Active</span>
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 11px;border-radius:9px;border:1px solid var(--na4);font-size:13px;font-weight:550;color:var(--na11)">Planned</span>
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 11px;border-radius:9px;border:1px solid var(--na4);font-size:13px;font-weight:550;color:var(--na11)">Released</span>
+      </div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:12px 16px 0">
+      <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4),0 1px 2px rgba(0,0,0,.04);padding:14px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:7px;background:var(--ambera3);color:var(--amber11);font-size:11.5px;font-weight:700"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-loader"></use></svg>In progress</span><span style="flex:auto"></span><span style="font-size:12px;font-weight:600;color:var(--red11)">Ships in 10 days</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:9px"><span style="font-family:CommitMono,monospace;font-size:15px;font-weight:700">v2.4.0</span><span style="font-size:15px;font-weight:600">Payments</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:11px"><span style="flex:auto;height:8px;border-radius:99px;background:var(--na4);overflow:hidden;display:flex"><span style="width:62%;background:var(--green9);border-radius:99px"></span></span><span style="font-size:12px;font-weight:650;color:var(--na11)">62%</span></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:10px;font-size:11.5px;color:var(--na11)"><span><span style="font-weight:700;color:var(--n12)">18</span> done</span><span><span style="font-weight:700;color:var(--n12)">11</span> open</span><span style="font-weight:650;color:var(--red11)">2 overdue</span><span style="flex:auto"></span><span style="display:flex"><span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--bg);background:var(--violet9);color:#fff;font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center">AR</span><span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--bg);background:var(--teal9);color:#fff;font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:-7px">MK</span><span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--bg);background:var(--na4);color:var(--na11);font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:-7px">+4</span></span></div>
+      </div>
+      <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4),0 1px 2px rgba(0,0,0,.04);padding:14px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:7px;background:var(--bluea3);color:var(--blue11);font-size:11.5px;font-weight:700"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-calendar"></use></svg>Planned</span><span style="flex:auto"></span><span style="font-size:12px;color:var(--na11)">12 Oct 2026</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:9px"><span style="font-family:CommitMono,monospace;font-size:15px;font-weight:700">v2.5.0</span><span style="font-size:15px;font-weight:600">Wallet &amp; BNPL</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:11px"><span style="flex:auto;height:8px;border-radius:99px;background:var(--na4);overflow:hidden;display:flex"><span style="width:8%;background:var(--blue9);border-radius:99px"></span></span><span style="font-size:12px;font-weight:650;color:var(--na11)">8%</span></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:10px;font-size:11.5px;color:var(--na11)"><span><span style="font-weight:700;color:var(--n12)">2</span> done</span><span><span style="font-weight:700;color:var(--n12)">23</span> open</span><span style="flex:auto"></span><span style="display:flex"><span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--bg);background:var(--pink9);color:#fff;font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span><span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--bg);background:var(--na4);color:var(--na11);font-size:9px;font-weight:650;display:flex;align-items:center;justify-content:center;margin-left:-7px">+2</span></span></div>
+      </div>
+      <div style="flex:none;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--na4);padding:14px;opacity:.85">
+        <div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:7px;background:var(--greena3);color:var(--green11);font-size:11.5px;font-weight:700"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-rocket"></use></svg>Released</span><span style="flex:auto"></span><span style="font-size:12px;color:var(--na11)">29 Aug 2026</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:9px"><span style="font-family:CommitMono,monospace;font-size:15px;font-weight:700">v2.3.1</span><span style="font-size:15px;font-weight:600">Checkout hotfix</span></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:10px;font-size:11.5px;color:var(--na11)"><span><span style="font-weight:700;color:var(--n12)">6</span> done</span><span style="display:inline-flex;align-items:center;gap:4px;font-weight:650;color:var(--green11)"><svg style="width:13px;height:13px" viewBox="0 0 24 24"><use href="#i-check-check"></use></svg>Shipped on time</span></div>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:10px;padding:2px 2px 0"><svg style="width:15px;height:15px;color:var(--na10)" viewBox="0 0 24 24"><use href="#i-history"></use></svg><span style="font-size:13px;font-weight:600;color:var(--pa11)">Show 9 earlier releases</span></div>
+    </div>
+    <div style="position:absolute;right:18px;bottom:104px;width:56px;height:56px;border-radius:18px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 var(--p10) inset,0 10px 24px rgba(62,99,221,.4)"><svg style="width:24px;height:24px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg></div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:550">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:550">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:650">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--bg)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3l"><div class="dv-olabel"><a class="dv-oid" href="#3l">3l</a><span>Inbox. Mentions are separated because they need a reply; everything else is a state change you only need to notice. Unread is an indigo rail plus weight, so it survives greyscale.</span></div>
+  <div data-screen-label="3l Inbox" style="width:390px;height:844px;border-radius:44px;background:var(--bg);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.2);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:10px">
+      <div style="flex:auto"><div style="font-size:22px;line-height:26px;font-weight:700;letter-spacing:-.02em">Inbox</div><div style="font-size:12px;line-height:16px;color:var(--na11);margin-top:2px">3 unread · 2 mentions</div></div>
+      <span style="display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 11px;border-radius:9px;border:1px solid var(--na4);font-size:12.5px;font-weight:600"><svg style="width:14px;height:14px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-check-check"></use></svg>Mark all read</span>
+    </div>
+    <div style="flex:none;padding:0 16px 12px">
+      <div style="display:flex;gap:2px;height:36px;padding:3px;border-radius:11px;background:var(--na3)"><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--n1);box-shadow:0 1px 2px rgba(0,0,0,.1);font-size:13px;font-weight:600">All</span><span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">Mentions<span style="min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:9.5px;line-height:16px;font-weight:700;text-align:center">2</span></span><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">Assigned</span></div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--panel)">
+      <div style="flex:none;display:flex;align-items:center;height:32px;padding:0 16px;background:var(--na2);border-top:1px solid var(--na3);border-bottom:1px solid var(--na3);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Today</div>
+      <div style="flex:none;display:flex;gap:11px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--na3);border-left:3px solid var(--p9)">
+        <span style="width:32px;height:32px;flex:none;border-radius:99px;background:var(--teal9);color:#fff;font-size:11.5px;font-weight:650;display:flex;align-items:center;justify-content:center">MK</span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:13.5px;font-weight:700">Mira Kaur</span><span style="font-size:12px;color:var(--na11)">mentioned you</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">18m</span></div>
+          <div style="font-size:13.5px;line-height:19px;margin-top:3px;text-wrap:pretty">“<span style="color:var(--pa11);font-weight:600">@amara</span> can you take the device QA before we cut v2.4.0?”</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--na11)"><span style="font-family:CommitMono,monospace;font-size:11px;color:var(--pa11);font-weight:550">CEDTE-49</span><span>Checkout Platform</span></div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;gap:11px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--na3);border-left:3px solid var(--p9)">
+        <span style="width:32px;height:32px;flex:none;border-radius:99px;background:var(--ambera3);color:var(--amber11);display:flex;align-items:center;justify-content:center"><svg style="width:17px;height:17px" viewBox="0 0 24 24"><use href="#i-circle-dot"></use></svg></span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:13.5px;font-weight:700">CEDTE-61 assigned to you</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">2h</span></div>
+          <div style="font-size:13.5px;line-height:19px;margin-top:3px;color:var(--na11);text-wrap:pretty">Apple Pay express checkout button · due today</div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;gap:11px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--na3);border-left:3px solid var(--p9)">
+        <span style="width:32px;height:32px;flex:none;border-radius:99px;background:var(--violeta3);color:var(--violet11);display:flex;align-items:center;justify-content:center"><svg style="width:17px;height:17px" viewBox="0 0 24 24"><use href="#i-package"></use></svg></span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:13.5px;font-weight:700">v2.4.0 scope changed</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">5h</span></div>
+          <div style="font-size:13.5px;line-height:19px;margin-top:3px;color:var(--na11);text-wrap:pretty">2 tasks added by Mira Kaur, 1 moved out</div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;height:32px;padding:0 16px;background:var(--na2);border-bottom:1px solid var(--na3);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Earlier</div>
+      <div style="flex:none;display:flex;gap:11px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <span style="width:32px;height:32px;flex:none;border-radius:99px;background:var(--pink9);color:#fff;font-size:11.5px;font-weight:650;display:flex;align-items:center;justify-content:center">JD</span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:13.5px;font-weight:600">Jae Doyle</span><span style="font-size:12px;color:var(--na11)">commented</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">1d</span></div>
+          <div style="font-size:13.5px;line-height:19px;margin-top:3px;color:var(--na11);text-wrap:pretty">Reproduced on an iPhone 14 and a Pixel 7.</div>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;gap:11px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--na3)">
+        <span style="width:32px;height:32px;flex:none;border-radius:99px;background:var(--greena3);color:var(--green11);display:flex;align-items:center;justify-content:center"><svg style="width:17px;height:17px" viewBox="0 0 24 24"><use href="#i-check"></use></svg></span>
+        <div style="flex:auto;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:13.5px;font-weight:600">CEDTE-41 marked Done</span><span style="flex:auto"></span><span style="font-size:11.5px;color:var(--na10)">2d</span></div>
+          <div style="font-size:13.5px;line-height:19px;margin-top:3px;color:var(--na11);text-wrap:pretty">Resolution: Fixed · closed by Mira Kaur</div>
+        </div>
+      </div>
+      <div style="flex:none;padding:14px 16px;text-align:center;font-size:12px;color:var(--na10)">Swipe a notification to mark read or mute the task</div>
+    </div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--bg);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:550">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:550">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p9)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:650">Inbox</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+</div>
+
+<sc-if value="{{ showDarkScreens }}" hint-placeholder-val="{{ true }}">
+<div>
+<p class="dv-h">D · Dark</p>
+<div class="dv-row">
+
+  <div class="dv-opt" id="3m"><div class="dv-olabel"><a class="dv-oid" href="#3m">3m</a><span>Same tokens, dark tier. Surfaces step up rather than down, status hues move to the 11-step so text keeps 4.5:1, and the overdue band loses saturation instead of gaining it.</span></div>
+  <div class="dark" data-screen-label="3m My Work · dark" style="width:390px;height:844px;border-radius:44px;background:var(--bg);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.3);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:10px">
+      <div style="flex:auto;min-width:0"><div style="font-size:22px;line-height:26px;font-weight:700;letter-spacing:-.02em">My Work</div><div style="font-size:12px;line-height:16px;color:var(--na11);margin-top:2px">Sunday, 13 September · 7 assigned</div></div>
+      <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--na11)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-search"></use></svg></div>
+      <div style="width:36px;height:36px;flex:none;border-radius:99px;background:var(--violet9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:650">AR</div>
+    </div>
+    <div style="flex:none;padding:0 16px 12px">
+      <div style="display:flex;gap:2px;height:36px;padding:3px;border-radius:11px;background:var(--na3)"><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--n5);box-shadow:0 1px 2px rgba(0,0,0,.4);font-size:13px;font-weight:600">Focus</span><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">All assigned</span><span style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:500;color:var(--na11)">Watching</span></div>
+    </div>
+    <div style="flex:auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--panel)">
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--reda3)"><svg style="width:14px;height:14px;color:var(--red11)" viewBox="0 0 24 24"><use href="#i-clock"></use></svg><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--red11)">Overdue · 1</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--red11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Task detail page cannot scroll on phones</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span><span style="color:var(--na7)">·</span><span style="font-weight:600;color:var(--red11)">Due yesterday</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-49</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--na2);border-bottom:1px solid var(--na3)"><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Today · 3</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apple Pay express checkout button</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--amber11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--amber9)"></span>In Progress</span><span style="color:var(--na7)">·</span><span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;color:var(--red11)"><svg style="width:12px;height:12px" viewBox="0 0 24 24"><use href="#i-chevrons-up"></use></svg>Urgent</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-61</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-square-check"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Review refund copy with Legal</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--purple11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--purple9)"></span>In Review</span><span style="color:var(--na7)">·</span><span>Due 5pm</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">BILL-12</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--cyana3);color:var(--cyan11);font-size:11px;font-weight:650">Billing</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-trending-up"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cache country list on the client</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--blue11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--blue11)"></span>To Do</span><span style="color:var(--na7)">·</span><span>Due today</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-58</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 16px;background:var(--na2);border-bottom:1px solid var(--na3)"><span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--na11)">Next 7 days · 3</span></div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--na3)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-sparkles"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Saved cards in the payment sheet</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--blue11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--blue11)"></span>To Do</span><span style="color:var(--na7)">·</span><span>Thu 17 Sep</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-64</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:11px;height:68px;padding:0 16px;background:var(--surface)">
+        <svg style="width:17px;height:17px;flex:none;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bug"></use></svg>
+        <div style="flex:auto;min-width:0">
+          <div style="font-size:15px;line-height:19px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">3DS challenge window closes early</div>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;line-height:15px;color:var(--na11)"><span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--na11)"><span style="width:6px;height:6px;border-radius:99px;background:var(--n8)"></span>Backlog</span><span style="color:var(--na7)">·</span><span>Fri 18 Sep</span><span style="color:var(--na7)">·</span><span style="font-family:CommitMono,monospace;font-size:11px">CEDTE-66</span></div>
+        </div>
+        <span style="flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:var(--pa3);color:var(--pa11);font-size:11px;font-weight:650">Checkout</span>
+      </div>
+    </div>
+    <div style="position:absolute;right:18px;bottom:104px;width:56px;height:56px;border-radius:18px;background:var(--p9);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(0,0,0,.5)"><svg style="width:24px;height:24px" viewBox="0 0 24 24"><use href="#i-plus"></use></svg></div>
+    <div style="flex:none;height:84px;border-top:1px solid var(--na4);background:var(--panel);display:flex;flex-direction:column">
+      <div style="display:flex;height:52px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--p11)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-list-todo"></use></svg><span style="font-size:10px;font-weight:650">My Work</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-folder-kanban"></use></svg><span style="font-size:10px;font-weight:550">Projects</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10)"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-package"></use></svg><span style="font-size:10px;font-weight:550">Releases</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--na10);position:relative"><svg style="width:22px;height:22px" viewBox="0 0 24 24"><use href="#i-bell"></use></svg><span style="font-size:10px;font-weight:550">Inbox</span><span style="position:absolute;top:4px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--red9);color:#fff;font-size:10px;line-height:17px;font-weight:700;text-align:center;box-shadow:0 0 0 2px var(--panel)">3</span></div>
+      </div>
+      <div style="flex:auto;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+    </div>
+  </div></div>
+
+  <div class="dv-opt" id="3n"><div class="dv-olabel"><a class="dv-oid" href="#3n">3n</a><span>Detail in dark, with the destructive path shown: the overflow sheet keeps delete last, separated, and labelled with what it removes.</span></div>
+  <div class="dark" data-screen-label="3n Task detail · dark" style="width:390px;height:844px;border-radius:44px;background:var(--panel);color:var(--n12);box-shadow:0 0 0 9px var(--frame),0 20px 40px rgba(0,0,0,.3);overflow:hidden;display:flex;flex-direction:column;position:relative">
+    <div style="height:54px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;background:var(--bg)"><span style="font-size:15px;font-weight:600">9:41</span><span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:1.5px"><span style="width:3px;height:4px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--n12);border-radius:1px"></span><span style="width:3px;height:10px;background:var(--n12);border-radius:1px"></span></span><svg style="width:16px;height:16px" viewBox="0 0 24 24"><use href="#i-wifi"></use></svg><span style="width:24px;height:12px;border:1.5px solid var(--n12);border-radius:4px;padding:1.5px"><span style="display:block;height:100%;width:80%;background:var(--n12);border-radius:1.5px"></span></span></span></div>
+    <div style="flex:auto;min-height:0;position:relative;background:var(--bg)">
+      <div style="opacity:.45">
+        <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 12px"><svg style="width:20px;height:20px" viewBox="0 0 24 24"><use href="#i-arrow-left"></use></svg><span style="font-family:CommitMono,monospace;font-size:13px;font-weight:650;color:var(--pa11)">CEDTE-49</span></div>
+        <div style="padding:0 16px;font-size:19px;line-height:24px;font-weight:650;letter-spacing:-.02em">Task detail page cannot scroll vertically on phones</div>
+        <div style="display:flex;gap:8px;padding:12px 16px"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:9px;background:var(--ambera3);color:var(--amber11);font-size:13px;font-weight:650"><span style="width:7px;height:7px;border-radius:99px;background:var(--amber9)"></span>In Progress</span><span style="display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 9px;border-radius:9px;border:1px solid var(--na5);font-size:12.5px;font-weight:600;color:var(--red11)">Urgent</span></div>
+      </div>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.55)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);padding:8px 0 0">
+        <div style="display:flex;justify-content:center;padding-bottom:8px"><span style="width:36px;height:4px;border-radius:99px;background:var(--na7)"></span></div>
+        <div style="padding:0 16px 12px"><div style="font-size:16px;font-weight:700">CEDTE-49</div><div style="font-size:12.5px;color:var(--na11);margin-top:2px">Task detail page cannot scroll vertically</div></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;border-top:1px solid var(--na4)"><svg style="width:19px;height:19px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-user"></use></svg><span style="font-size:15px;font-weight:550">Reassign</span><span style="flex:auto"></span><span style="font-size:13px;color:var(--na10)">Amara Ruiz</span></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;border-top:1px solid var(--na4)"><svg style="width:19px;height:19px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-layers"></use></svg><span style="font-size:15px;font-weight:550">Change parent</span></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;border-top:1px solid var(--na4)"><svg style="width:19px;height:19px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-link"></use></svg><span style="font-size:15px;font-weight:550">Copy link</span></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;border-top:1px solid var(--na4)"><svg style="width:19px;height:19px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-bell-off"></use></svg><span style="font-size:15px;font-weight:550">Stop watching</span></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;border-top:1px solid var(--na4)"><svg style="width:19px;height:19px;color:var(--na11)" viewBox="0 0 24 24"><use href="#i-archive"></use></svg><span style="font-size:15px;font-weight:550">Archive</span></div>
+        <div style="height:8px;background:var(--panel);border-top:1px solid var(--na4);border-bottom:1px solid var(--na4)"></div>
+        <div style="display:flex;align-items:center;gap:12px;height:54px;padding:0 16px"><svg style="width:19px;height:19px;color:var(--red11)" viewBox="0 0 24 24"><use href="#i-trash-2"></use></svg><span style="font-size:15px;font-weight:600;color:var(--red11)">Delete task</span><span style="flex:auto"></span><span style="font-size:12px;color:var(--na10)">and 4 comments</span></div>
+        <div style="padding:10px 16px 0;border-top:1px solid var(--na4)"><div style="height:48px;border-radius:13px;background:var(--n4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Cancel</div></div>
+        <div style="height:34px;display:flex;align-items:center;justify-content:center"><span style="width:134px;height:5px;border-radius:99px;background:var(--n12)"></span></div>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+</div>
+</sc-if>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;swipeRevealed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo state&quot;},&quot;showDarkScreens&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo state&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      swipeRevealed: this.props.swipeRevealed ?? true,
+      showDarkScreens: this.props.showDarkScreens ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

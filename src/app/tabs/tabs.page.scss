@@ -1,0 +1,22 @@
+// Bottom tab bar per the design handoff (3a): 52px of items above the home
+// indicator, which Ionic's safe-area padding adds. Colours come from the
+// --ion-tab-bar-* variables in src/theme/variables.scss.
+ion-tab-bar {
+  height: 52px;
+}
+
+ion-tab-button {
+  ion-icon {
+    font-size: 22px;
+  }
+
+  ion-label {
+    font: var(--flux-font-tab-label);
+    letter-spacing: var(--flux-tracking-tab-label);
+  }
+
+  &.tab-selected ion-label {
+    font: var(--flux-font-tab-label-active);
+    letter-spacing: var(--flux-tracking-tab-label-active);
+  }
+}

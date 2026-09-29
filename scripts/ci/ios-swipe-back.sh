@@ -55,18 +55,43 @@ print(f'{changed / (diff.width * diff.height):.4f}')
 PY
 }
 
+# type_into POINT TEXT — waits for the field to take focus and the keyboard
+# to come up first, or idb's first keystrokes are lost.
+type_into() {
+  tap "$1"
+  sleep 2
+  idb ui text --udid "$UDID" "$2"
+  sleep 1
+}
+
+# signed_in SECONDS — polls the mock IAM's log for a login.
+signed_in() {
+  for _ in $(seq 1 "$1"); do
+    grep -q 'POST /api/v1/auth/login → 200' "$MOCK_IAM_LOG" && return 0
+    sleep 1
+  done
+  return 1
+}
+
 echo "Signing in against the mock IAM"
-tap "$EMAIL_FIELD"
-idb ui text --udid "$UDID" 'ci@flux.test'
-tap "$PASSWORD_FIELD"
-idb ui text --udid "$UDID" 'not-a-real-password'
-tap "$SIGN_IN_BUTTON"
-sleep 4
-if ! grep -q 'POST /api/v1/auth/login → 200' "$MOCK_IAM_LOG"; then
+type_into "$EMAIL_FIELD" 'ci@flux.test'
+type_into "$PASSWORD_FIELD" 'ci-pass'
+# Return submits the form. Tapping Sign in while the keyboard is up only
+# dismisses the keyboard, so the button is just the fallback, once the
+# keyboard is gone.
+idb ui key --udid "$UDID" 40
+# Each tap is checked before the next, so a tap never lands on My Work.
+for attempt in 1 2; do
+  signed_in 5 && break
+  echo "Not signed in yet; tapping Sign in (attempt $attempt)"
+  tap "$SIGN_IN_BUTTON"
+done
+if ! signed_in 5; then
   echo "The app never signed in: no login request reached the mock IAM"
   screenshot 'sign-in-failed.png'
   exit 1
 fi
+sleep 3 # let My Work load
 screenshot 'my-work.png'
 
 echo "Opening a task from the Projects tab"

@@ -40,8 +40,8 @@ jobs:
 
       - run: npx cap sync ios
 
-      # fb-idb drives the simulator's UI for the swipe-back check. It breaks on
-      # Python 3.12+'s asyncio, hence 3.11.
+      # fb-idb drives the simulator's UI for the swipe-back check (it breaks
+      # on Python 3.12+'s asyncio, hence 3.11); Pillow compares screenshots.
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
@@ -50,7 +50,7 @@ jobs:
         run: |
           brew tap facebook/fb
           brew install facebook/fb/idb-companion
-          python -m pip install fb-idb
+          python -m pip install fb-idb pillow
 
       - name: Start mock IAM
         run: |
@@ -134,6 +134,7 @@ jobs:
       - name: Swipe back from task detail
         env:
           OUT_DIR: ${{ runner.temp }}/artifacts
+          MOCK_IAM_LOG: ${{ runner.temp }}/artifacts/mock-iam.log
         run: scripts/ci/ios-swipe-back.sh
 
       - name: Take screenshot

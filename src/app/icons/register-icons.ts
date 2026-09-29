@@ -12,18 +12,23 @@ const LUCIDE_ROOT =
   'stroke-linejoin="round">';
 
 /**
- * Registers every handoff icon with ionicons under its Lucide name, so
- * templates use `<ion-icon name="list-todo">`. Each icon is a `;utf8,` data
- * URL, so `ion-icon` never fetches anything. The markup must stay
- * unencoded: ionicons parses it straight out of the URL string.
+ * Every handoff icon as a `;utf8,` data URL, keyed by its Lucide name, so
+ * `ion-icon` never fetches anything. The markup must stay unencoded:
+ * ionicons parses it straight out of the URL string.
+ */
+export function fluxIconUrls(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(icons as Record<string, string>).map(([name, body]) => [
+      name,
+      `data:image/svg+xml;utf8,${LUCIDE_ROOT}${body}</svg>`,
+    ])
+  );
+}
+
+/**
+ * Registers every handoff icon with ionicons, so templates use
+ * `<ion-icon name="list-todo">`.
  */
 export function registerFluxIcons(): void {
-  addIcons(
-    Object.fromEntries(
-      Object.entries(icons as Record<string, string>).map(([name, body]) => [
-        name,
-        `data:image/svg+xml;utf8,${LUCIDE_ROOT}${body}</svg>`,
-      ])
-    )
-  );
+  addIcons(fluxIconUrls());
 }

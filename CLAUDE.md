@@ -344,14 +344,18 @@ It then checks iOS swipe-back. `scripts/ci/mock-iam.mjs` stands in for
 flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
 sign in as a fixed test account), and `scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
-`fb-idb` on Python 3.11). It signs in, opens a task from the Projects tab,
-swipes from the left edge, and fails unless the list is back. It finds
-elements by accessibility label, so renaming a tab, the login fields or the
-`Sign in` button means updating the script.
+`fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
+tab, and swipes from the left edge. idb can't see inside the WebView (its
+accessibility tree stops at the app), so the script taps fixed points on the
+iPhone 17 and judges the result from screenshots with Pillow. Sign-in must
+reach the mock IAM (checked in its log). The detail screenshot must differ
+from the list's by over 5% of pixels, and the after-swipe one by under 2%.
+Moving the login fields, the tab bar or the Projects list's first row means
+updating the points at the top of the script.
 
-Screenshots (`my-work.png`, `detail.png`, `after-swipe.png`, and the final
-`flux-ios-simulator.png`) are uploaded as one artifact on every run; the
-simulator's app log and the mock IAM log only if the job fails.
+Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and
+the final `flux-ios-simulator.png`) are uploaded as one artifact on every
+run; the simulator's app log and the mock IAM log only if the job fails.
 
 ### Android signed build
 

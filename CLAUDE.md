@@ -317,7 +317,7 @@ bypass actors, so a PR can't merge while CI is red. It also rejects a direct
 push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
-Native builds aren't part of this workflow. An unsigned iOS simulator build,
+Native builds aren't part of this workflow. An ad-hoc-signed iOS simulator build,
 a signed Android release build and a signed iOS release build (with
 TestFlight upload) each run in their own workflow (below).
 
@@ -334,8 +334,10 @@ it, which would leave them permanently unmergeable under `main: require CI`.
 
 Steps: `npm ci`, `npm run build:dev`, `npx cap sync ios`, then `xcodebuild`
 for the `App` scheme's Debug configuration against `-sdk iphonesimulator`
-with `CODE_SIGNING_ALLOWED=NO` (no signing needed for a simulator build). It
-then boots an iPhone 17 simulator, installs and launches the app
+signed ad hoc (`CODE_SIGN_IDENTITY=-`, "Sign to Run Locally", which needs no
+Apple account). Don't switch it to `CODE_SIGNING_ALLOWED=NO`: an unsigned
+app has no entitlements, so the simulator refuses its Keychain writes and
+sign-in fails. It then boots an iPhone 17 simulator, installs and launches the app
 (`asia.justflux.mobile`), and confirms the process is still running 20
 seconds later (`ps` plus `simctl spawn launchctl list`) rather than just
 checking that `simctl launch` returned.

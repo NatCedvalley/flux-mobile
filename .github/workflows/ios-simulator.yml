@@ -69,6 +69,9 @@ jobs:
           xcodebuild -version
           xcodebuild -list -project ios/App/App.xcodeproj
 
+      # Signed ad hoc ("Sign to Run Locally", no Apple account needed) rather
+      # than unsigned: an unsigned app has no entitlements, so the simulator
+      # refuses its Keychain writes and sign-in can't save the session.
       - name: Build for iOS simulator
         run: |
           xcodebuild \
@@ -78,7 +81,7 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY=- \
             build
 
           APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"

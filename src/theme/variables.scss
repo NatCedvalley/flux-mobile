@@ -142,6 +142,8 @@
     --flux-space-#{$name}: #{$value};
   }
 
+  --flux-android-min-bottom-inset: #{tokens.$flux-android-min-bottom-inset};
+
   --flux-font-family: #{meta.inspect(tokens.$flux-font-family)};
   --flux-font-mono: #{meta.inspect(tokens.$flux-font-mono)};
 

@@ -13,6 +13,7 @@ import { MemoryTokenStore } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { BackButtonService } from './app/back-button/back-button.service';
 import { registerFluxIcons } from './app/icons/register-icons';
 import { AppLockService } from './app/lock/app-lock.service';
 import { FLUX_API } from './app/providers/flux-api.token';
@@ -48,5 +49,6 @@ bootstrapApplication(AppComponent, {
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
     provideAppInitializer(() => inject(StatusBarService).init()),
+    provideAppInitializer(() => inject(BackButtonService).init()),
   ],
 });

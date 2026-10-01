@@ -304,6 +304,11 @@ $flux-space: (
   32: 32px,
 ) !default;
 
+// Least bottom safe area on Android, the height of Android's gesture
+// navigation bar. Some phones (MIUI on Android 10) report a 0 inset while
+// drawing the gesture pill over the app, which would cover the tab bar.
+$flux-android-min-bottom-inset: 16px !default;
+
 $flux-font-family:
   'Inter',
   -apple-system,

@@ -64,10 +64,20 @@ the fallback for a deep link. Link to it relative to the current tab
 
 The app runs in Ionic's `ios` mode on both platforms
 (`provideIonicAngular({ mode: 'ios' })`), which the design requires and
-which gives every stack iOS swipe-back. On Android, Ionic's router outlet
-pops the stack on the hardware back button and leaves the app only from a
-tab root. Until FM-28 and FM-29, My Work and Projects both list the mock
-tasks, and Releases (handoff screen 3k) has no tab.
+which gives every stack iOS swipe-back. Android's Back gesture or button is
+handled by `BackButtonService` (`src/app/back-button/`, started from an app
+initializer): it pops the current tab's stack through `NavController.pop()`,
+and calls `App.exitApp()` when there is nothing to pop (a tab's first screen,
+or the login page). Ionic's own handler only pops, so without it Back did
+nothing on a tab root. It runs at priority 1, so open alerts and sheets
+(100) still close first.
+
+Android draws the app under its navigation bar, and some phones (MIUI on
+Android 10) report a 0 bottom inset while the gesture pill covers the tab
+bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
+`--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
+win. Until FM-28 and FM-29, My Work and Projects both list the mock tasks,
+and Releases (handoff screen 3k) has no tab.
 
 ## 4. API layer
 

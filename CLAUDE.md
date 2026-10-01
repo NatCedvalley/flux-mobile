@@ -360,10 +360,12 @@ the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 tab, and swipes from the left edge. idb can't see inside the WebView (its
 accessibility tree stops at the app), so the script taps fixed points on the
 iPhone 17 and judges the result from screenshots with Pillow. Sign-in must
-reach the mock IAM (checked in its log). The detail screenshot must differ
-from the list's by over 5% of pixels, and the after-swipe one by under 2%.
-Moving the login fields, the tab bar or the Projects list's first row means
-updating the points at the top of the script.
+reach the mock IAM (checked in its log). After each tap or swipe the script
+polls screenshots for up to 45 s, because idb can deliver input ~15 s late
+on a slow runner: switching to Projects must change over 2% of pixels,
+opening the task over 5%, and the swipe must bring the screen back to within
+2% of the list. Moving the login fields, the tab bar or the Projects list's
+first row means updating the points at the top of the script.
 
 Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and
 the final `flux-ios-simulator.png`) are uploaded as one artifact on every

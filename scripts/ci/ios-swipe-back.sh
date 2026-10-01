@@ -73,50 +73,80 @@ signed_in() {
   return 1
 }
 
+above() { python3 -c "import sys; sys.exit(0 if $1 > $2 else 1)"; }
+below() { python3 -c "import sys; sys.exit(0 if $1 < $2 else 1)"; }
+
+# settle NAME — screenshots until two in a row match, so transitions and
+# late input have finished: on a slow runner idb delivers input up to ~15 s
+# after the command returns.
+settle() {
+  screenshot "$1"
+  for _ in $(seq 1 30); do
+    sleep 1
+    cp "$OUT_DIR/$1" "$OUT_DIR/.previous.png"
+    screenshot "$1"
+    below "$(difference .previous.png "$1")" 0.0001 && return 0
+  done
+  return 1
+}
+
+# wait_until NAME BASE above|below LIMIT — screenshots NAME until its
+# difference from BASE is above (or below) LIMIT, for up to 45 s, then lets
+# the screen settle.
+wait_until() {
+  local d
+  for _ in $(seq 1 45); do
+    screenshot "$1"
+    d=$(difference "$2" "$1")
+    if "$3" "$d" "$4"; then
+      settle "$1"
+      echo "  $1 vs $2: $(difference "$2" "$1") of pixels differ (must be $3 $4)"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "  $1 vs $2: $d of pixels differ after 45 s (must be $3 $4)"
+  return 1
+}
+
 echo "Signing in against the mock IAM"
 type_into "$EMAIL_FIELD" 'ci@flux.test'
 type_into "$PASSWORD_FIELD" 'ci-pass'
 # Return submits the form. Tapping Sign in while the keyboard is up only
 # dismisses the keyboard, so the button is just the fallback, once the
-# keyboard is gone.
+# keyboard is gone. Each tap waits long enough for idb's delivery lag, so a
+# late tap never lands on My Work.
 idb ui key --udid "$UDID" 40
-# Each tap is checked before the next, so a tap never lands on My Work.
 for attempt in 1 2; do
-  signed_in 5 && break
+  signed_in 20 && break
   echo "Not signed in yet; tapping Sign in (attempt $attempt)"
   tap "$SIGN_IN_BUTTON"
 done
-if ! signed_in 5; then
+if ! signed_in 20; then
   echo "The app never signed in: no login request reached the mock IAM"
   screenshot 'sign-in-failed.png'
   exit 1
 fi
-sleep 3 # let My Work load
-screenshot 'my-work.png'
+settle 'my-work.png'
 
 echo "Opening a task from the Projects tab"
 tap "$PROJECTS_TAB"
-sleep 2
-screenshot 'list.png'
+# Switching tabs changes ~4% of the screen (title and tab bar).
+if ! wait_until 'list.png' 'my-work.png' above 0.02; then
+  echo "Tapping the Projects tab didn't switch tabs (see list.png)"
+  exit 1
+fi
 tap "$FIRST_TASK_ROW"
-sleep 2 # let the push transition finish
-screenshot 'detail.png'
+# Opening a task changes ~17% of the screen.
+if ! wait_until 'detail.png' 'list.png' above 0.05; then
+  echo "Tapping the first row didn't open a task (see detail.png)"
+  exit 1
+fi
 
 echo "Swiping back from the left edge"
 # Ionic starts the gesture within 50 pt of the left edge.
 idb ui swipe --udid "$UDID" --duration 0.4 2 437 320 437
-sleep 2
-screenshot 'after-swipe.png'
-
-opened=$(difference list.png detail.png)
-returned=$(difference list.png after-swipe.png)
-echo "list vs detail: $opened of pixels differ (must be over 0.05)"
-echo "list vs after swipe: $returned of pixels differ (must be under 0.02)"
-if ! python3 -c "import sys; sys.exit(0 if $opened > 0.05 else 1)"; then
-  echo "Tapping the first row didn't open a task (see detail.png)"
-  exit 1
-fi
-if ! python3 -c "import sys; sys.exit(0 if $returned < 0.02 else 1)"; then
+if ! wait_until 'after-swipe.png' 'list.png' below 0.02; then
   echo "Swipe-back didn't return to the list (see after-swipe.png)"
   exit 1
 fi

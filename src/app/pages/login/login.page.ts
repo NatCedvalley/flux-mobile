@@ -62,7 +62,7 @@ export class LoginPage {
     const { email, password } = this.form.getRawValue();
     try {
       await this.auth.login(email, password);
-      await this.router.navigateByUrl('/tabs/tasks', { replaceUrl: true });
+      await this.router.navigateByUrl('/tabs/my-work', { replaceUrl: true });
     } catch (error) {
       this.errorMessage.set(messageFor(error));
     } finally {

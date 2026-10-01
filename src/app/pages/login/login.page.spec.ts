@@ -43,7 +43,7 @@ describe('LoginPage', () => {
     await submitWith('me@flux.test', 'secret');
 
     expect(auth.login).toHaveBeenCalledWith('me@flux.test', 'secret');
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/tasks', {
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/my-work', {
       replaceUrl: true,
     });
   });

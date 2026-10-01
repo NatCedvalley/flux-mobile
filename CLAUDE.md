@@ -30,10 +30,11 @@ src/
 ├── core/     framework-agnostic TypeScript. No Angular/Ionic/Capacitor/rxjs
 │             imports — enforced by eslint.config.js. This is the layer that
 │             would survive a future Flutter or native UI rewrite unchanged.
-├── theme/    design tokens (tokens.scss) and the Ionic variables derived
-│             from them (variables.scss)
-└── app/      Angular/Ionic UI only: pages, routes, and the providers that
-              bridge into src/core
+├── theme/    design tokens (tokens.scss), the CSS variables derived from
+│             them (variables.scss), and the bundled fonts (fonts/,
+│             typography.scss). See §7.
+└── app/      Angular/Ionic UI only: pages, routes, the handoff icon set
+              (icons/), and the providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -47,6 +48,36 @@ src/
   constructor arguments.
 - Business logic and API types belong in `src/core`. Angular services,
   components, and anything using signals/DI/RxJS belong in `src/app`.
+
+### Navigation
+
+`src/app/tabs/tabs.routes.ts` defines three tabs, each its own stack:
+**My Work** (`/tabs/my-work`, the default), **Projects** (`/tabs/projects`)
+and **Inbox** (`/tabs/inbox`). The design has no Settings tab: Settings is
+pushed onto the My Work stack (`/tabs/my-work/settings`) from the avatar
+button. Task detail is routed under every tab as
+`tasks/:projectId/:taskId` (tasks are project-scoped), so it pushes onto the
+tab it was opened from and back returns there; its route `data.backHref` is
+the fallback for a deep link. Link to it relative to the current tab
+(`['tasks', task.projectId, task.id]`), never with an absolute
+`/tabs/<tab>/...` path, or the task opens in the wrong stack.
+
+The app runs in Ionic's `ios` mode on both platforms
+(`provideIonicAngular({ mode: 'ios' })`), which the design requires and
+which gives every stack iOS swipe-back. Android's Back gesture or button is
+handled by `BackButtonService` (`src/app/back-button/`, started from an app
+initializer): it pops the current tab's stack through `NavController.pop()`,
+and calls `App.exitApp()` when there is nothing to pop (a tab's first screen,
+or the login page). Ionic's own handler only pops, so without it Back did
+nothing on a tab root. It runs at priority 1, so open alerts and sheets
+(100) still close first.
+
+Android draws the app under its navigation bar, and some phones (MIUI on
+Android 10) report a 0 bottom inset while the gesture pill covers the tab
+bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
+`--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
+win. Until FM-28 and FM-29, My Work and Projects both list the mock tasks,
+and Releases (handoff screen 3k) has no tab.
 
 ## 4. API layer
 
@@ -233,18 +264,48 @@ The Settings page shows the active environment name and the build version.
 
 ## 7. Theme
 
-Edit `src/theme/tokens.scss` only — it's the single source of design tokens
-(brand color palette, spacing, radius, font family). `src/theme/variables.scss`
-derives every `--ion-color-*` CSS variable from it, plus `--ion-font-family`
-(from `$flux-font-family`) and `--ion-padding` / `--ion-margin` (from the `md`
-spacing token); don't edit that file's values directly. Dark mode follows the OS setting
-(`@ionic/angular/css/palettes/dark.system.css` in `src/global.scss`).
+Edit `src/theme/tokens.scss` only — it's the single source of design tokens,
+copied from the handoff ([§8](#8-design-mockups)): the Radix gray, indigo and
+status hue scales, surfaces, avatar fills, shadows, radii, spacing, and the
+type scale. A value is either shared or a `(light: …, dark: …)` pair.
+
+`src/theme/variables.scss` derives everything else from it; don't put values
+there:
+
+- **`--flux-*` variables**, named after the handoff's tokens: `--flux-n12`
+  (gray 12), `--flux-na3` (gray alpha 3), `--flux-p9` / `--flux-pa3`
+  (indigo), `--flux-red11` / `--flux-reda3` (hues), `--flux-bg` /
+  `--flux-panel` / `--flux-surface`, `--flux-shadow-card`,
+  `--flux-radius-card`, `--flux-space-16`, `--flux-avatar-1` to `-6`.
+  Components style themselves with these only — never a literal colour or
+  spacing value.
+- **Type roles** as `font` shorthands plus letter-spacing:
+  `font: var(--flux-font-row-title); letter-spacing: var(--flux-tracking-row-title);`.
+- **Ionic's variables**: the `--ion-color-*` palette (primary is indigo 9),
+  background, text and their stepped series, and the item, toolbar, tab bar
+  and card backgrounds, plus `--ion-font-family` and `--ion-padding` /
+  `--ion-margin` (16px).
+
+Dark mode follows the OS setting: light values sit on `:root`, and dark ones
+override them under `prefers-color-scheme: dark`. Ionic's own dark palette is
+not imported, because it would override the tokens.
+
+`src/theme/typography.scss` bundles Inter and CommitMono (from
+`src/theme/fonts/`), sets the body text defaults, and defines the
+`.flux-screen-title` class for tab-root titles. Icons are the handoff's
+Lucide set: `registerFluxIcons()` (`src/app/icons/`, called in `main.ts` and
+the test setup) registers all of them with ionicons, so templates use
+`<ion-icon name="list-todo">`. The status bar's text follows the theme
+(`StatusBarService`, native only); on Android the WebView runs edge to edge.
 
 ## 8. Design mockups
 
-Claude Design mockups live in [`docs/design/`](docs/design/README.md), one
-subfolder per screen. When a mockup finalizes a token value, update
-`src/theme/tokens.scss`.
+The current design is the Claude Design handoff in
+[`docs/design/mobile-v2/`](docs/design/mobile-v2/README.md) (see
+[`docs/design/README.md`](docs/design/README.md)). Its README is the spec:
+tokens, screens `3a`–`3n`, and an Ionic component mapping to follow. Recreate
+screens with Ionic primitives; never port its `support.js` runtime or inline
+styles. When a design changes a token value, update `src/theme/tokens.scss`.
 
 ## 9. CI
 
@@ -266,7 +327,7 @@ bypass actors, so a PR can't merge while CI is red. It also rejects a direct
 push to `main` unless that commit has already passed `verify`, so land
 changes through pull requests.
 
-Native builds aren't part of this workflow. An unsigned iOS simulator build,
+Native builds aren't part of this workflow. An ad-hoc-signed iOS simulator build,
 a signed Android release build and a signed iOS release build (with
 TestFlight upload) each run in their own workflow (below).
 
@@ -275,20 +336,40 @@ TestFlight upload) each run in their own workflow (below).
 `.github/workflows/ios-simulator.yml` runs a separate `ios-simulator` job on
 a `macos-26` runner (Xcode 26.6 by default), to build and launch the app on
 an iOS simulator without a Mac. It triggers on pull requests that touch
-`ios/**`, `capacitor.config.ts`, `package.json`, `package-lock.json`, or the
-workflow file itself, and on manual `workflow_dispatch` runs. It is **not**
+`ios/**`, `capacitor.config.ts`, `package.json`, `package-lock.json`,
+`scripts/ci/**`, or the workflow file itself, and on manual
+`workflow_dispatch` runs. It is **not**
 a required check — a path-filtered check can never complete on PRs that skip
 it, which would leave them permanently unmergeable under `main: require CI`.
 
-Steps: `npm ci`, `npm run build`, `npx cap sync ios`, then `xcodebuild` for
-the `App` scheme against `-sdk iphonesimulator` with
-`CODE_SIGNING_ALLOWED=NO` (no signing needed for a simulator build). It then
-boots an iPhone 17 simulator, installs and launches the app
+Steps: `npm ci`, `npm run build:dev`, `npx cap sync ios`, then `xcodebuild`
+for the `App` scheme's Debug configuration against `-sdk iphonesimulator`
+signed ad hoc (`CODE_SIGN_IDENTITY=-`, "Sign to Run Locally", which needs no
+Apple account). Don't switch it to `CODE_SIGNING_ALLOWED=NO`: an unsigned
+app has no entitlements, so the simulator refuses its Keychain writes and
+sign-in fails. It then boots an iPhone 17 simulator, installs and launches the app
 (`asia.justflux.mobile`), and confirms the process is still running 20
 seconds later (`ps` plus `simctl spawn launchctl list`) rather than just
-checking that `simctl launch` returned. A screenshot is uploaded as an
-artifact on every run; the simulator's app log is uploaded only if the job
-fails.
+checking that `simctl launch` returned.
+
+It then checks iOS swipe-back. `scripts/ci/mock-iam.mjs` stands in for
+flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
+sign in as a fixed test account), and `scripts/ci/ios-swipe-back.sh` drives
+the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
+`fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
+tab, and swipes from the left edge. idb can't see inside the WebView (its
+accessibility tree stops at the app), so the script taps fixed points on the
+iPhone 17 and judges the result from screenshots with Pillow. Sign-in must
+reach the mock IAM (checked in its log). After each tap or swipe the script
+polls screenshots for up to 45 s, because idb can deliver input ~15 s late
+on a slow runner: switching to Projects must change over 2% of pixels,
+opening the task over 5%, and the swipe must bring the screen back to within
+2% of the list. Moving the login fields, the tab bar or the Projects list's
+first row means updating the points at the top of the script.
+
+Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and
+the final `flux-ios-simulator.png`) are uploaded as one artifact on every
+run; the simulator's app log and the mock IAM log only if the job fails.
 
 ### Android signed build
 

@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
-  IonTitle,
   IonContent,
   IonList,
   IonItem,
@@ -21,7 +20,6 @@ import { FLUX_API } from '../../providers/flux-api.token';
     RouterLink,
     IonHeader,
     IonToolbar,
-    IonTitle,
     IonContent,
     IonList,
     IonItem,

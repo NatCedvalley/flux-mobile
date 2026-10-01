@@ -1,0 +1,20 @@
+// 44×44 hit target around a 36px avatar (handoff 3a).
+.avatar-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  width: 44px;
+  height: 44px;
+  margin-inline-end: var(--flux-space-8);
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--flux-radius-pill);
+  color: var(--flux-avatar-text);
+  font: var(--flux-font-avatar);
+  letter-spacing: var(--flux-tracking-avatar);
+}

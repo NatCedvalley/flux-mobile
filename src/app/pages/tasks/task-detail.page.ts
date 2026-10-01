@@ -35,11 +35,15 @@ import { FLUX_API } from '../../providers/flux-api.token';
 export class TaskDetailPage {
   private readonly api = inject(FLUX_API);
 
-  // Bound to the ':id' route param via withComponentInputBinding().
-  readonly id = input.required<string>();
+  // Bound to the ':projectId/:taskId' route params and the route's
+  // `backHref` data via withComponentInputBinding().
+  readonly projectId = input.required<string>();
+  readonly taskId = input.required<string>();
+  /** Where back goes when there's no history, e.g. after a deep link. */
+  readonly backHref = input.required<string>();
 
   protected readonly task = resource({
-    params: () => this.id(),
-    loader: ({ params }) => this.api.getTask(params),
+    params: () => ({ projectId: this.projectId(), taskId: this.taskId() }),
+    loader: ({ params }) => this.api.getTask(params.projectId, params.taskId),
   });
 }

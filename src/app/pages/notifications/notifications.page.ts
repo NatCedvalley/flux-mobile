@@ -3,7 +3,6 @@ import { Component, inject, resource } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
-  IonTitle,
   IonContent,
   IonList,
   IonItem,
@@ -21,7 +20,6 @@ import { FLUX_API } from '../../providers/flux-api.token';
     DatePipe,
     IonHeader,
     IonToolbar,
-    IonTitle,
     IonContent,
     IonList,
     IonItem,

@@ -3,6 +3,8 @@ import {
   AlertController,
   IonHeader,
   IonToolbar,
+  IonButtons,
+  IonBackButton,
   IonTitle,
   IonContent,
   IonList,
@@ -23,6 +25,8 @@ import { AppLockService } from '../../lock/app-lock.service';
   imports: [
     IonHeader,
     IonToolbar,
+    IonButtons,
+    IonBackButton,
     IonTitle,
     IonContent,
     IonList,

@@ -18,5 +18,5 @@ export const guestGuard: CanMatchFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   await auth.restore();
-  return !auth.isSignedIn() || router.parseUrl('/tabs/tasks');
+  return !auth.isSignedIn() || router.parseUrl('/tabs/my-work');
 };

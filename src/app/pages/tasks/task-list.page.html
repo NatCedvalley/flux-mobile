@@ -1,6 +1,6 @@
-<ion-header>
+<ion-header class="ion-no-border">
   <ion-toolbar>
-    <ion-title>Tasks</ion-title>
+    <h1 class="flux-screen-title">Projects</h1>
   </ion-toolbar>
 </ion-header>
 
@@ -13,7 +13,7 @@
     <ion-list>
       @for (task of tasks.value(); track task.id) {
         <ion-item
-          [routerLink]="['/tabs/tasks', task.id]"
+          [routerLink]="['tasks', task.projectId, task.id]"
           button="true"
           detail="true"
         >

@@ -1,0 +1,38 @@
+// Bundled fonts and body text defaults, from the design handoff
+// (docs/design/mobile-v2/README.md, "Typography"). Families and sizes are
+// tokens (tokens.scss); this file only wires them up.
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/InterVariable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'CommitMono';
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url('./fonts/CommitMonoVariable.woff2') format('woff2');
+}
+
+body {
+  font: var(--flux-font-body);
+  letter-spacing: var(--flux-tracking-body);
+  font-feature-settings: 'salt';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Tab-root screen title (My Work, Projects, Inbox), set in the header's
+// toolbar. Custom markup rather than `ion-title size="large"`, because the
+// design's title block also carries a subtitle.
+.flux-screen-title {
+  margin: 0;
+  padding: var(--flux-space-6) var(--flux-space-16) var(--flux-space-10);
+  font: var(--flux-font-screen-title);
+  letter-spacing: var(--flux-tracking-screen-title);
+  color: var(--flux-n12);
+}

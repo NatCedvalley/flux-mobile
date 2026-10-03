@@ -16,7 +16,11 @@ over HTTP once that integration is built.
 - Package manager: **npm**
 - Tests: **Vitest** (via `@angular/build:unit-test`, coverage via
   `@vitest/coverage-v8`), lint: **ESLint** via `angular-eslint`, format:
-  **Prettier**
+  **Prettier**. The test target sets `"isolate": true`: the builder
+  defaults to sharing loaded modules between spec files, so a spec's
+  `vi.mock` of a plugin could arrive after another spec had already loaded
+  the real one (seen in `app-lock.service.spec.ts`). It roughly doubles
+  the suite's time, still under 30 s.
 - A husky pre-commit hook runs `lint-staged` (ESLint `--fix` then Prettier)
   on staged files and blocks the commit if either fails
 
@@ -34,7 +38,8 @@ src/
 │             them (variables.scss), and the bundled fonts (fonts/,
 │             typography.scss). See §7.
 └── app/      Angular/Ionic UI only: pages, routes, the handoff icon set
-              (icons/), and the providers that bridge into src/core
+              (icons/), shared list components (shared/), and the
+              providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -76,22 +81,46 @@ Android draws the app under its navigation bar, and some phones (MIUI on
 Android 10) report a 0 bottom inset while the gesture pill covers the tab
 bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
 `--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
-win. Until FM-28 and FM-29, My Work and Projects both list the mock tasks,
-and Releases (handoff screen 3k) has no tab.
+win. Until FM-29, the Projects tab lists the user's open assigned tasks
+(`listMyTasks`), and Releases (handoff screen 3k) has no tab.
+
+### My Work
+
+My Work (handoff 3a) has three segments, each one `GET /dashboard/my-tasks`
+query of open tasks (one page of 100). **Focus** asks for those assigned
+and due by today + 7 days, and `focusBuckets()` (`src/core/my-work/`) splits
+them into Overdue, Today and Next 7 days. **All assigned** has no due window
+and also gives the subtitle's count. **Watching** loads the first time it's
+opened. Rows keep the server's order (priority, then due date). Due dates
+are date-only strings compared with the device's local day, never parsed
+as UTC. The row's second fact is the priority when it is CRITICAL (shown as
+"Critical") or HIGH, otherwise the due date; the status dot's hue comes from
+`statusCategory`, not the project's `statusColor`, so it stays on the tokens.
+
+`src/app/shared/` holds the pieces other lists reuse: `app-task-row`, and
+the list states `app-skeleton-rows` (fades in after 200 ms of loading, by a
+CSS animation delay), `app-empty-state` and `app-error-state` (Retry; says
+"Couldn't reach Flux" for an `ApiError` with status 0). Pull-to-refresh
+reloads the visible segment and keeps its rows on screen meanwhile.
 
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
-(Promise-based, not RxJS, so it stays portable). The `Task` and
-`AppNotification` types it uses are aliases, in `src/core/api/types/index.ts`,
-of DTOs generated from the backend's OpenAPI spec.
-`src/core/mock/in-memory-flux-api.ts` implements it over static fixtures and
-is what `main.ts` provides today — the only real network calls so far are
-the sign-in ones below.
+(Promise-based, not RxJS, so it stays portable) over flux-operations: my
+tasks, a project's tasks, one task, my projects, workflow statuses and
+notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
+backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
+because springdoc emits the list endpoints' 200 responses as `unknown`.
 
-A real `FluxApi` implementation will later replace `InMemoryFluxApi` in the
-`main.ts` provider. Call sites (`import { Task } from '@core/api'`) do not
-change.
+`HttpFluxApi` (`src/core/api/http-flux-api.ts`) is what `main.ts` provides:
+it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
+written without it) and makes every request through
+`AuthService.withAccessToken` (see below). `JsonHttpClient`
+(`src/core/http/`) is the request, timeout, query-string and JSON handling
+it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
+test double: its fixtures are dated relative to today and it applies the
+my-tasks filters, so page specs use it.
 
 ### Authentication
 
@@ -222,19 +251,22 @@ Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with
 ### Reaching the local backend
 
 Sign-in talks to flux-iam at `iamBaseUrl` (dev: `http://localhost:9001`),
-run with the flux repo's `scripts/start-local.sh`.
+and everything else to flux-operations at `apiBaseUrl` (dev:
+`http://localhost:9003`), both run with the flux repo's
+`scripts/start-local.sh`.
 
-- **Web** (`npm start`, origin `http://localhost:8100`): flux-iam's CORS
-  list only has `http://localhost:4200` by default. In the flux repo, set
+- **Web** (`npm start`, origin `http://localhost:8100`): the CORS list only
+  has `http://localhost:4200` by default. In the flux repo, set
   `CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8100` in
-  `.env` (what the containers read; also in `.env.local`, which
-  `start-local.sh` copies to `.env` when `.env` is missing), then recreate
-  flux-iam so it picks up the change — `docker restart` keeps the old
-  environment:
-  `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d flux-iam`.
-- **Android** (emulator or USB phone): forward the port so the device's
+  `.env` (what the containers read, and both services use it; also in
+  `.env.local`, which `start-local.sh` copies to `.env` when `.env` is
+  missing), then recreate both services so they pick up the change —
+  `docker restart` keeps the old environment:
+  `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d flux-iam flux-operations`.
+- **Android** (emulator or USB phone): forward the ports so the device's
   `localhost` is your machine's, then run the dev build:
-  `adb reverse tcp:9001 tcp:9001`. Debug builds allow cleartext http
+  `adb reverse tcp:9001 tcp:9001` and `adb reverse tcp:9003 tcp:9003`.
+  Debug builds allow cleartext http
   (`android/app/src/debug/AndroidManifest.xml`); release builds don't.
 - **iOS simulator**: shares the Mac's `localhost`. A Debug-only build phase
   ("Allow local HTTP in Debug") adds `NSAllowsLocalNetworking` to the built
@@ -354,7 +386,10 @@ checking that `simctl launch` returned.
 
 It then checks iOS swipe-back. `scripts/ci/mock-iam.mjs` stands in for
 flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
-sign in as a fixed test account), and `scripts/ci/ios-swipe-back.sh` drives
+sign in as a fixed test account), `scripts/ci/mock-operations.mjs` for
+flux-operations on `localhost:9003` (three tasks dated around today, so
+My Work and the Projects list have rows), and
+`scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
 tab, and swipes from the left edge. idb can't see inside the WebView (its
@@ -369,7 +404,7 @@ first row means updating the points at the top of the script.
 
 Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and
 the final `flux-ios-simulator.png`) are uploaded as one artifact on every
-run; the simulator's app log and the mock IAM log only if the job fails.
+run; the simulator's app log and both mock logs only if the job fails.
 
 ### Android signed build
 
@@ -535,6 +570,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-real API calls beyond sign-in, push notifications
+task writes (status changes, edits, create: FM-6), push notifications
 (FM-7 also unregisters the device token in `AuthSession.logout()`), offline
 caching, app store assets, and Play Store upload.

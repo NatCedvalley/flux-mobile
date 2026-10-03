@@ -1,0 +1,23 @@
+<ion-icon
+  [name]="offline() ? 'cloud-off' : 'info'"
+  aria-hidden="true"
+></ion-icon>
+<p>
+  @if (offline()) {
+    Couldn't reach Flux. Check your connection and try again.
+  } @else {
+    Something went wrong loading this list.
+  }
+</p>
+<ion-button
+  fill="clear"
+  size="small"
+  (click)="retry.emit()"
+>
+  <ion-icon
+    slot="start"
+    name="refresh-cw"
+    aria-hidden="true"
+  ></ion-icon>
+  Retry
+</ion-button>

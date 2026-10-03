@@ -1,3 +1,16 @@
+// Title block (handoff 3a): title, then the date and assigned count.
+.flux-screen-title {
+  padding-bottom: 0;
+}
+
+.subtitle {
+  margin: 0;
+  padding: 0 var(--flux-space-16) var(--flux-space-10);
+  font: var(--flux-font-screen-subtitle);
+  letter-spacing: var(--flux-tracking-screen-subtitle);
+  color: var(--flux-na11);
+}
+
 // 44×44 hit target around a 36px avatar (handoff 3a).
 .avatar-button {
   --padding-start: 0;
@@ -17,4 +30,75 @@
   color: var(--flux-avatar-text);
   font: var(--flux-font-avatar);
   letter-spacing: var(--flux-tracking-avatar);
+}
+
+// Focus / All assigned / Watching: a 36px track in `--na3`, the active
+// chip in `--n1` (dark `--n5`) with a small shadow.
+.segment-bar {
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-16);
+  --padding-bottom: var(--flux-space-12);
+  --min-height: 0;
+}
+
+ion-segment {
+  --background: var(--flux-na3);
+  min-height: 36px;
+  border-radius: var(--flux-radius-segmented);
+}
+
+ion-segment-button {
+  --indicator-color: var(--flux-n1);
+  --indicator-box-shadow: var(--flux-shadow-segmented);
+  --border-radius: var(--flux-radius-segmented);
+  --color: var(--flux-na11);
+  --color-checked: var(--flux-n12);
+  min-height: 36px;
+  font: var(--flux-font-segment-label);
+  letter-spacing: var(--flux-tracking-segment-label);
+
+  &.segment-button-checked {
+    font: var(--flux-font-segment-label-active);
+    letter-spacing: var(--flux-tracking-segment-label-active);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  ion-segment-button {
+    --indicator-color: var(--flux-n5);
+  }
+}
+
+ion-list {
+  padding: 0;
+}
+
+// Bucket headers: 34px, uppercase section-header type. Overdue is red,
+// with a clock, and says so in words too. The a2/a3 washes sit on the row
+// background, so rows don't show through a sticky header.
+ion-item-divider {
+  --background:
+    linear-gradient(var(--flux-na2), var(--flux-na2)),
+    var(--ion-item-background);
+  --color: var(--flux-na11);
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  min-height: 34px;
+  border-bottom: 1px solid var(--flux-na3);
+  text-transform: uppercase;
+  font: var(--flux-font-section-header);
+  letter-spacing: var(--flux-tracking-section-header);
+
+  &.overdue {
+    --background:
+      linear-gradient(var(--flux-reda3), var(--flux-reda3)),
+      var(--ion-item-background);
+    --color: var(--flux-red11);
+    border-bottom: 0;
+  }
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-8);
+    font-size: 14px;
+  }
 }

@@ -3,5 +3,6 @@ export {
   AVATAR_FILL_COUNT,
   avatarFillIndex,
   initials,
+  stableIndex,
   type PersonName,
 } from './avatar';

@@ -2,4 +2,5 @@
 // a submodule directly — this is the seam that stays stable when hand-written
 // types are replaced by generated ones.
 export type { FluxApi } from './flux-api';
+export { HttpFluxApi, type WithAccessToken } from './http-flux-api';
 export * from './types';

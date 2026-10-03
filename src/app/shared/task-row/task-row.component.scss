@@ -1,0 +1,122 @@
+// Handoff 3a row: 68px minimum (it grows with Dynamic Type), 16px gutters,
+// an 11px gap from the type icon, a `--na3` bottom border.
+:host {
+  display: block;
+}
+
+ion-item {
+  --min-height: 68px;
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+}
+
+.type {
+  flex: none;
+  margin: 0 var(--flux-space-11) 0 0;
+  font-size: 17px;
+  color: var(--flux-na11);
+
+  &.overdue {
+    color: var(--flux-red11);
+  }
+}
+
+.body {
+  flex: auto;
+  min-width: 0;
+  padding: var(--flux-space-12) 0;
+}
+
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-row-title);
+  letter-spacing: var(--flux-tracking-row-title);
+  color: var(--flux-n12);
+}
+
+// `status · second fact · KEY`. The separator is drawn before every part but
+// the first, so a missing part never leaves a stray dot.
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-7);
+  min-width: 0;
+  margin-top: var(--flux-space-4);
+  overflow: hidden;
+  white-space: nowrap;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+
+  > * + *::before {
+    content: '·' / '';
+    margin-inline-end: var(--flux-space-7);
+    font-weight: normal;
+    color: var(--flux-na7);
+  }
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  font: var(--flux-font-meta-strong);
+  color: var(--status-text);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  margin-inline-end: var(--flux-space-4);
+  border-radius: var(--flux-radius-pill);
+  background: var(--status-dot);
+}
+
+.priority {
+  display: inline-flex;
+  align-items: center;
+  font: var(--flux-font-meta-strong);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-2);
+    font-size: 12px;
+  }
+
+  &[data-level='CRITICAL'] {
+    color: var(--flux-red11);
+  }
+
+  &[data-level='HIGH'] {
+    color: var(--flux-amber11);
+  }
+}
+
+.due.overdue {
+  font: var(--flux-font-meta-strong);
+  color: var(--flux-red11);
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+}
+
+// Read-only pill (a span, not ion-chip): 22px, project-hued a3 fill.
+.project {
+  flex: none;
+  max-width: 40%;
+  height: 22px;
+  margin: 0 0 0 var(--flux-space-8);
+  padding: 0 var(--flux-space-7);
+  overflow: hidden;
+  border-radius: var(--flux-radius-tag);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-tag);
+  letter-spacing: var(--flux-tracking-tag);
+  line-height: 22px;
+  background: var(--chip-fill);
+  color: var(--chip-text);
+}

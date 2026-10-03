@@ -38,9 +38,14 @@ export function initials(person: PersonName): string {
  * key (an account id) always gets the same fill.
  */
 export function avatarFillIndex(key: string): number {
+  return stableIndex(key, AVATAR_FILL_COUNT);
+}
+
+/** An index from 0 to `count - 1` that is always the same for one key. */
+export function stableIndex(key: string, count: number): number {
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
     hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   }
-  return hash % AVATAR_FILL_COUNT;
+  return hash % count;
 }

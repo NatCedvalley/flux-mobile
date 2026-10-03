@@ -34,8 +34,9 @@ jobs:
 
       - run: npm ci
 
-      # The dev build points sign-in at localhost:9001, where the mock IAM
-      # below answers; the Debug app allows local HTTP (CLAUDE.md §5).
+      # The dev build points sign-in at localhost:9001 and the task API at
+      # localhost:9003, where the mocks below answer; the Debug app allows
+      # local HTTP (CLAUDE.md §5).
       - run: npm run build:dev
 
       - run: npx cap sync ios
@@ -62,6 +63,18 @@ jobs:
           done
           echo "Mock IAM did not start"
           cat "$RUNNER_TEMP/artifacts/mock-iam.log"
+          exit 1
+
+      - name: Start mock flux-operations
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          node scripts/ci/mock-operations.mjs > "$RUNNER_TEMP/artifacts/mock-operations.log" 2>&1 &
+          for _ in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:9003/api/v1/dashboard/my-tasks && exit 0
+            sleep 0.5
+          done
+          echo "Mock flux-operations did not start"
+          cat "$RUNNER_TEMP/artifacts/mock-operations.log"
           exit 1
 
       - name: Show Xcode and scheme info
@@ -169,4 +182,5 @@ jobs:
           path: |
             ${{ runner.temp }}/artifacts/app.log
             ${{ runner.temp }}/artifacts/mock-iam.log
+            ${{ runner.temp }}/artifacts/mock-operations.log
           if-no-files-found: warn

@@ -32,6 +32,6 @@ export class NotificationsPage {
   private readonly api = inject(FLUX_API);
 
   protected readonly notifications = resource({
-    loader: () => this.api.listNotifications(),
+    loader: async () => (await this.api.listNotifications()).content ?? [],
   });
 }

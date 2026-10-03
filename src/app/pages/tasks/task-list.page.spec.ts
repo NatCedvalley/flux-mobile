@@ -28,9 +28,13 @@ describe('TaskListPage', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders every fixture task title', async () => {
-    const api = new InMemoryFluxApi();
-    const tasks = await api.listTasks();
+  it('renders every open assigned task title', async () => {
+    const page = await new InMemoryFluxApi().listMyTasks({
+      scope: 'assigned',
+      openOnly: true,
+    });
+    const tasks = page.content ?? [];
+    expect(tasks.length).toBeGreaterThan(0);
 
     await fixture.whenStable();
     fixture.detectChanges();

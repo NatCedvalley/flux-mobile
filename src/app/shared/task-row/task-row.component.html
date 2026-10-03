@@ -1,0 +1,61 @@
+<ion-item
+  [routerLink]="['tasks', task().projectId, task().id]"
+  button="true"
+  detail="false"
+>
+  <ion-icon
+    slot="start"
+    class="type"
+    [class.overdue]="overdue()"
+    [name]="icon()"
+    aria-hidden="true"
+  ></ion-icon>
+  <div class="body">
+    <div class="title">{{ task().title }}</div>
+    <div class="meta">
+      @if (status()) {
+        <span
+          class="status"
+          [style]="statusColors()"
+        >
+          <span
+            class="dot"
+            aria-hidden="true"
+          ></span
+          >{{ status() }}
+        </span>
+      }
+      @if (fact(); as fact) {
+        @if (fact.kind === 'priority') {
+          <span
+            class="priority"
+            [attr.data-level]="fact.level"
+          >
+            <ion-icon
+              [name]="fact.level === 'CRITICAL' ? 'chevrons-up' : 'arrow-up'"
+              aria-hidden="true"
+            ></ion-icon
+            >{{ fact.label }}
+          </span>
+        } @else {
+          <span
+            class="due"
+            [class.overdue]="fact.overdue"
+            >{{ fact.label }}</span
+          >
+        }
+      }
+      @if (task().taskKey) {
+        <span class="key">{{ task().taskKey }}</span>
+      }
+    </div>
+  </div>
+  @if (task().projectName) {
+    <span
+      slot="end"
+      class="project"
+      [style]="chipColors()"
+      >{{ task().projectName }}</span
+    >
+  }
+</ion-item>

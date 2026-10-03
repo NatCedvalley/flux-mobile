@@ -218,6 +218,7 @@ export type TaskResolutionResponse = {
 };
 
 export type UpdateReleaseRequest = {
+    versionTag?: string;
     title?: string;
     description?: string;
     releaseType?: 'MAJOR' | 'MINOR' | 'PATCH' | 'HOTFIX';
@@ -1236,6 +1237,23 @@ export type ProjectActivityResponse = {
     updatedAt?: string;
 };
 
+export type MyProjectResponse = {
+    project?: ProjectResponse;
+    role?: 'VIEWER' | 'COMMENTER' | 'EDITOR' | 'LEAD' | 'MANAGER';
+    openCount?: number;
+    overdueCount?: number;
+};
+
+export type PagedResponseMyProjectResponse = {
+    content?: Array<MyProjectResponse>;
+    page?: number;
+    size?: number;
+    totalElements?: number;
+    totalPages?: number;
+    first?: boolean;
+    last?: boolean;
+};
+
 export type PagedResponseOrganizationResponse = {
     content?: Array<OrganizationResponse>;
     page?: number;
@@ -1269,6 +1287,37 @@ export type PagedResponseNotificationResponse = {
 export type UnseenCountResponse = {
     count?: number;
     lastSeenAt?: string;
+};
+
+export type MyTaskResponse = {
+    id?: string;
+    projectId?: string;
+    projectKey?: string;
+    projectName?: string;
+    taskKey?: string;
+    title?: string;
+    type?: 'MASTER' | 'EPIC' | 'BUG' | 'FEATURE' | 'TASK' | 'IMPROVEMENT';
+    status?: string;
+    statusName?: string;
+    statusColor?: string;
+    statusCategory?: 'PLANNING' | 'TODO' | 'IN_PROGRESS' | 'DONE';
+    priority?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    dueDate?: string;
+    plannedStartDate?: string;
+    plannedEndDate?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    assignees?: Array<TaskAssigneeResponse>;
+};
+
+export type PagedResponseMyTaskResponse = {
+    content?: Array<MyTaskResponse>;
+    page?: number;
+    size?: number;
+    totalElements?: number;
+    totalPages?: number;
+    first?: boolean;
+    last?: boolean;
 };
 
 export type MyInProgressTaskResponse = {
@@ -1879,6 +1928,14 @@ export type UpdateReleaseErrors = {
      * Release or project not found
      */
     404: ReleaseResponse;
+    /**
+     * New version tag already exists in the project (DUPLICATE_VERSION_TAG)
+     */
+    409: ReleaseResponse;
+    /**
+     * New version tag format is invalid (INVALID_VERSION_FORMAT)
+     */
+    422: ReleaseResponse;
 };
 
 export type UpdateReleaseError = UpdateReleaseErrors[keyof UpdateReleaseErrors];
@@ -2781,11 +2838,16 @@ export type ListTasksData = {
         size?: number;
         includeChildren?: boolean;
         search?: string;
+        sort?: string;
     };
     url: '/api/v1/projects/{projectId}/tasks';
 };
 
 export type ListTasksErrors = {
+    /**
+     * INVALID_SORT_FIELD: sort names an unsupported field or direction
+     */
+    400: PagedResponseTaskResponse;
     /**
      * Insufficient project role
      */
@@ -3320,10 +3382,6 @@ export type CreateReleaseData = {
 
 export type CreateReleaseErrors = {
     /**
-     * Invalid version tag
-     */
-    400: unknown;
-    /**
      * Insufficient project role
      */
     403: ReleaseResponse;
@@ -3335,6 +3393,10 @@ export type CreateReleaseErrors = {
      * Duplicate version tag
      */
     409: unknown;
+    /**
+     * Invalid version tag format (expected vX.Y.Z or vX.Y.Z.H)
+     */
+    422: unknown;
 };
 
 export type CreateReleaseError = CreateReleaseErrors[keyof CreateReleaseErrors];
@@ -5617,6 +5679,46 @@ export type GetActivitiesResponses = {
 
 export type GetActivitiesResponse = GetActivitiesResponses[keyof GetActivitiesResponses];
 
+export type ListMyProjectsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * IANA time zone for the overdue cut-off, e.g. Asia/Kuala_Lumpur (default)
+         */
+        tz?: string;
+        /**
+         * Page number (zero-based)
+         */
+        page?: number;
+        /**
+         * Page size (1..100)
+         */
+        size?: number;
+    };
+    url: '/api/v1/projects/mine';
+};
+
+export type ListMyProjectsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: PagedResponseMyProjectResponse;
+    /**
+     * Missing PROJECTS READ permission
+     */
+    403: PagedResponseMyProjectResponse;
+};
+
+export type ListMyProjectsError = ListMyProjectsErrors[keyof ListMyProjectsErrors];
+
+export type ListMyProjectsResponses = {
+    /**
+     * Projects retrieved successfully
+     */
+    200: unknown;
+};
+
 export type List2Data = {
     body?: never;
     path?: never;
@@ -5714,6 +5816,74 @@ export type HandleOAuthCallbackErrors = {
      * Invalid state or code
      */
     400: unknown;
+};
+
+export type GetMyTasksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * assigned (default) or watching
+         */
+        scope?: string;
+        /**
+         * Omit tasks whose status category is DONE
+         */
+        openOnly?: boolean;
+        /**
+         * Inclusive lower bound on the due date (yyyy-MM-dd)
+         */
+        dueDateFrom?: string;
+        /**
+         * Inclusive upper bound on the due date (yyyy-MM-dd)
+         */
+        dueDateTo?: string;
+        /**
+         * Restrict to one project
+         */
+        projectId?: string;
+        /**
+         * Status slug, or comma-separated slugs
+         */
+        status?: string;
+        /**
+         * Priority, or comma-separated priorities
+         */
+        priority?: string;
+        /**
+         * Matches the title or task key, case-insensitive
+         */
+        search?: string;
+        /**
+         * Page number (zero-based)
+         */
+        page?: number;
+        /**
+         * Page size (1..100)
+         */
+        size?: number;
+    };
+    url: '/api/v1/dashboard/my-tasks';
+};
+
+export type GetMyTasksErrors = {
+    /**
+     * Not authenticated
+     */
+    401: PagedResponseMyTaskResponse;
+    /**
+     * INVALID_REQUEST for an unknown scope or priority, INVALID_DATE_RANGE when dueDateTo is before dueDateFrom
+     */
+    422: PagedResponseMyTaskResponse;
+};
+
+export type GetMyTasksError = GetMyTasksErrors[keyof GetMyTasksErrors];
+
+export type GetMyTasksResponses = {
+    /**
+     * My task list
+     */
+    200: unknown;
 };
 
 export type GetMyInProgressTasksData = {

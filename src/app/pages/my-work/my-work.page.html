@@ -1,6 +1,14 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
-    <h1 class="flux-screen-title">My Work</h1>
+    <div class="title-block">
+      <h1 class="flux-screen-title">My Work</h1>
+      <p class="subtitle">
+        {{ todayDate() | date: 'EEEE, d MMMM' }}
+        @if (assignedCount() !== undefined) {
+          · {{ assignedCount() }} assigned
+        }
+      </p>
+    </div>
     <ion-buttons slot="end">
       <ion-button
         class="avatar-button"
@@ -16,29 +24,109 @@
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
+  <ion-toolbar class="segment-bar">
+    <ion-segment
+      [value]="segment()"
+      (ionChange)="select($event)"
+    >
+      <ion-segment-button value="focus">
+        <ion-label>Focus</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="assigned">
+        <ion-label>All assigned</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="watching">
+        <ion-label>Watching</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  @if (tasks.isLoading()) {
-    <div class="ion-text-center ion-padding">
-      <ion-spinner name="crescent"></ion-spinner>
-    </div>
-  } @else {
-    <ion-list>
-      @for (task of tasks.value(); track task.id) {
-        <ion-item
-          [routerLink]="['tasks', task.projectId, task.id]"
-          button="true"
-          detail="true"
-        >
-          <ion-label>
-            <h2>{{ task.title }}</h2>
-            @if (task.description) {
-              <p>{{ task.description }}</p>
+  <ion-refresher
+    slot="fixed"
+    (ionRefresh)="refresh($event)"
+  >
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  @let list = current();
+  @if (list.error() && !list.isLoading()) {
+    <app-error-state
+      [error]="list.error()"
+      (retry)="retry()"
+    />
+  } @else if (!list.hasValue()) {
+    <app-skeleton-rows />
+  } @else if (segment() === 'focus') {
+    @if (focusEmpty()) {
+      <app-empty-state
+        icon="circle-check"
+        [message]="emptyMessage()"
+      />
+    } @else {
+      <ion-list lines="full">
+        @let b = buckets();
+        @if (b.overdue.length) {
+          <ion-item-group>
+            <ion-item-divider
+              sticky="true"
+              class="overdue"
+            >
+              <ion-icon
+                name="clock"
+                aria-hidden="true"
+              ></ion-icon>
+              Overdue · {{ b.overdue.length }}
+            </ion-item-divider>
+            @for (task of b.overdue; track task.id) {
+              <app-task-row
+                [task]="task"
+                [today]="today()"
+              />
             }
-          </ion-label>
-          <ion-note slot="end">{{ task.status }}</ion-note>
-        </ion-item>
+          </ion-item-group>
+        }
+        @if (b.today.length) {
+          <ion-item-group>
+            <ion-item-divider sticky="true">
+              Today · {{ b.today.length }}
+            </ion-item-divider>
+            @for (task of b.today; track task.id) {
+              <app-task-row
+                [task]="task"
+                [today]="today()"
+              />
+            }
+          </ion-item-group>
+        }
+        @if (b.next7.length) {
+          <ion-item-group>
+            <ion-item-divider sticky="true">
+              Next 7 days · {{ b.next7.length }}
+            </ion-item-divider>
+            @for (task of b.next7; track task.id) {
+              <app-task-row
+                [task]="task"
+                [today]="today()"
+              />
+            }
+          </ion-item-group>
+        }
+      </ion-list>
+    }
+  } @else if (rows().length === 0) {
+    <app-empty-state
+      icon="circle-check"
+      [message]="emptyMessage()"
+    />
+  } @else {
+    <ion-list lines="full">
+      @for (task of rows(); track task.id) {
+        <app-task-row
+          [task]="task"
+          [today]="today()"
+        />
       }
     </ion-list>
   }

@@ -281,6 +281,8 @@ $flux-scrim: (
 
 $flux-radius: (
   pill: 99px,
+  // Read-only pills under 26px, such as a row's project chip.
+  tag: 6px,
   chip: 8px,
   button: 10px,
   card: 12px,
@@ -291,12 +293,15 @@ $flux-radius: (
 ) !default;
 
 // Vertical rhythm is 8 / 10 / 12 / 14 / 16; the screen and sheet gutter is 16.
+// 7 and 11 are the gaps inside a task row (meta line, and icon to text).
 $flux-space: (
   2: 2px,
   4: 4px,
   6: 6px,
+  7: 7px,
   8: 8px,
   10: 10px,
+  11: 11px,
   12: 12px,
   14: 14px,
   16: 16px,
@@ -404,6 +409,11 @@ $flux-type: (
     weight: 550,
     mono: true,
   ),
+  // A row's project chip.
+  tag: (
+      size: 11px,
+      weight: 650,
+    ),
   // Initials in a 36px avatar. The handoff fixes the weight (650); the size
   // is ours.
   avatar: (

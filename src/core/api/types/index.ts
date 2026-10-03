@@ -9,12 +9,48 @@ import type {
   RefreshTokenRequest as IamRefreshTokenRequest,
 } from '../generated/iam';
 import type {
+  GetMyTasksData,
+  List2Data,
+  ListTasksData,
+  MyProjectResponse,
+  MyTaskResponse,
   NotificationResponse,
   TaskResponse,
+  WorkflowStatusResponse,
 } from '../generated/operations';
 
 export type Task = TaskResponse;
+/** A row of GET /dashboard/my-tasks: a task plus its project and status. */
+export type MyTask = MyTaskResponse;
+/** A project with the caller's role and its open and overdue counts. */
+export type MyProject = MyProjectResponse;
+export type WorkflowStatus = WorkflowStatusResponse;
 export type AppNotification = NotificationResponse;
+
+/**
+ * The backend's paged list (`PagedResponse*` in the spec). Hand-written and
+ * generic because springdoc emits the list endpoints' 200 responses as
+ * `unknown`.
+ */
+export type Page<T> = {
+  content?: T[];
+  page?: number;
+  size?: number;
+  totalElements?: number;
+  totalPages?: number;
+  first?: boolean;
+  last?: boolean;
+};
+
+export type MyTasksQuery = Omit<
+  NonNullable<GetMyTasksData['query']>,
+  'scope'
+> & {
+  /** The server defaults to `assigned`. */
+  scope?: 'assigned' | 'watching';
+};
+export type ProjectTasksQuery = NonNullable<ListTasksData['query']>;
+export type NotificationsQuery = NonNullable<List2Data['query']>;
 
 export type Account = AccountResponse;
 export type AuthTokens = AuthResponse;

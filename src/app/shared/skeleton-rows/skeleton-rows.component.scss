@@ -1,0 +1,58 @@
+// Same geometry as app-task-row, in `--na3` blocks.
+:host {
+  display: block;
+  opacity: 0;
+  animation: fade-in 150ms ease-out 200ms forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+ion-list {
+  padding: 0;
+  background: transparent;
+}
+
+ion-item {
+  --min-height: 68px;
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+}
+
+ion-skeleton-text {
+  --background: var(--flux-na3);
+  --background-rgb: var(--ion-text-color-rgb);
+  margin: 0;
+  border-radius: var(--flux-radius-tag);
+}
+
+.icon {
+  width: 17px;
+  height: 17px;
+  margin-inline-end: var(--flux-space-11);
+}
+
+.body {
+  flex: auto;
+}
+
+.title {
+  width: 70%;
+  height: 15px;
+}
+
+.meta {
+  width: 45%;
+  height: 11px;
+  margin-top: var(--flux-space-6);
+}
+
+.chip {
+  width: 56px;
+  height: 22px;
+  margin-inline-start: var(--flux-space-8);
+}

@@ -9,10 +9,11 @@ import {
 } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular';
+import { HttpFluxApi } from '@core/api';
 import { MemoryTokenStore } from '@core/auth';
-import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { AuthService } from './app/auth/auth.service';
 import { BackButtonService } from './app/back-button/back-button.service';
 import { registerFluxIcons } from './app/icons/register-icons';
 import { AppLockService } from './app/lock/app-lock.service';
@@ -20,6 +21,7 @@ import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
 import { StatusBarService } from './app/status-bar/status-bar.service';
+import { environment } from './environments/environment';
 
 registerFluxIcons();
 
@@ -34,9 +36,16 @@ bootstrapApplication(AppComponent, {
       withPreloading(PreloadAllModules),
       withComponentInputBinding()
     ),
-    // Swap InMemoryFluxApi for a real HTTP implementation when the backend
-    // exposes an OpenAPI spec. Everything else in the app is unaffected.
-    { provide: FLUX_API, useFactory: () => new InMemoryFluxApi() },
+    // flux-operations, with every call made through the session's token.
+    {
+      provide: FLUX_API,
+      useFactory: () => {
+        const auth = inject(AuthService);
+        return new HttpFluxApi(environment.apiBaseUrl, (call) =>
+          auth.withAccessToken(call)
+        );
+      },
+    },
     // Keychain/Keystore on native. Web keeps tokens in memory only: the
     // secure storage plugin's web fallback is localStorage.
     {

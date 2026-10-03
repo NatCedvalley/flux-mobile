@@ -1,0 +1,26 @@
+// Shared by app-empty-state and app-error-state: centred in the list area.
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--flux-space-8);
+  padding: var(--flux-space-32) var(--flux-space-24);
+  text-align: center;
+  color: var(--flux-na11);
+}
+
+:host > ion-icon {
+  font-size: 24px;
+  color: var(--flux-na11);
+}
+
+p {
+  margin: 0;
+  font: var(--flux-font-body);
+  letter-spacing: var(--flux-tracking-body);
+}
+
+ion-button {
+  --color: var(--flux-p11);
+  font: var(--flux-font-meta-strong);
+}

@@ -1,0 +1,26 @@
+<ion-list lines="full">
+  @for (row of rows(); track row) {
+    <ion-item>
+      <ion-skeleton-text
+        slot="start"
+        class="icon"
+        animated="true"
+      ></ion-skeleton-text>
+      <div class="body">
+        <ion-skeleton-text
+          class="title"
+          animated="true"
+        ></ion-skeleton-text>
+        <ion-skeleton-text
+          class="meta"
+          animated="true"
+        ></ion-skeleton-text>
+      </div>
+      <ion-skeleton-text
+        slot="end"
+        class="chip"
+        animated="true"
+      ></ion-skeleton-text>
+    </ion-item>
+  }
+</ion-list>

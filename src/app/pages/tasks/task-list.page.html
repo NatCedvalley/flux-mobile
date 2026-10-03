@@ -19,11 +19,11 @@
         >
           <ion-label>
             <h2>{{ task.title }}</h2>
-            @if (task.description) {
-              <p>{{ task.description }}</p>
+            @if (task.taskKey) {
+              <p>{{ task.taskKey }} · {{ task.projectName }}</p>
             }
           </ion-label>
-          <ion-note slot="end">{{ task.status }}</ion-note>
+          <ion-note slot="end">{{ task.statusName ?? task.status }}</ion-note>
         </ion-item>
       }
     </ion-list>

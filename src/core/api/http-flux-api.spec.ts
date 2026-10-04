@@ -63,6 +63,22 @@ describe('HttpFluxApi', () => {
     expect(url()).toBe(`${BASE_URL}/projects/mine`);
   });
 
+  it('lists my projects with the time zone for overdue counts', async () => {
+    const { api, url } = setup({ content: [] });
+    await api.listMyProjects({ tz: 'Asia/Kuala_Lumpur', size: 100 });
+    expect(url()).toBe(
+      `${BASE_URL}/projects/mine?tz=Asia%2FKuala_Lumpur&size=100`
+    );
+  });
+
+  it('gets a project’s task view settings', async () => {
+    const { api, url } = setup({ groupBy: 'priority' });
+    await expect(api.getTaskViewSettings('p1')).resolves.toEqual({
+      groupBy: 'priority',
+    });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/task-view-settings`);
+  });
+
   it('lists a project’s workflow statuses', async () => {
     const { api, url } = setup([{ slug: 'todo' }]);
     await expect(api.listWorkflowStatuses('p1')).resolves.toEqual([

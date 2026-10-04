@@ -38,8 +38,9 @@ src/
 │             them (variables.scss), and the bundled fonts (fonts/,
 │             typography.scss). See §7.
 └── app/      Angular/Ionic UI only: pages, routes, the handoff icon set
-              (icons/), shared list components (shared/), and the
-              providers that bridge into src/core
+              (icons/), shared list components (shared/), the project
+              switcher and on-device project preferences (projects/), and
+              the providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -81,8 +82,7 @@ Android draws the app under its navigation bar, and some phones (MIUI on
 Android 10) report a 0 bottom inset while the gesture pill covers the tab
 bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
 `--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
-win. Until FM-29, the Projects tab lists the user's open assigned tasks
-(`listMyTasks`), and Releases (handoff screen 3k) has no tab.
+win. Releases (handoff screen 3k) has no tab.
 
 ### My Work
 
@@ -103,12 +103,45 @@ CSS animation delay), `app-empty-state` and `app-error-state` (Retry; says
 "Couldn't reach Flux" for an `ApiError` with status 0). Pull-to-refresh
 reloads the visible segment and keeps its rows on screen meanwhile.
 
+### Projects
+
+The Projects tab (handoff 3b, `src/app/pages/projects/`) lists one
+project's tasks in groups under sticky headers. Its header opens the
+switcher sheet (3j, `src/app/projects/project-switcher/`, in an inline
+`ion-modal`), which lists `GET /projects/mine` (sent with the device's `tz`,
+so overdue counts match the local day) as Pinned, then All projects. Swiping
+a row pins or unpins it. The backend has no pinning, so the pins and the
+last project opened live on the device in `@capacitor/preferences`
+(`ProjectPrefsService`, keys `projects.pinned` and `projects.last`). The tab
+reopens the last project, else the first pinned one, else the first listed.
+
+Grouping follows flux-web's three tiers (`resolveGroupBy()`,
+`src/core/project-list/`): the project's `groupBy` from
+`GET /projects/{id}/task-view-settings`, then the account's
+`defaultGroupBy`, then status. `none`, `priority` and `type` work too.
+AI-drafted candidates (label `ai:candidate`) are hidden unless the
+project's `aiTaskFilter` says otherwise, as on the web. Status groups follow
+the project's `categoryPositions`, then each status's `position`. Their
+names and hues come from `GET /projects/{id}/workflow-statuses`, fetched
+once per project per session, because a task only carries its status slug.
+A status colour the theme has no hue for (pink, orange, teal) falls back to
+its category's hue.
+
+The server can't sort tasks by status, so `GroupedTaskPager` pages each
+group as its own filtered query (`status=<slug>`, 50 rows, `createdAt,desc`).
+On open it fetches the first page of every group at once, which also gives
+each header its count and drops empty groups. `ion-infinite-scroll` then
+pages the first group that isn't complete yet, and a later group is only
+shown once every group above it is complete. Rows are `app-project-task-row`
+(key, priority, due date and the assignee's avatar). The List/Board/Calendar
+segment, search and filters are not built yet (FM-6, FM-30).
+
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
-tasks, a project's tasks, one task, my projects, workflow statuses and
-notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+tasks, a project's tasks, one task, my projects, workflow statuses, task
+view settings and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -120,7 +153,9 @@ written without it) and makes every request through
 (`src/core/http/`) is the request, timeout, query-string and JSON handling
 it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
 test double: its fixtures are dated relative to today and it applies the
-my-tasks filters, so page specs use it.
+my-tasks filters and the project list's status, priority, type and label
+filters, so page specs use it (`addProjectTasks()` adds rows to page
+through).
 
 ### Authentication
 
@@ -387,8 +422,9 @@ checking that `simctl launch` returned.
 It then checks iOS swipe-back. `scripts/ci/mock-iam.mjs` stands in for
 flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
 sign in as a fixed test account), `scripts/ci/mock-operations.mjs` for
-flux-operations on `localhost:9003` (three tasks dated around today, so
-My Work and the Projects list have rows), and
+flux-operations on `localhost:9003` (one project, `CI`, with its
+workflow statuses and three tasks dated around today, so My Work and the
+Projects list have rows), and
 `scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects

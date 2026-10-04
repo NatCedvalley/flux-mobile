@@ -44,12 +44,11 @@ export const routes: Routes = [
       {
         path: 'projects',
         children: [
-          // The existing task list, until FM-29's project task list.
           {
             path: '',
             loadComponent: () =>
-              import('../pages/tasks/task-list.page').then(
-                (m) => m.TaskListPage
+              import('../pages/projects/project-tasks.page').then(
+                (m) => m.ProjectTasksPage
               ),
           },
           taskDetail('projects'),

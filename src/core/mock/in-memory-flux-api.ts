@@ -2,28 +2,45 @@ import type {
   AppNotification,
   FluxApi,
   MyProject,
+  MyProjectsQuery,
   MyTask,
   MyTasksQuery,
   NotificationsQuery,
   Page,
   ProjectTasksQuery,
   Task,
+  TaskViewSettings,
   WorkflowStatus,
 } from '../api';
 import { addDays, localIsoDate } from '../my-work';
 
-/** A fixture task: a my-tasks row that is also a full task. */
-type FixtureTask = MyTask & Task & { watching?: boolean };
+/**
+ * A fixture task: a my-tasks row that is also a full task. `notMine` keeps it
+ * off My Work (someone else's task in one of the user's projects).
+ */
+type FixtureTask = MyTask & Task & { watching?: boolean; notMine?: boolean };
+
+const CATEGORY_POSITIONS = { PLANNING: 0, TODO: 1, IN_PROGRESS: 2, DONE: 3 };
 
 const PROJECTS: MyProject[] = [
   {
-    project: { id: 'p1', projectKey: 'CHK', name: 'Checkout' },
+    project: {
+      id: 'p1',
+      projectKey: 'CHK',
+      name: 'Checkout',
+      categoryPositions: CATEGORY_POSITIONS,
+    },
     role: 'EDITOR',
     openCount: 4,
     overdueCount: 1,
   },
   {
-    project: { id: 'p2', projectKey: 'BIL', name: 'Billing' },
+    project: {
+      id: 'p2',
+      projectKey: 'BIL',
+      name: 'Billing',
+      categoryPositions: CATEGORY_POSITIONS,
+    },
     role: 'LEAD',
     openCount: 2,
     overdueCount: 0,
@@ -31,16 +48,41 @@ const PROJECTS: MyProject[] = [
 ];
 
 const STATUSES: WorkflowStatus[] = [
-  { slug: 'backlog', name: 'Backlog', category: 'PLANNING', position: 0 },
-  { slug: 'todo', name: 'To Do', category: 'TODO', position: 1 },
   {
+    id: 's0',
+    slug: 'backlog',
+    name: 'Backlog',
+    category: 'PLANNING',
+    color: 'neutral',
+    position: 0,
+  },
+  {
+    id: 's1',
+    slug: 'todo',
+    name: 'To Do',
+    category: 'TODO',
+    color: 'blue',
+    position: 1,
+  },
+  {
+    id: 's2',
     slug: 'in_progress',
     name: 'In Progress',
     category: 'IN_PROGRESS',
+    color: 'amber',
     position: 2,
   },
-  { slug: 'done', name: 'Done', category: 'DONE', position: 3 },
+  {
+    id: 's3',
+    slug: 'done',
+    name: 'Done',
+    category: 'DONE',
+    color: 'green',
+    position: 3,
+  },
 ];
+
+const ADA = { accountId: 'a1', firstName: 'Ada', lastName: 'Rahman' };
 
 const STATUS_FIELDS = {
   backlog: {
@@ -76,6 +118,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       priority: 'CRITICAL',
       ...STATUS_FIELDS.in_progress,
       dueDate: due(-1),
+      assignees: [ADA],
     },
     {
       id: '2',
@@ -86,6 +129,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       priority: 'MEDIUM',
       ...STATUS_FIELDS.todo,
       dueDate: due(0),
+      assignees: [ADA],
     },
     {
       id: '3',
@@ -136,6 +180,17 @@ function fixtureTasks(today: string): FixtureTask[] {
       ...STATUS_FIELDS.in_progress,
       dueDate: due(2),
       watching: true,
+    },
+    {
+      id: '8',
+      ...PROJECT_FIELDS.p1,
+      taskKey: 'CHK-160',
+      title: 'Draft: add Apple Pay',
+      type: 'FEATURE',
+      priority: 'MEDIUM',
+      ...STATUS_FIELDS.todo,
+      labels: ['ai:candidate'],
+      notMine: true,
     },
   ];
 }
@@ -191,18 +246,49 @@ function notFound(projectId: string, taskId: string): Error {
 /**
  * Static in-memory `FluxApi` for tests. It applies the my-tasks filters
  * (scope, openOnly, the due window) and orders by priority then due date,
- * like the server, so pages can be tested against it.
+ * like the server, and the project task list's status, priority, type and
+ * label filters, so pages can be tested against it.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
+  private readonly viewSettings = new Map<string, TaskViewSettings>();
 
   constructor(today: Date = new Date()) {
     this.tasks = fixtureTasks(localIsoDate(today));
   }
 
+  /**
+   * Adds `count` someone-else's tasks to a project, in `status`, numbered
+   * from `<key>-1000`: enough rows to page through.
+   */
+  addProjectTasks(projectId: 'p1' | 'p2', count: number, status = 'todo') {
+    const fields = PROJECT_FIELDS[projectId];
+    const statusFields = STATUS_FIELDS[status as keyof typeof STATUS_FIELDS];
+    for (let i = 0; i < count; i++) {
+      this.tasks.push({
+        id: `${projectId}-extra-${status}-${i}`,
+        ...fields,
+        taskKey: `${fields.projectKey}-${1000 + i}`,
+        title: `Extra task ${i + 1}`,
+        type: 'TASK',
+        priority: 'MEDIUM',
+        ...statusFields,
+        notMine: true,
+      });
+    }
+    return this;
+  }
+
+  /** Sets a project's task view overrides (none by default). */
+  setTaskViewSettings(projectId: string, settings: TaskViewSettings) {
+    this.viewSettings.set(projectId, settings);
+    return this;
+  }
+
   listMyTasks(query: MyTasksQuery = {}): Promise<Page<MyTask>> {
     const watching = query.scope === 'watching';
     const rows = this.tasks
+      .filter((t) => !t.notMine)
       .filter((t) => !!t.watching === watching)
       .filter((t) => query.openOnly === false || t.statusCategory !== 'DONE')
       .filter(
@@ -226,7 +312,17 @@ export class InMemoryFluxApi implements FluxApi {
     projectId: string,
     query: ProjectTasksQuery = {}
   ): Promise<Page<Task>> {
-    const rows = this.tasks.filter((t) => t.projectId === projectId);
+    const rows = this.tasks
+      .filter((t) => t.projectId === projectId)
+      .filter((t) => !query.status || t.status === query.status)
+      .filter((t) => !query.priority || t.priority === query.priority)
+      .filter((t) => !query.type || t.type === query.type)
+      .filter(
+        (t) => !query.excludeLabel || !t.labels?.includes(query.excludeLabel)
+      )
+      .filter(
+        (t) => !query.requireLabel || !!t.labels?.includes(query.requireLabel)
+      );
     return Promise.resolve(pageOf(rows, query.page, query.size));
   }
 
@@ -239,14 +335,16 @@ export class InMemoryFluxApi implements FluxApi {
       : Promise.reject(notFound(projectId, taskId));
   }
 
-  listMyProjects(
-    query: { page?: number; size?: number } = {}
-  ): Promise<Page<MyProject>> {
+  listMyProjects(query: MyProjectsQuery = {}): Promise<Page<MyProject>> {
     return Promise.resolve(pageOf(PROJECTS, query.page, query.size));
   }
 
   listWorkflowStatuses(projectId: string): Promise<WorkflowStatus[]> {
     return Promise.resolve(STATUSES.map((s) => ({ ...s, projectId })));
+  }
+
+  getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
+    return Promise.resolve(this.viewSettings.get(projectId) ?? {});
   }
 
   listNotifications(

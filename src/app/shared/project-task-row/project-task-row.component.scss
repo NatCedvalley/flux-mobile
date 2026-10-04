@@ -1,0 +1,105 @@
+// Handoff 3b row: 62px minimum (it grows with Dynamic Type), 16px gutters,
+// an 11px gap from the type icon, a `--na3` bottom border.
+:host {
+  display: block;
+}
+
+ion-item {
+  --min-height: 62px;
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+}
+
+// Always neutral here: the group header already says the status.
+.type {
+  flex: none;
+  margin: 0 var(--flux-space-11) 0 0;
+  font-size: 17px;
+  color: var(--flux-na11);
+}
+
+.body {
+  flex: auto;
+  min-width: 0;
+  padding: var(--flux-space-12) 0;
+}
+
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-row-title);
+  letter-spacing: var(--flux-tracking-row-title);
+  color: var(--flux-n12);
+}
+
+// `KEY priority due`, 7px apart, without separators (handoff 3b).
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-7);
+  min-width: 0;
+  margin-top: var(--flux-space-3);
+  overflow: hidden;
+  white-space: nowrap;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+  color: var(--flux-pa11);
+}
+
+.priority {
+  display: inline-flex;
+  align-items: center;
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-2);
+    font-size: 12px;
+  }
+
+  &[data-level='CRITICAL'] {
+    font: var(--flux-font-meta-strong);
+    color: var(--flux-red11);
+  }
+
+  &[data-level='HIGH'] {
+    font: var(--flux-font-meta-strong);
+    color: var(--flux-amber11);
+  }
+}
+
+.due.overdue {
+  font: var(--flux-font-meta-strong);
+  color: var(--flux-red11);
+}
+
+// 28px circle: initials on the person's fill, or a user glyph when nobody
+// is assigned.
+.avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 0 0 var(--flux-space-8);
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-row-avatar);
+  letter-spacing: var(--flux-tracking-row-avatar);
+  color: var(--flux-avatar-text);
+
+  &.unassigned {
+    background: var(--flux-na4);
+    color: var(--flux-na11);
+
+    ion-icon {
+      font-size: 15px;
+    }
+  }
+}

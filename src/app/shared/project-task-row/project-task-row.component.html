@@ -1,0 +1,59 @@
+<ion-item
+  [routerLink]="['tasks', task().projectId, task().id]"
+  button="true"
+  detail="false"
+>
+  <ion-icon
+    slot="start"
+    class="type"
+    [name]="icon()"
+    aria-hidden="true"
+  ></ion-icon>
+  <div class="body">
+    <div class="title">{{ task().title }}</div>
+    <div class="meta">
+      @if (task().taskKey) {
+        <span class="key">{{ task().taskKey }}</span>
+      }
+      @if (priority(); as priority) {
+        <span
+          class="priority"
+          [attr.data-level]="priority.level"
+        >
+          <ion-icon
+            [name]="priority.icon"
+            aria-hidden="true"
+          ></ion-icon
+          >{{ priority.label }}
+        </span>
+      }
+      <span
+        class="due"
+        [class.overdue]="due().overdue"
+        >{{ due().label }}</span
+      >
+    </div>
+  </div>
+  @if (assignee()) {
+    <span
+      slot="end"
+      class="avatar"
+      role="img"
+      [attr.aria-label]="'Assigned to ' + assigneeName()"
+      [style.background]="avatarFill()"
+      >{{ avatarInitials() }}</span
+    >
+  } @else {
+    <span
+      slot="end"
+      class="avatar unassigned"
+      role="img"
+      aria-label="Unassigned"
+    >
+      <ion-icon
+        name="user"
+        aria-hidden="true"
+      ></ion-icon>
+    </span>
+  }
+</ion-item>

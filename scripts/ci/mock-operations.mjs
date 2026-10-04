@@ -22,6 +22,42 @@ function day(days) {
 
 const PROJECT = { projectId: 'ci-p1', projectKey: 'CI', projectName: 'CI' };
 
+/** GET /projects/mine: the one project, so the Projects tab opens it. */
+const MY_PROJECTS = [
+  {
+    project: {
+      id: 'ci-p1',
+      projectKey: 'CI',
+      name: 'CI',
+      categoryPositions: { PLANNING: 0, TODO: 1, IN_PROGRESS: 2, DONE: 3 },
+    },
+    role: 'EDITOR',
+    openCount: 3,
+    overdueCount: 1,
+  },
+];
+
+const STATUSES = [
+  {
+    id: 'ci-s1',
+    projectId: 'ci-p1',
+    slug: 'todo',
+    name: 'To Do',
+    category: 'TODO',
+    color: 'blue',
+    position: 0,
+  },
+  {
+    id: 'ci-s2',
+    projectId: 'ci-p1',
+    slug: 'in_progress',
+    name: 'In Progress',
+    category: 'IN_PROGRESS',
+    color: 'amber',
+    position: 1,
+  },
+];
+
 function tasks() {
   return [
     {
@@ -36,6 +72,7 @@ function tasks() {
       statusName: 'In Progress',
       statusCategory: 'IN_PROGRESS',
       dueDate: day(0),
+      assignees: [{ accountId: 'ci-a1', firstName: 'CI', lastName: 'Tester' }],
     },
     {
       id: 'ci-t2',
@@ -82,6 +119,28 @@ function route(method, path, query) {
   }
   if (path === '/dashboard/my-tasks') {
     return [200, page(query.get('scope') === 'watching' ? [] : tasks())];
+  }
+  if (path === '/projects/mine') {
+    return [200, page(MY_PROJECTS)];
+  }
+  // The Projects tab asks for one status group at a time.
+  const list = path.match(/^\/projects\/([^/]+)\/tasks$/);
+  if (list) {
+    const status = query.get('status');
+    return [
+      200,
+      page(
+        tasks().filter(
+          (t) => t.projectId === list[1] && (!status || t.status === status)
+        )
+      ),
+    ];
+  }
+  if (path === '/projects/ci-p1/workflow-statuses') {
+    return [200, STATUSES];
+  }
+  if (path === '/projects/ci-p1/task-view-settings') {
+    return [200, {}];
   }
   const task = path.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)$/);
   if (task) {

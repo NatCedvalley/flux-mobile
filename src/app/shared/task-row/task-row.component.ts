@@ -12,7 +12,7 @@ import {
 } from '@core/my-work';
 
 /** The handoff's icon for each task type. */
-const TYPE_ICONS: Record<NonNullable<MyTask['type']>, string> = {
+export const TYPE_ICONS: Record<NonNullable<MyTask['type']>, string> = {
   BUG: 'bug',
   FEATURE: 'sparkles',
   TASK: 'square-check',

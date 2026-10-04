@@ -1,0 +1,156 @@
+// Handoff 3j: the switcher sheet's content.
+ion-toolbar {
+  --background: var(--flux-bg);
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-8);
+}
+
+// iOS titles are absolutely positioned across the toolbar, so the inset is
+// set here rather than by the toolbar's padding.
+ion-title {
+  padding-inline: var(--flux-space-16) 0;
+  text-align: start;
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.done {
+  --color: var(--flux-pa11);
+  font: var(--flux-font-sheet-action);
+  letter-spacing: var(--flux-tracking-sheet-action);
+}
+
+// 40px field on `--n3`, radius 11.
+.search-bar {
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-16);
+  --padding-bottom: var(--flux-space-12);
+  --min-height: 0;
+}
+
+ion-searchbar {
+  --background: var(--flux-n3);
+  --border-radius: var(--flux-radius-field);
+  --box-shadow: none;
+  --icon-color: var(--flux-na10);
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  padding: 0;
+  min-height: 40px;
+}
+
+ion-content {
+  --background: var(--flux-bg);
+}
+
+ion-list {
+  padding: 0;
+  background: transparent;
+}
+
+// Group headers: uppercase section-header type. Pinned sits bare (30px,
+// with a pin); All projects on an `--na2` wash with a bottom border (34px).
+ion-item-divider {
+  --background: transparent;
+  --color: var(--flux-na10);
+  --padding-start: var(--flux-space-16);
+  min-height: 30px;
+  border: 0;
+  text-transform: uppercase;
+  font: var(--flux-font-section-header);
+  letter-spacing: var(--flux-tracking-section-header);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-6);
+    font-size: 12px;
+  }
+}
+
+.others ion-item-divider {
+  --background: var(--flux-na2);
+  min-height: 34px;
+  border-bottom: 1px solid var(--flux-na3);
+}
+
+// 64px rows: swatch, name over role and counts, then a mark.
+ion-item {
+  --min-height: 64px;
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+  --background: var(--flux-bg);
+
+  &.current {
+    --background:
+      linear-gradient(var(--flux-pa2), var(--flux-pa2)), var(--flux-bg);
+  }
+}
+
+// 38px, radius 11, the project's solid hue. A viewer's is neutral.
+.swatch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin: 0 var(--flux-space-12) 0 0;
+  border-radius: var(--flux-radius-field);
+  background: var(--project-fill, var(--flux-n4));
+  color: var(--project-text, var(--flux-na11));
+  font: var(--flux-font-project-swatch);
+  letter-spacing: var(--flux-tracking-project-swatch);
+}
+
+.body {
+  flex: auto;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-switcher-name);
+  letter-spacing: var(--flux-tracking-switcher-name);
+  color: var(--flux-n12);
+}
+
+.subline {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+}
+
+.current-mark {
+  margin-inline-start: var(--flux-space-8);
+  font-size: 19px;
+  color: var(--flux-p9);
+}
+
+.lock {
+  margin-inline-start: var(--flux-space-8);
+  font-size: 16px;
+  color: var(--flux-na9);
+}
+
+ion-item-option.pin {
+  --background: var(--flux-p9);
+  min-width: 76px;
+  font: var(--flux-font-meta-strong);
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
+.no-match {
+  margin: var(--flux-space-24) var(--flux-space-16);
+  text-align: center;
+  font: var(--flux-font-body);
+  color: var(--flux-na11);
+}

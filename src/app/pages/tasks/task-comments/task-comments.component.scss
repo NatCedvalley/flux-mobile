@@ -1,0 +1,112 @@
+// Handoff 3f thread: 16px gutter, 14px between comments, replies indented
+// past the avatar.
+:host {
+  display: block;
+  padding: var(--flux-space-16) var(--flux-space-16) var(--flux-space-24);
+}
+
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread > li + li {
+  margin-top: var(--flux-space-14);
+}
+
+.replies {
+  margin-top: var(--flux-space-12);
+  padding-inline-start: 40px;
+
+  > li + li {
+    margin-top: var(--flux-space-12);
+  }
+}
+
+.comment {
+  display: flex;
+  gap: var(--flux-space-10);
+}
+
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-comment-avatar);
+  color: var(--flux-avatar-text);
+}
+
+.body {
+  flex: auto;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--flux-space-7);
+}
+
+.author {
+  font: var(--flux-font-comment-name);
+  letter-spacing: var(--flux-tracking-comment-name);
+  color: var(--flux-n12);
+}
+
+.age {
+  font: var(--flux-font-meta);
+  color: var(--flux-na10);
+}
+
+// Top-left corner at 4px, pointing at the avatar.
+.bubble {
+  margin-top: var(--flux-space-4);
+  padding: var(--flux-space-10) var(--flux-space-12);
+  border-radius: var(--flux-radius-code) var(--flux-radius-card)
+    var(--flux-radius-card) var(--flux-radius-card);
+  background: var(--flux-bg);
+  box-shadow: 0 0 0 1px var(--flux-na4);
+
+  &.mine {
+    background: var(--flux-pa2);
+    box-shadow: 0 0 0 1px var(--flux-pa4);
+  }
+
+  app-rich-text {
+    font: var(--flux-font-comment-body);
+    letter-spacing: var(--flux-tracking-comment-body);
+    color: var(--flux-n12);
+  }
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--flux-space-8);
+  margin: var(--flux-space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-space-4);
+  height: 26px;
+  padding: 0 var(--flux-space-8);
+  border-radius: var(--flux-radius-pill);
+  box-shadow: 0 0 0 1px var(--flux-na4);
+  font: var(--flux-font-reaction);
+  color: var(--flux-na11);
+
+  &.mine {
+    background: var(--flux-pa3);
+    box-shadow: none;
+    color: var(--flux-pa11);
+  }
+}

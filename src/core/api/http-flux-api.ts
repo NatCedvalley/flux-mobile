@@ -7,9 +7,14 @@ import type {
   MyTasksQuery,
   NotificationsQuery,
   Page,
+  PageQuery,
   ProjectMember,
   ProjectTasksQuery,
   Task,
+  TaskActivity,
+  TaskComment,
+  TaskResolution,
+  TaskSubscription,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -53,9 +58,48 @@ export class HttpFluxApi implements FluxApi {
   }
 
   getTask(projectId: string, taskId: string): Promise<Task> {
-    return this.get(
-      `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`
-    );
+    return this.get(taskPath(projectId, taskId));
+  }
+
+  listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
+    return this.get(`${taskPath(projectId, taskId)}/children`);
+  }
+
+  listTaskActivities(
+    projectId: string,
+    taskId: string,
+    query?: PageQuery
+  ): Promise<Page<TaskActivity>> {
+    return this.get(`${taskPath(projectId, taskId)}/activities`, query);
+  }
+
+  listTaskComments(
+    projectId: string,
+    taskId: string,
+    query?: PageQuery
+  ): Promise<Page<TaskComment>> {
+    return this.get(`${taskPath(projectId, taskId)}/comments`, query);
+  }
+
+  getTaskSubscription(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.get(`${taskPath(projectId, taskId)}/subscription`);
+  }
+
+  subscribeToTask(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.send('POST', `${taskPath(projectId, taskId)}/subscribe`);
+  }
+
+  unsubscribeFromTask(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.send('DELETE', `${taskPath(projectId, taskId)}/subscribe`);
   }
 
   listMyProjects(query?: MyProjectsQuery): Promise<Page<MyProject>> {
@@ -68,6 +112,10 @@ export class HttpFluxApi implements FluxApi {
     );
   }
 
+  listResolutions(projectId: string): Promise<TaskResolution[]> {
+    return this.get(`/projects/${encodeURIComponent(projectId)}/resolutions`);
+  }
+
   getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
     return this.get(
       `/projects/${encodeURIComponent(projectId)}/task-view-settings`
@@ -78,12 +126,10 @@ export class HttpFluxApi implements FluxApi {
     projectId: string,
     update: TaskViewSettingsUpdate
   ): Promise<TaskViewSettings> {
-    return this.withAccessToken((accessToken) =>
-      this.http.request<TaskViewSettings>(
-        'PUT',
-        `/projects/${encodeURIComponent(projectId)}/task-view-settings`,
-        { accessToken, body: update }
-      )
+    return this.send(
+      'PUT',
+      `/projects/${encodeURIComponent(projectId)}/task-view-settings`,
+      update
     );
   }
 
@@ -104,4 +150,18 @@ export class HttpFluxApi implements FluxApi {
       this.http.request<T>('GET', path, { accessToken, query })
     );
   }
+
+  private send<T>(
+    method: 'DELETE' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    return this.withAccessToken((accessToken) =>
+      this.http.request<T>(method, path, { accessToken, body })
+    );
+  }
+}
+
+function taskPath(projectId: string, taskId: string): string {
+  return `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`;
 }

@@ -149,6 +149,20 @@ function route(method, path, query) {
     );
     return found ? [200, found] : null;
   }
+  // What task detail fetches besides the task: no comments, activity or
+  // subtasks, and not watched.
+  const sub = path.match(
+    /^\/projects\/[^/]+\/tasks\/[^/]+\/(activities|children|comments|subscription)$/
+  );
+  if (sub) {
+    const bodies = {
+      activities: page([]),
+      children: [],
+      comments: page([]),
+      subscription: { subscribed: false },
+    };
+    return [200, bodies[sub[1]]];
+  }
   if (path === '/notifications') {
     return [200, page([])];
   }

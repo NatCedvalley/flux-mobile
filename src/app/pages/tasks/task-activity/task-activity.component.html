@@ -1,0 +1,67 @@
+@for (day of days(); track day.day) {
+  <section class="day">
+    <h2 class="day-label">{{ day.label }}</h2>
+    <ol>
+      @for (entry of day.entries; track entry.id; let last = $last) {
+        <li class="entry">
+          <div class="rail">
+            <span
+              class="badge"
+              [attr.data-tone]="entry.view.tone"
+            >
+              <ion-icon
+                [name]="entry.view.icon"
+                aria-hidden="true"
+              ></ion-icon>
+            </span>
+            @if (!last) {
+              <span
+                class="connector"
+                aria-hidden="true"
+              ></span>
+            }
+          </div>
+          <div class="text">
+            <p>
+              <b>{{ entry.actor }}</b> {{ entry.view.verb }}
+              @if (entry.view.target) {
+                <b>{{ entry.view.target }}</b>
+              }
+              @if (entry.statuses; as statuses) {
+                <span
+                  class="pill"
+                  [style]="statuses.from.colors"
+                  >{{ statuses.from.name }}</span
+                >
+                <ion-icon
+                  class="arrow"
+                  name="arrow-right"
+                  aria-label="to"
+                ></ion-icon>
+                <span
+                  class="pill"
+                  [style]="statuses.to.colors"
+                  >{{ statuses.to.name }}</span
+                >
+              } @else if (entry.view.change; as change) {
+                <span class="from">{{ change.from }}</span>
+                <ion-icon
+                  class="arrow"
+                  name="arrow-right"
+                  aria-label="to"
+                ></ion-icon>
+                <span
+                  class="to"
+                  [attr.data-kind]="change.kind"
+                  [attr.data-value]="change.to"
+                  >{{ change.to }}</span
+                >
+              }
+            </p>
+            <span class="time">{{ entry.time }}</span>
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+}

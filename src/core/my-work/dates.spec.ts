@@ -1,4 +1,4 @@
-import { addDays, localIsoDate, shortDate } from './dates';
+import { addDays, dayMonth, localIsoDate, shortDate } from './dates';
 
 describe('localIsoDate', () => {
   it('uses the local calendar day, zero-padded', () => {
@@ -23,5 +23,12 @@ describe('shortDate', () => {
 
   it("adds the year when it isn't this year", () => {
     expect(shortDate('2027-01-04', '2026-12-30')).toBe('Mon 4 Jan 2027');
+  });
+});
+
+describe('dayMonth', () => {
+  it('shows the day and month, and the year when it isn’t this year', () => {
+    expect(dayMonth('2026-09-12', '2026-10-01')).toBe('12 Sep');
+    expect(dayMonth('2027-01-04', '2026-12-30')).toBe('4 Jan 2027');
   });
 });

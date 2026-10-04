@@ -1,0 +1,45 @@
+// The Details cards' layout (task-details.component.scss), in `--na3` blocks.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-space-10);
+  padding: var(--flux-space-12) var(--flux-space-16);
+  opacity: 0;
+  animation: fade-in 150ms ease-out 200ms forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.people {
+  display: flex;
+  gap: var(--flux-space-10);
+
+  .card {
+    flex: 1;
+    height: 66px;
+  }
+}
+
+.card {
+  padding: var(--flux-space-12);
+  border-radius: var(--flux-radius-card);
+  background: var(--flux-bg);
+  box-shadow: 0 0 0 1px var(--flux-na4);
+}
+
+ion-skeleton-text {
+  --background: var(--flux-na3);
+  --background-rgb: var(--ion-text-color-rgb);
+  height: 13px;
+  margin: 0 0 var(--flux-space-8);
+  border-radius: var(--flux-radius-tag);
+}
+
+.fields ion-skeleton-text {
+  height: 14px;
+  margin: var(--flux-space-16) 0;
+}

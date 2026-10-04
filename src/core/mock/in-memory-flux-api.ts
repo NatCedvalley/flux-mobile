@@ -8,8 +8,13 @@ import type {
   NotificationsQuery,
   Page,
   ProjectMember,
+  PageQuery,
   ProjectTasksQuery,
   Task,
+  TaskActivity,
+  TaskComment,
+  TaskResolution,
+  TaskSubscription,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -129,12 +134,36 @@ function fixtureTasks(today: string): FixtureTask[] {
       ...PROJECT_FIELDS.p1,
       taskKey: 'CHK-142',
       title: 'Fix 3DS redirect on Safari',
-      description: 'Repro only happens on expired sessions.',
+      description: [
+        'Repro only happens on **expired sessions**: Safari drops the 3DS',
+        'return URL and the shopper lands on an empty cart.',
+        '',
+        '1. Sign in and add any item',
+        '2. Wait for the session to expire',
+        '3. Pay with a 3DS test card',
+        '',
+        'The fix probably belongs in `ReturnUrlFilter`.',
+      ].join('\n'),
+      descriptionFormat: 'MARKDOWN',
       type: 'BUG',
       priority: 'CRITICAL',
       ...STATUS_FIELDS.in_progress,
       dueDate: due(-1),
       assignees: [ADA],
+      reporterId: BEN.accountId,
+      reporterFirstName: BEN.firstName,
+      reporterLastName: BEN.lastName,
+      labels: ['safari', 'payments', '3ds'],
+      linkedReleases: [
+        { id: 'r1', versionTag: 'v2.4.0', title: 'Payments', status: 'NEW' },
+      ],
+      parentTaskId: '6',
+      parentTask: {
+        id: '6',
+        taskKey: 'CHK-120',
+        title: 'Migrate saved cards',
+        status: 'done',
+      },
     },
     {
       id: '2',
@@ -167,6 +196,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       ...STATUS_FIELDS.backlog,
       dueDate: due(5),
       assignees: [BEN],
+      parentTaskId: '6',
     },
     {
       id: '5',
@@ -186,6 +216,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       priority: 'MEDIUM',
       ...STATUS_FIELDS.done,
       dueDate: due(-10),
+      childCount: 2,
     },
     {
       id: '7',
@@ -211,6 +242,116 @@ function fixtureTasks(today: string): FixtureTask[] {
     },
   ];
 }
+
+/** `daysAgo` days before `now`, at `hh:mm` local time. */
+function at(now: Date, daysAgo: number, hh: number, mm: number): string {
+  const date = new Date(now);
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(hh, mm, 0, 0);
+  return date.toISOString();
+}
+
+/** Comments by task id: top-level ones oldest first, replies nested. */
+function fixtureComments(now: Date): Record<string, TaskComment[]> {
+  return {
+    '1': [
+      {
+        id: 'c1',
+        taskId: '1',
+        authorId: BEN.accountId,
+        authorFirstName: BEN.firstName,
+        authorLastName: BEN.lastName,
+        body: 'Seen on iOS 18 too. The redirect drops `returnUrl`.',
+        bodyFormat: 'MARKDOWN',
+        createdAt: at(now, 2, 10, 4),
+        reactions: [
+          { emoji: '👍', count: 2, reactedByMe: true },
+          { emoji: '👀', count: 1, reactedByMe: false },
+        ],
+        replies: [
+          {
+            id: 'c2',
+            taskId: '1',
+            parentCommentId: 'c1',
+            authorId: ADA.accountId,
+            authorFirstName: ADA.firstName,
+            authorLastName: ADA.lastName,
+            body: 'Thanks, I can reproduce it now.',
+            bodyFormat: 'MARKDOWN',
+            createdAt: at(now, 2, 11, 30),
+          },
+        ],
+      },
+      {
+        id: 'c3',
+        taskId: '1',
+        authorId: ADA.accountId,
+        authorFirstName: ADA.firstName,
+        authorLastName: ADA.lastName,
+        body: JSON.stringify({
+          blocks: [
+            {
+              type: 'paragraph',
+              data: {
+                text: '<span class="editorjs-mention" data-account-id="a2">@Ben Tan</span> the fix is up for review.',
+              },
+            },
+          ],
+        }),
+        bodyFormat: 'EDITORJS',
+        edited: true,
+        createdAt: at(now, 0, 8, 12),
+      },
+    ],
+  };
+}
+
+/** Activity by task id, newest first. */
+function fixtureActivities(now: Date): Record<string, TaskActivity[]> {
+  const entry = (
+    id: string,
+    action: TaskActivity['action'],
+    createdAt: string,
+    fields: Partial<TaskActivity> = {}
+  ): TaskActivity => ({
+    id,
+    taskId: '1',
+    projectId: 'p1',
+    actorId: ADA.accountId,
+    actorName: 'Ada Rahman',
+    action,
+    createdAt,
+    ...fields,
+  });
+  return {
+    '1': [
+      entry('e5', 'COMMENT_ADDED', at(now, 0, 8, 12)),
+      entry('e4', 'STATUS_CHANGED', at(now, 0, 8, 2), {
+        field: 'status',
+        oldValue: 'todo',
+        newValue: 'in_progress',
+      }),
+      entry('e3', 'FIELD_UPDATED', at(now, 1, 16, 40), {
+        field: 'priority',
+        oldValue: 'HIGH',
+        newValue: 'CRITICAL',
+      }),
+      entry('e2', 'ASSIGNED', at(now, 1, 9, 15), {
+        actorName: 'Ben Tan',
+        field: 'assignee',
+        newValue: `[${ADA.accountId}]`,
+        newValueDisplay: 'Ada Rahman',
+      }),
+      entry('e1', 'CREATED', at(now, 1, 9, 0), { actorName: 'Ben Tan' }),
+    ],
+  };
+}
+
+const RESOLUTIONS: TaskResolution[] = [
+  { id: 'res1', name: 'Done', slug: 'done', position: 0 },
+  { id: 'res2', name: 'Won’t do', slug: 'wont-do', position: 1 },
+  { id: 'res3', name: 'Duplicate', slug: 'duplicate', position: 2 },
+];
 
 const NOTIFICATIONS: AppNotification[] = [
   {
@@ -323,9 +464,18 @@ function notFound(projectId: string, taskId: string): Error {
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
   private readonly viewSettings = new Map<string, TaskViewSettings>();
+  private readonly comments: Record<string, TaskComment[]>;
+  private readonly activities: Record<string, TaskActivity[]>;
+  /** Task ids the caller is subscribed to: the watched ones to start with. */
+  private readonly subscribed: Set<string>;
 
   constructor(today: Date = new Date()) {
     this.tasks = fixtureTasks(localIsoDate(today));
+    this.comments = fixtureComments(today);
+    this.activities = fixtureActivities(today);
+    this.subscribed = new Set(
+      this.tasks.filter((t) => t.watching).map((t) => t.id ?? '')
+    );
   }
 
   /**
@@ -418,12 +568,73 @@ export class InMemoryFluxApi implements FluxApi {
       : Promise.reject(notFound(projectId, taskId));
   }
 
+  listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
+    return this.withTask(projectId, taskId, () =>
+      this.tasks.filter(
+        (t) => t.projectId === projectId && t.parentTaskId === taskId
+      )
+    );
+  }
+
+  listTaskActivities(
+    projectId: string,
+    taskId: string,
+    query: PageQuery = {}
+  ): Promise<Page<TaskActivity>> {
+    return this.withTask(projectId, taskId, () =>
+      pageOf(this.activities[taskId] ?? [], query.page, query.size)
+    );
+  }
+
+  listTaskComments(
+    projectId: string,
+    taskId: string,
+    query: PageQuery = {}
+  ): Promise<Page<TaskComment>> {
+    return this.withTask(projectId, taskId, () =>
+      pageOf(this.comments[taskId] ?? [], query.page, query.size)
+    );
+  }
+
+  getTaskSubscription(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.withTask(projectId, taskId, () => ({
+      subscribed: this.subscribed.has(taskId),
+    }));
+  }
+
+  subscribeToTask(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.withTask(projectId, taskId, () => {
+      this.subscribed.add(taskId);
+      return { subscribed: true };
+    });
+  }
+
+  unsubscribeFromTask(
+    projectId: string,
+    taskId: string
+  ): Promise<TaskSubscription> {
+    return this.withTask(projectId, taskId, () => {
+      this.subscribed.delete(taskId);
+      return { subscribed: false };
+    });
+  }
+
   listMyProjects(query: MyProjectsQuery = {}): Promise<Page<MyProject>> {
     return Promise.resolve(pageOf(PROJECTS, query.page, query.size));
   }
 
   listWorkflowStatuses(projectId: string): Promise<WorkflowStatus[]> {
     return Promise.resolve(STATUSES.map((s) => ({ ...s, projectId })));
+  }
+
+  listResolutions(projectId: string): Promise<TaskResolution[]> {
+    return Promise.resolve(RESOLUTIONS.map((r) => ({ ...r, projectId })));
   }
 
   getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
@@ -457,5 +668,19 @@ export class InMemoryFluxApi implements FluxApi {
       (n) => query.isRead === undefined || n.isRead === query.isRead
     );
     return Promise.resolve(pageOf(rows, query.page, query.size));
+  }
+
+  /** `result()` for an existing task, else the not-found rejection. */
+  private withTask<T>(
+    projectId: string,
+    taskId: string,
+    result: () => T
+  ): Promise<T> {
+    const exists = this.tasks.some(
+      (t) => t.projectId === projectId && t.id === taskId
+    );
+    return exists
+      ? Promise.resolve(result())
+      : Promise.reject(notFound(projectId, taskId));
   }
 }

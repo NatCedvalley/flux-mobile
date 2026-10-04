@@ -107,6 +107,65 @@ describe('HttpFluxApi', () => {
     expect(url()).toBe(`${BASE_URL}/projects/p1/workflow-statuses`);
   });
 
+  it('lists a task’s children', async () => {
+    const { api, url } = setup([{ id: 't2' }]);
+    await expect(api.listChildTasks('p1', 't 1')).resolves.toEqual([
+      { id: 't2' },
+    ]);
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t%201/children`);
+  });
+
+  it('lists a task’s activities a page at a time', async () => {
+    const { api, url } = setup({ content: [] });
+    await api.listTaskActivities('p1', 't1', { page: 1, size: 50 });
+    expect(url()).toBe(
+      `${BASE_URL}/projects/p1/tasks/t1/activities?page=1&size=50`
+    );
+  });
+
+  it('lists a task’s comments a page at a time', async () => {
+    const { api, url } = setup({ content: [] });
+    await api.listTaskComments('p1', 't1', { size: 100 });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/comments?size=100`);
+  });
+
+  it('gets the caller’s subscription to a task', async () => {
+    const { api, url, init } = setup({ subscribed: true });
+    await expect(api.getTaskSubscription('p1', 't1')).resolves.toEqual({
+      subscribed: true,
+    });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/subscription`);
+    expect(init().method).toBe('GET');
+  });
+
+  it('subscribes with a POST and no body', async () => {
+    const { api, url, init } = setup({ subscribed: true });
+    await expect(api.subscribeToTask('p1', 't1')).resolves.toEqual({
+      subscribed: true,
+    });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/subscribe`);
+    expect(init().method).toBe('POST');
+    expect(init().body).toBeUndefined();
+    expect(init().headers.Authorization).toBe('Bearer a1');
+  });
+
+  it('unsubscribes with a DELETE', async () => {
+    const { api, url, init } = setup({ subscribed: false });
+    await expect(api.unsubscribeFromTask('p1', 't1')).resolves.toEqual({
+      subscribed: false,
+    });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/subscribe`);
+    expect(init().method).toBe('DELETE');
+  });
+
+  it('lists a project’s resolutions', async () => {
+    const { api, url } = setup([{ slug: 'fixed' }]);
+    await expect(api.listResolutions('p1')).resolves.toEqual([
+      { slug: 'fixed' },
+    ]);
+    expect(url()).toBe(`${BASE_URL}/projects/p1/resolutions`);
+  });
+
   it('lists notifications', async () => {
     const { api, url } = setup({ content: [] });
     await api.listNotifications({ isRead: false });

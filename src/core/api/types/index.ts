@@ -9,14 +9,19 @@ import type {
   RefreshTokenRequest as IamRefreshTokenRequest,
 } from '../generated/iam';
 import type {
+  CommentReactionResponse,
   GetMyTasksData,
   List2Data,
+  ListCommentsData,
   ListMyProjectsData,
   ListTasksData,
   MyProjectResponse,
   MyTaskResponse,
   NotificationResponse,
   ProjectMemberResponse,
+  TaskActivityResponse,
+  TaskCommentResponse,
+  TaskResolutionResponse,
   TaskResponse,
   TaskViewSettingsResponse,
   UpdateTaskViewSettingsRequest,
@@ -39,6 +44,17 @@ export type TaskViewSettingsUpdate = UpdateTaskViewSettingsRequest;
 /** A project member, as the assignee pickers list them. */
 export type ProjectMember = ProjectMemberResponse;
 export type AppNotification = NotificationResponse;
+/** One entry of a task's activity timeline. */
+export type TaskActivity = TaskActivityResponse;
+/** A top-level comment carries its replies in `replies`. */
+export type TaskComment = TaskCommentResponse;
+export type CommentReaction = CommentReactionResponse;
+export type TaskResolution = TaskResolutionResponse;
+/**
+ * Whether the caller gets the task's activity notifications. Hand-written:
+ * the spec types the body as a map of booleans without naming the key.
+ */
+export type TaskSubscription = { subscribed?: boolean };
 
 /**
  * The backend's paged list (`PagedResponse*` in the spec). Hand-written and
@@ -65,6 +81,8 @@ export type MyTasksQuery = Omit<
 export type ProjectTasksQuery = NonNullable<ListTasksData['query']>;
 export type MyProjectsQuery = NonNullable<ListMyProjectsData['query']>;
 export type NotificationsQuery = NonNullable<List2Data['query']>;
+/** `page` and `size` alone, as the comments and activities lists take. */
+export type PageQuery = NonNullable<ListCommentsData['query']>;
 
 export type Account = AccountResponse;
 export type AuthTokens = AuthResponse;

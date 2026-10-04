@@ -1,0 +1,167 @@
+<div class="people">
+  <div class="card person">
+    <span class="label">Assignee</span>
+    <div class="who">
+      @if (assignee(); as assignee) {
+        <span
+          class="avatar"
+          aria-hidden="true"
+          [style.background]="assignee.fill"
+          >{{ assignee.initials }}</span
+        >
+        <span class="name">{{ assignee.name }}</span>
+        @if (assignees().more) {
+          <span
+            class="more"
+            [attr.aria-label]="'and ' + assignees().more + ' more'"
+            >+{{ assignees().more }}</span
+          >
+        }
+      } @else {
+        <span
+          class="avatar unassigned"
+          aria-hidden="true"
+        >
+          <ion-icon name="user"></ion-icon>
+        </span>
+        <span class="name none">Unassigned</span>
+      }
+    </div>
+  </div>
+  <div class="card person">
+    <span class="label">Reporter</span>
+    <div class="who">
+      @if (reporter(); as reporter) {
+        <span
+          class="avatar"
+          aria-hidden="true"
+          [style.background]="reporter.fill"
+          >{{ reporter.initials }}</span
+        >
+        <span class="name">{{ reporter.name }}</span>
+      } @else {
+        <span class="name none">Unknown</span>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="card fields">
+  <div class="field">
+    <ion-icon
+      name="calendar"
+      aria-hidden="true"
+    ></ion-icon>
+    <span class="field-label">Due date</span>
+    <span
+      class="value due"
+      [class.overdue]="due().overdue"
+      [class.none]="!task().dueDate"
+      >{{ due().label }}</span
+    >
+  </div>
+  <div class="field">
+    <ion-icon
+      name="package"
+      aria-hidden="true"
+    ></ion-icon>
+    <span class="field-label">Release</span>
+    @if (release(); as release) {
+      <span class="value chips">
+        <span class="chip release">{{ release.label }}</span>
+        @if (release.more) {
+          <span class="chip">+{{ release.more }}</span>
+        }
+      </span>
+    } @else {
+      <span class="value none">None</span>
+    }
+  </div>
+  <div class="field">
+    <ion-icon
+      name="layers"
+      aria-hidden="true"
+    ></ion-icon>
+    <span class="field-label">Parent</span>
+    @if (task().parentTask; as parent) {
+      <a
+        class="value parent"
+        [routerLink]="link(parent.id)"
+        [state]="{ task: parent }"
+      >
+        <span class="key">{{ parent.taskKey }}</span>
+        <span class="parent-title">{{ parent.title }}</span>
+      </a>
+    } @else {
+      <span class="value none">None</span>
+    }
+  </div>
+  <div class="field">
+    <ion-icon
+      name="tag"
+      aria-hidden="true"
+    ></ion-icon>
+    <span class="field-label">Labels</span>
+    @if (labels().shown.length) {
+      <span class="value chips">
+        @for (label of labels().shown; track label) {
+          <span class="chip">{{ label }}</span>
+        }
+        @if (labels().more) {
+          <span class="chip">+{{ labels().more }}</span>
+        }
+      </span>
+    } @else {
+      <span class="value none">None</span>
+    }
+  </div>
+</div>
+
+<div class="card description">
+  <span class="label">Description</span>
+  @if (task().description?.trim()) {
+    <app-rich-text
+      [body]="task().description"
+      [format]="task().descriptionFormat"
+      [clamp]="descriptionLines"
+    />
+  } @else {
+    <p class="none">No description</p>
+  }
+</div>
+
+@if (isContainer()) {
+  <div class="card subtasks">
+    <span class="label">
+      Subtasks
+      @if (subtasks(); as subtasks) {
+        <span class="count">{{ subtasks.length }}</span>
+      }
+    </span>
+    @if (subtasks(); as subtasks) {
+      @for (child of subtasks; track child.id) {
+        <a
+          class="subtask"
+          [routerLink]="link(child.id)"
+          [state]="{ task: child }"
+        >
+          <ion-icon
+            [name]="typeIcon(child.type)"
+            aria-hidden="true"
+          ></ion-icon>
+          <span class="key">{{ child.taskKey }}</span>
+          <span class="subtask-title">{{ child.title }}</span>
+          <ion-icon
+            class="chevron"
+            name="chevron-right"
+            aria-hidden="true"
+          ></ion-icon>
+        </a>
+      } @empty {
+        <p class="none">No subtasks yet</p>
+      }
+    } @else {
+      <p class="none">Loading subtasks…</p>
+    }
+  </div>
+}

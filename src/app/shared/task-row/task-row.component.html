@@ -1,5 +1,6 @@
 <ion-item
   [routerLink]="['tasks', task().projectId, task().id]"
+  [state]="{ task: task() }"
   button="true"
   detail="false"
 >

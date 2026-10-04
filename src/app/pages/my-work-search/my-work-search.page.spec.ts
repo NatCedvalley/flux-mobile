@@ -1,10 +1,12 @@
 import type { SearchbarCustomEvent } from '@ionic/angular';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import type { FluxApi } from '@core/api';
 import type { MyTaskFilters } from '@core/task-filters';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import type { ChipOption } from '../../shared/option-chips/option-chips.component';
+import { AuthService } from '../../auth/auth.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/debounced';
 import { MyWorkSearchPage } from './my-work-search.page';
@@ -20,6 +22,7 @@ describe('MyWorkSearchPage', () => {
       providers: [
         provideRouter([]),
         { provide: FLUX_API, useValue: api as FluxApi },
+        { provide: AuthService, useValue: { account: signal({ id: 'a1' }) } },
       ],
     }).compileComponents();
 

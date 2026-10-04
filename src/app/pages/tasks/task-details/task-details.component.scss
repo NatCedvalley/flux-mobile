@@ -1,0 +1,255 @@
+// Handoff 3e body: cards on `--panel`, 10px apart, 16px gutter.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-space-10);
+  padding: var(--flux-space-12) var(--flux-space-16) var(--flux-space-24);
+}
+
+.card {
+  border-radius: var(--flux-radius-card);
+  background: var(--flux-bg);
+  box-shadow: 0 0 0 1px var(--flux-na4);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  font: var(--flux-font-field-label);
+  letter-spacing: var(--flux-tracking-field-label);
+  text-transform: uppercase;
+  color: var(--flux-na10);
+}
+
+.none {
+  margin: 0;
+  color: var(--flux-na10);
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+  color: var(--flux-pa11);
+}
+
+// People pair: two equal cards.
+.people {
+  display: flex;
+  gap: var(--flux-space-10);
+}
+
+.person {
+  flex: 1;
+  min-width: 0;
+  padding: var(--flux-space-10) var(--flux-space-12);
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-7);
+  min-width: 0;
+  margin-top: var(--flux-space-6);
+}
+
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-detail-avatar);
+  color: var(--flux-avatar-text);
+
+  &.unassigned {
+    background: var(--flux-na3);
+    color: var(--flux-na10);
+    font-size: 13px;
+  }
+}
+
+.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-field-value);
+  letter-spacing: var(--flux-tracking-field-value);
+  color: var(--flux-n12);
+
+  &.none {
+    color: var(--flux-na10);
+  }
+}
+
+.more {
+  flex: none;
+  font: var(--flux-font-meta-strong);
+  color: var(--flux-na11);
+}
+
+// Field card: 46px rows divided by `--na3`.
+.fields {
+  overflow: hidden;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-10);
+  min-height: 46px;
+  padding: 0 var(--flux-space-12);
+
+  & + & {
+    border-top: 1px solid var(--flux-na3);
+  }
+
+  > ion-icon {
+    flex: none;
+    font-size: 16px;
+    color: var(--flux-na10);
+  }
+}
+
+.field-label {
+  flex: none;
+  font: var(--flux-font-field-row);
+  letter-spacing: var(--flux-tracking-field-row);
+  color: var(--flux-na11);
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--flux-space-6);
+  flex: auto;
+  min-width: 0;
+  font: var(--flux-font-field-value);
+  letter-spacing: var(--flux-tracking-field-value);
+  color: var(--flux-n12);
+  text-align: end;
+
+  &.none {
+    color: var(--flux-na10);
+  }
+}
+
+.due.overdue {
+  font: var(--flux-font-field-value-strong);
+  color: var(--flux-red11);
+}
+
+.chips {
+  overflow: hidden;
+}
+
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 22px;
+  max-width: 100%;
+  padding: 0 var(--flux-space-7);
+  overflow: hidden;
+  border-radius: var(--flux-radius-tag);
+  background: var(--flux-na3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-label-chip);
+  letter-spacing: var(--flux-tracking-label-chip);
+  color: var(--flux-na11);
+
+  // Shrinks with an ellipsis when the release name is long.
+  &.release {
+    display: block;
+    flex: 0 1 auto;
+    background: var(--flux-violeta3);
+    font: var(--flux-font-value-chip);
+    line-height: 22px;
+    color: var(--flux-violet11);
+  }
+}
+
+.parent {
+  text-decoration: none;
+}
+
+.parent-title,
+.subtask-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-field-row);
+  color: var(--flux-na11);
+}
+
+.parent-title {
+  max-width: 140px;
+}
+
+// Description card.
+.description {
+  padding: var(--flux-space-12);
+
+  .label {
+    margin-bottom: var(--flux-space-8);
+  }
+
+  app-rich-text {
+    --rich-text-line: 21px;
+    font: var(--flux-font-detail-body);
+    letter-spacing: var(--flux-tracking-detail-body);
+    color: var(--flux-n12);
+  }
+}
+
+// Subtasks card (containers only).
+.subtasks {
+  padding: var(--flux-space-12) 0 var(--flux-space-4);
+
+  .label,
+  > .none {
+    padding: 0 var(--flux-space-12);
+  }
+
+  > .none {
+    padding-block: var(--flux-space-8);
+  }
+
+  .count {
+    font: var(--flux-font-meta-strong);
+    letter-spacing: normal;
+    color: var(--flux-na11);
+  }
+}
+
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-8);
+  min-height: 44px;
+  padding: 0 var(--flux-space-12);
+  text-decoration: none;
+
+  & + & {
+    border-top: 1px solid var(--flux-na3);
+  }
+
+  ion-icon {
+    flex: none;
+    font-size: 15px;
+    color: var(--flux-na10);
+  }
+
+  .subtask-title {
+    flex: auto;
+    color: var(--flux-n12);
+  }
+
+  .chevron {
+    color: var(--flux-na8);
+  }
+}

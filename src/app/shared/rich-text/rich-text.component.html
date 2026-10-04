@@ -1,0 +1,17 @@
+<div
+  #content
+  class="rich-text-content"
+  [class.clamped]="!!clamp() && !expanded()"
+  [style.--clamp-lines]="clamp()"
+  [innerHTML]="html()"
+></div>
+@if (overflowing() || expanded()) {
+  <button
+    type="button"
+    class="rich-text-toggle"
+    [attr.aria-expanded]="expanded()"
+    (click)="toggle()"
+  >
+    {{ expanded() ? 'Show less' : 'Show more' }}
+  </button>
+}

@@ -1,0 +1,137 @@
+// Handoff 3g: 36px day headers (later ones under a `--na4` rule), then a
+// two-column timeline of 26px tinted badges joined by a 1.5px connector.
+:host {
+  display: block;
+  padding: 0 var(--flux-space-16) var(--flux-space-24);
+}
+
+.day + .day {
+  border-top: 1px solid var(--flux-na4);
+}
+
+.day-label {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  margin: 0;
+  font: var(--flux-font-section-header);
+  letter-spacing: var(--flux-tracking-section-header);
+  text-transform: uppercase;
+  color: var(--flux-na10);
+}
+
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  gap: var(--flux-space-12);
+  padding-bottom: var(--flux-space-14);
+}
+
+.rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 26px;
+}
+
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--flux-radius-pill);
+  background: var(--flux-na3);
+  color: var(--flux-na11);
+  font-size: 14px;
+
+  &[data-tone='amber'] {
+    background: var(--flux-ambera3);
+    color: var(--flux-amber11);
+  }
+
+  &[data-tone='green'] {
+    background: var(--flux-greena3);
+    color: var(--flux-green11);
+  }
+
+  &[data-tone='red'] {
+    background: var(--flux-reda3);
+    color: var(--flux-red11);
+  }
+
+  &[data-tone='violet'] {
+    background: var(--flux-violeta3);
+    color: var(--flux-violet11);
+  }
+}
+
+// Runs down into the next entry's padding.
+.connector {
+  flex: auto;
+  width: 1.5px;
+  margin-top: var(--flux-space-4);
+  margin-bottom: calc(-1 * var(--flux-space-14));
+  background: var(--flux-na4);
+}
+
+.text {
+  flex: auto;
+  min-width: 0;
+  padding-top: var(--flux-space-3);
+
+  p {
+    margin: 0;
+    font: var(--flux-font-activity-text);
+    letter-spacing: var(--flux-tracking-activity-text);
+    color: var(--flux-na11);
+  }
+
+  b {
+    font-weight: 650;
+    color: var(--flux-n12);
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--flux-space-6);
+  border-radius: var(--flux-radius-value-chip);
+  background: var(--status-fill);
+  vertical-align: middle;
+  font: var(--flux-font-value-chip);
+  color: var(--status-text);
+}
+
+.arrow {
+  margin: 0 var(--flux-space-2);
+  vertical-align: middle;
+  font-size: 12px;
+  color: var(--flux-na9);
+}
+
+.to {
+  font-weight: 650;
+  color: var(--flux-n12);
+
+  &[data-kind='priority'][data-value='Critical'],
+  &[data-kind='priority'][data-value='High'] {
+    color: var(--flux-red11);
+  }
+}
+
+.time {
+  display: block;
+  margin-top: var(--flux-space-2);
+  font: var(--flux-font-meta);
+  color: var(--flux-na10);
+}

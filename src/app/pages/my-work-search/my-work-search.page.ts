@@ -31,6 +31,7 @@ import {
   activeFilterCount,
   myTaskFilterQuery,
 } from '@core/task-filters';
+import { MyProjectsService } from '../../projects/my-projects.service';
 import { statusChipOptions } from '../../projects/status-options';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { SEARCH_DEBOUNCE_MS, debounced } from '../../shared/debounced';
@@ -43,8 +44,6 @@ import { MyTaskFilterSheetComponent } from './my-task-filter-sheet.component';
 
 /** Rows per request, as on the project list. */
 const PAGE_SIZE = 50;
-/** The server's page cap: more projects than this aren't listed. */
-const PROJECTS_PAGE_SIZE = 100;
 
 /**
  * Searches the user's assigned tasks across every project (My Work's
@@ -78,6 +77,7 @@ const PROJECTS_PAGE_SIZE = 100;
 })
 export class MyWorkSearchPage {
   private readonly api = inject(FLUX_API);
+  private readonly myProjects = inject(MyProjectsService);
   private readonly searchbar = viewChild.required(IonSearchbar);
 
   protected readonly today = signal(localIsoDate(new Date()));
@@ -129,13 +129,7 @@ export class MyWorkSearchPage {
   private readonly optionsWanted = signal(false);
   protected readonly projects = resource({
     params: () => (this.optionsWanted() ? true : undefined),
-    loader: async () =>
-      (
-        await this.api.listMyProjects({
-          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          size: PROJECTS_PAGE_SIZE,
-        })
-      ).content ?? [],
+    loader: () => this.myProjects.load(),
   });
   /** Each project's workflow statuses, fetched once per visit. */
   private readonly statuses = new Map<string, Promise<WorkflowStatus[]>>();

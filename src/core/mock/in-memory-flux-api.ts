@@ -7,9 +7,11 @@ import type {
   MyTasksQuery,
   NotificationsQuery,
   Page,
+  ProjectMember,
   ProjectTasksQuery,
   Task,
   TaskViewSettings,
+  TaskViewSettingsUpdate,
   WorkflowStatus,
 } from '../api';
 import { addDays, localIsoDate } from '../my-work';
@@ -83,6 +85,20 @@ const STATUSES: WorkflowStatus[] = [
 ];
 
 const ADA = { accountId: 'a1', firstName: 'Ada', lastName: 'Rahman' };
+const BEN = { accountId: 'a2', firstName: 'Ben', lastName: 'Tan' };
+
+/** Every project's assignable members, in no particular order. */
+const MEMBERS: ProjectMember[] = [
+  { ...BEN, email: 'ben@flux.test', role: 'EDITOR' },
+  { ...ADA, email: 'ada@flux.test', role: 'EDITOR' },
+  {
+    accountId: 'a3',
+    firstName: 'Chen',
+    lastName: 'Wei',
+    email: 'chen@flux.test',
+    role: 'LEAD',
+  },
+];
 
 const STATUS_FIELDS = {
   backlog: {
@@ -150,6 +166,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       priority: 'LOW',
       ...STATUS_FIELDS.backlog,
       dueDate: due(5),
+      assignees: [BEN],
     },
     {
       id: '5',
@@ -239,15 +256,69 @@ function pageOf<T>(items: T[], page = 0, size = 20): Page<T> {
   };
 }
 
+/** A comma-separated filter as its values; empty when it isn't set. */
+function csv(value: string | undefined): string[] {
+  return value ? value.split(',').map((v) => v.trim()) : [];
+}
+
+/** Matches the title or the task key, case-insensitively, like the server. */
+function matchesSearch(task: FixtureTask, search: string | undefined) {
+  const term = search?.trim().toLowerCase();
+  return (
+    !term ||
+    !!task.title?.toLowerCase().includes(term) ||
+    !!task.taskKey?.toLowerCase().includes(term)
+  );
+}
+
+/** Sort keys for `field,dir`; a missing value sorts last either way. */
+const SORT_KEYS: Record<
+  string,
+  (t: FixtureTask) => number | string | undefined
+> = {
+  dueDate: (t) => t.dueDate,
+  priority: (t) =>
+    t.priority ? 3 - PRIORITY_ORDER.indexOf(t.priority) : undefined,
+  title: (t) => t.title?.toLowerCase(),
+  taskNumber: (t) => Number(t.taskKey?.split('-')[1]),
+  updatedAt: (t) => t.updatedAt,
+  createdAt: (t) => t.createdAt,
+};
+
+function sortTasks(rows: FixtureTask[], sort: string | undefined) {
+  const [field, dir] = (sort ?? '').split(',');
+  const key = SORT_KEYS[field];
+  if (!key) {
+    return rows;
+  }
+  const sign = dir === 'desc' ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const x = key(a);
+    const y = key(b);
+    if (x === undefined || y === undefined) {
+      return x === y ? 0 : x === undefined ? 1 : -1;
+    }
+    return x < y ? -sign : x > y ? sign : 0;
+  });
+}
+
+/** Whether `value` is one of a comma-separated filter's values (or no filter). */
+function inList(value: string | undefined, filter: string | undefined) {
+  const values = csv(filter);
+  return !values.length || values.includes(value ?? '');
+}
+
 function notFound(projectId: string, taskId: string): Error {
   return new Error(`Task not found: ${projectId}/${taskId}`);
 }
 
 /**
  * Static in-memory `FluxApi` for tests. It applies the my-tasks filters
- * (scope, openOnly, the due window) and orders by priority then due date,
- * like the server, and the project task list's status, priority, type and
- * label filters, so pages can be tested against it.
+ * (scope, openOnly, the due window, project, status, priority, search) and
+ * orders by priority then due date, like the server, and the project task
+ * list's filters (comma lists for status, priority, type and assignee,
+ * labels, search) and sort, so pages can be tested against it. Tasks
+ * without a sort value (fixtures have no createdAt) keep their order.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
@@ -299,6 +370,9 @@ export class InMemoryFluxApi implements FluxApi {
         (t) => !query.dueDateTo || (!!t.dueDate && t.dueDate <= query.dueDateTo)
       )
       .filter((t) => !query.projectId || t.projectId === query.projectId)
+      .filter((t) => inList(t.status, query.status))
+      .filter((t) => inList(t.priority, query.priority))
+      .filter((t) => matchesSearch(t, query.search))
       .sort(
         (a, b) =>
           PRIORITY_ORDER.indexOf(a.priority ?? 'LOW') -
@@ -312,18 +386,27 @@ export class InMemoryFluxApi implements FluxApi {
     projectId: string,
     query: ProjectTasksQuery = {}
   ): Promise<Page<Task>> {
+    const assignees = csv(query.assigneeId);
     const rows = this.tasks
       .filter((t) => t.projectId === projectId)
-      .filter((t) => !query.status || t.status === query.status)
-      .filter((t) => !query.priority || t.priority === query.priority)
-      .filter((t) => !query.type || t.type === query.type)
+      .filter((t) => inList(t.status, query.status))
+      .filter((t) => inList(t.priority, query.priority))
+      .filter((t) => inList(t.type, query.type))
+      .filter(
+        (t) =>
+          !assignees.length ||
+          !!t.assignees?.some((a) => assignees.includes(a.accountId ?? ''))
+      )
       .filter(
         (t) => !query.excludeLabel || !t.labels?.includes(query.excludeLabel)
       )
       .filter(
         (t) => !query.requireLabel || !!t.labels?.includes(query.requireLabel)
-      );
-    return Promise.resolve(pageOf(rows, query.page, query.size));
+      )
+      .filter((t) => matchesSearch(t, query.search));
+    return Promise.resolve(
+      pageOf(sortTasks(rows, query.sort), query.page, query.size)
+    );
   }
 
   getTask(projectId: string, taskId: string): Promise<Task> {
@@ -345,6 +428,26 @@ export class InMemoryFluxApi implements FluxApi {
 
   getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
     return Promise.resolve(this.viewSettings.get(projectId) ?? {});
+  }
+
+  updateTaskViewSettings(
+    projectId: string,
+    update: TaskViewSettingsUpdate
+  ): Promise<TaskViewSettings> {
+    const settings: TaskViewSettings = {
+      ...this.viewSettings.get(projectId),
+    };
+    for (const [key, value] of Object.entries(update)) {
+      if (value !== undefined) {
+        settings[key as keyof TaskViewSettings] = value || undefined;
+      }
+    }
+    this.viewSettings.set(projectId, settings);
+    return Promise.resolve(settings);
+  }
+
+  listAssignableMembers(projectId: string): Promise<ProjectMember[]> {
+    return Promise.resolve(MEMBERS.map((m) => ({ ...m, projectId })));
   }
 
   listNotifications(

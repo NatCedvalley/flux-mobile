@@ -1,0 +1,119 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="reset"
+        (click)="reset()"
+        >Reset</ion-button
+      >
+    </ion-buttons>
+    <ion-title>Filters</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loadFailed()) {
+    <section>
+      <p class="note">
+        Couldn't load the filter options.
+        <ion-button
+          fill="clear"
+          size="small"
+          (click)="retry.emit()"
+          >Retry</ion-button
+        >
+      </p>
+    </section>
+  }
+
+  <section class="project">
+    <h2 id="filter-project">Project</h2>
+    @if (projects(); as projects) {
+      <ion-list
+        lines="full"
+        role="radiogroup"
+        aria-labelledby="filter-project"
+      >
+        <ion-item
+          button="true"
+          detail="false"
+          role="radio"
+          [attr.aria-checked]="!filters().projectId"
+          [class.current]="!filters().projectId"
+          (click)="chooseProject(undefined)"
+        >
+          Any project
+          @if (!filters().projectId) {
+            <ion-icon
+              slot="end"
+              class="current-mark"
+              name="circle-check"
+              aria-hidden="true"
+            ></ion-icon>
+          }
+        </ion-item>
+        @for (p of projects; track p.project?.id) {
+          <ion-item
+            button="true"
+            detail="false"
+            role="radio"
+            [attr.aria-checked]="p.project?.id === filters().projectId"
+            [class.current]="p.project?.id === filters().projectId"
+            (click)="chooseProject(p.project?.id)"
+          >
+            {{ p.project?.name }}
+            @if (p.project?.id === filters().projectId) {
+              <ion-icon
+                slot="end"
+                class="current-mark"
+                name="circle-check"
+                aria-hidden="true"
+              ></ion-icon>
+            }
+          </ion-item>
+        }
+      </ion-list>
+    } @else if (!loadFailed()) {
+      <ion-skeleton-text
+        animated="true"
+        class="loading"
+      ></ion-skeleton-text>
+    }
+  </section>
+
+  <section class="status">
+    <h2 id="filter-status">Status</h2>
+    @if (!filters().projectId) {
+      <p class="note">Pick a project to filter by status.</p>
+    } @else if (statusOptions(); as options) {
+      <app-option-chips
+        aria-labelledby="filter-status"
+        [options]="options"
+        [selected]="filters().statuses"
+        (selectedChange)="setStatuses($event)"
+      />
+    } @else if (!loadFailed()) {
+      <ion-skeleton-text
+        animated="true"
+        class="loading"
+      ></ion-skeleton-text>
+    }
+  </section>
+
+  <section class="priority">
+    <h2 id="filter-priority">Priority</h2>
+    <app-option-chips
+      aria-labelledby="filter-priority"
+      [options]="priorityOptions"
+      [selected]="filters().priorities"
+      (selectedChange)="setPriorities($event)"
+    />
+  </section>
+</ion-content>

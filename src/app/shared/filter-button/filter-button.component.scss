@@ -1,0 +1,32 @@
+// 28px, radius 8, `--pa3` fill and `--pa11` text; the badge is a filled
+// `--p9` pill.
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  height: 28px;
+  padding: 0 var(--flux-space-9);
+  border: 0;
+  border-radius: var(--flux-radius-chip);
+  background: var(--flux-pa3);
+  color: var(--flux-pa11);
+  font: var(--flux-font-filter-button);
+  letter-spacing: var(--flux-tracking-filter-button);
+
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+ion-badge {
+  --background: var(--flux-p9);
+  --color: var(--flux-avatar-text);
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --padding-start: var(--flux-space-4);
+  --padding-end: var(--flux-space-4);
+  min-width: 16px;
+  height: 16px;
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-badge);
+}

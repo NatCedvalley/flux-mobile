@@ -79,6 +79,26 @@ describe('HttpFluxApi', () => {
     expect(url()).toBe(`${BASE_URL}/projects/p1/task-view-settings`);
   });
 
+  it('PUTs a change to the caller’s task view settings', async () => {
+    const { api, url, init } = setup({ groupBy: 'type' });
+    await expect(
+      api.updateTaskViewSettings('p1', { groupBy: 'type' })
+    ).resolves.toEqual({ groupBy: 'type' });
+
+    expect(url()).toBe(`${BASE_URL}/projects/p1/task-view-settings`);
+    expect(init().method).toBe('PUT');
+    expect(init().headers.Authorization).toBe('Bearer a1');
+    expect(JSON.parse(init().body)).toEqual({ groupBy: 'type' });
+  });
+
+  it('lists a project’s assignable members', async () => {
+    const { api, url } = setup([{ accountId: 'a1' }]);
+    await expect(api.listAssignableMembers('p1')).resolves.toEqual([
+      { accountId: 'a1' },
+    ]);
+    expect(url()).toBe(`${BASE_URL}/projects/p1/members/assignable`);
+  });
+
   it('lists a project’s workflow statuses', async () => {
     const { api, url } = setup([{ slug: 'todo' }]);
     await expect(api.listWorkflowStatuses('p1')).resolves.toEqual([

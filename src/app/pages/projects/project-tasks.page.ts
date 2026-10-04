@@ -8,8 +8,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -25,11 +27,11 @@ import {
   type InfiniteScrollCustomEvent,
   type RefresherCustomEvent,
 } from '@ionic/angular';
-import type { MyProject, WorkflowStatus } from '@core/api';
+import type { MyProject, ProjectMember, WorkflowStatus } from '@core/api';
 import { localIsoDate } from '@core/my-work';
 import {
+  DEFAULT_SORT,
   type GroupBy,
-  type GroupHue,
   GroupedTaskPager,
   type PagerState,
   aiFilterQuery,
@@ -39,30 +41,30 @@ import {
   resolveGroupBy,
   taskGroups,
 } from '@core/project-list';
+import {
+  EMPTY_FILTERS,
+  type TaskFilters,
+  activeFilterCount,
+  assigneeOptions,
+  filteredGroups,
+} from '@core/task-filters';
+import type { ChipOption } from '../../shared/option-chips/option-chips.component';
 import { AuthService } from '../../auth/auth.service';
-import { projectTint } from '../../projects/project-colors';
+import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { ProjectSwitcherComponent } from '../../projects/project-switcher/project-switcher.component';
+import { statusChipOptions } from '../../projects/status-options';
+import { TaskFilterSheetComponent } from '../../projects/task-filter-sheet/task-filter-sheet.component';
+import { ViewOptionsSheetComponent } from '../../projects/view-options-sheet/view-options-sheet.component';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
+import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 
 /** The server's page cap: more projects than this aren't listed. */
 const PROJECTS_PAGE_SIZE = 100;
-
-/** A group header's dot (9), word (11) and wash for each hue. */
-const HUE_COLORS: Record<GroupHue, [dot: string, text: string, wash: string]> =
-  {
-    gray: ['n8', 'na11', 'na2'],
-    blue: ['blue9', 'blue11', 'bluea3'],
-    amber: ['amber9', 'amber11', 'ambera2'],
-    green: ['green9', 'green11', 'greena2'],
-    purple: ['purple9', 'purple11', 'purplea3'],
-    cyan: ['cyan9', 'cyan11', 'cyana3'],
-    red: ['red9', 'red11', 'reda3'],
-  };
 
 const GROUP_BY_LABELS: Record<GroupBy, string> = {
   none: 'Not grouped',
@@ -71,17 +73,25 @@ const GROUP_BY_LABELS: Record<GroupBy, string> = {
   type: 'Grouped by type',
 };
 
+/** How the loaded list is grouped, and the filter sheet's status chips. */
+type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
+
 /**
  * Projects tab (handoff 3b): one project's tasks, grouped under sticky
  * headers and paged as you scroll. The header opens the switcher (3j); the
- * project open last is remembered.
+ * project open last is remembered. The strip under it opens the view
+ * options (group-by, saved as the project's override as on the web, and
+ * sort, kept for the session) and the filters (kept until the project
+ * changes).
  */
 @Component({
   selector: 'app-project-tasks',
   templateUrl: './project-tasks.page.html',
   styleUrls: ['./project-tasks.page.scss'],
   imports: [
+    RouterLink,
     IonButton,
+    IonButtons,
     IonHeader,
     IonToolbar,
     IonContent,
@@ -96,9 +106,12 @@ const GROUP_BY_LABELS: Record<GroupBy, string> = {
     IonRefresherContent,
     EmptyStateComponent,
     ErrorStateComponent,
+    FilterButtonComponent,
     ProjectSwitcherComponent,
     ProjectTaskRowComponent,
     SkeletonRowsComponent,
+    TaskFilterSheetComponent,
+    ViewOptionsSheetComponent,
   ],
 })
 export class ProjectTasksPage {
@@ -163,39 +176,93 @@ export class ProjectTasksPage {
       : undefined;
   });
 
+  /** The filters in use: none again whenever the project changes. */
+  protected readonly filters = linkedSignal<string | null, TaskFilters>({
+    source: this.currentId,
+    computation: () => EMPTY_FILTERS,
+  });
+  /** The filter sheet's edits, applied when it closes. */
+  protected readonly filterDraft = signal<TaskFilters>(EMPTY_FILTERS);
+  protected readonly filterCount = computed(() =>
+    activeFilterCount(this.filters())
+  );
+  /** The sort, kept for the session across projects, as on the web. */
+  protected readonly sort = signal(DEFAULT_SORT);
+  /**
+   * A group-by picked here. It wins over the saved settings (whose save may
+   * still be in flight) until the project changes.
+   */
+  private readonly groupByChoice = linkedSignal<string | null, GroupBy | null>({
+    source: this.currentId,
+    computation: () => null,
+  });
+
   /** Each project's workflow statuses, fetched once per session. */
   private readonly statuses = new Map<string, Promise<WorkflowStatus[]>>();
+  /** Each project's assignable members, fetched once per session. */
+  private readonly members = new Map<string, Promise<ProjectMember[]>>();
   private readonly pager = new GroupedTaskPager(this.api);
   protected readonly pages = signal<PagerState>({ groups: [], done: true });
 
   /** Loads the open project's settings and the first page of each group. */
   protected readonly list = resource({
-    params: () => this.currentId() ?? undefined,
-    loader: async ({ params: projectId, abortSignal }) => {
+    params: () => {
+      const projectId = this.currentId();
+      return projectId
+        ? {
+            projectId,
+            filters: this.filters(),
+            sort: this.sort(),
+            groupByChoice: this.groupByChoice(),
+          }
+        : undefined;
+    },
+    loader: async ({ params, abortSignal }): Promise<ListView> => {
+      const { projectId, filters, sort, groupByChoice } = params;
       const [statuses, settings] = await Promise.all([
         this.workflowStatuses(projectId),
         this.api.getTaskViewSettings(projectId),
       ]);
       abortSignal.throwIfAborted();
-      const groupBy = resolveGroupBy(
-        settings.groupBy,
-        this.account()?.defaultGroupBy
-      );
-      const groups = taskGroups(
+      const groupBy =
+        groupByChoice ??
+        resolveGroupBy(settings.groupBy, this.account()?.defaultGroupBy);
+      const categoryPositions = this.current()?.project?.categoryPositions;
+      const filtered = filteredGroups(
         groupBy,
-        statuses,
-        this.current()?.project?.categoryPositions
+        taskGroups(groupBy, statuses, categoryPositions),
+        filters
       );
-      await this.pager.start(
-        projectId,
-        groups,
-        aiFilterQuery(settings.aiTaskFilter)
-      );
-      return { groupBy };
+      await this.pager.start(projectId, filtered.groups, {
+        ...aiFilterQuery(settings.aiTaskFilter),
+        ...filtered.query,
+        sort,
+      });
+      return {
+        groupBy,
+        statusOptions: statusChipOptions(statuses, categoryPositions),
+      };
     },
   });
-  protected readonly groupByLabel = computed(() =>
-    this.list.hasValue() ? GROUP_BY_LABELS[this.list.value().groupBy] : ''
+  /**
+   * The last loaded list's settings, kept while the next one loads so the
+   * strip doesn't flicker (`value()` throws while in error).
+   */
+  protected readonly listValue = linkedSignal<
+    ListView | undefined,
+    ListView | undefined
+  >({
+    source: () => (this.list.hasValue() ? this.list.value() : undefined),
+    computation: (value, previous) => value ?? previous?.value,
+  });
+  protected readonly groupBy = computed<GroupBy>(
+    () => this.listValue()?.groupBy ?? 'status'
+  );
+  protected readonly groupByLabel = computed(
+    () => GROUP_BY_LABELS[this.groupBy()]
+  );
+  protected readonly statusOptions = computed(
+    () => this.listValue()?.statusOptions ?? []
   );
   protected readonly empty = computed(() => this.pages().groups.length === 0);
   /**
@@ -206,6 +273,22 @@ export class ProjectTasksPage {
   protected readonly retryingMore = signal(false);
 
   protected readonly switcherOpen = signal(false);
+  protected readonly filterOpen = signal(false);
+  protected readonly viewOpen = signal(false);
+
+  /** The filter sheet's assignee rows, loaded the first time it opens. */
+  private readonly membersWanted = signal(false);
+  protected readonly assignees = resource({
+    params: () =>
+      this.membersWanted() ? (this.currentId() ?? undefined) : undefined,
+    loader: async ({ params: projectId }) =>
+      assigneeOptions(
+        await this.assignableMembers(projectId),
+        this.account()?.id
+      ),
+  });
+
+  protected readonly hueColors = groupHueColors;
 
   /** The pull-to-refresh in progress, completed once its reloads settle. */
   private readonly refresher = signal<
@@ -234,15 +317,6 @@ export class ProjectTasksPage {
     });
   }
 
-  protected hueColors(hue: GroupHue): Record<string, string> {
-    const [dot, text, wash] = HUE_COLORS[hue];
-    return {
-      '--group-dot': `var(--flux-${dot})`,
-      '--group-text': `var(--flux-${text})`,
-      '--group-wash': `var(--flux-${wash})`,
-    };
-  }
-
   protected choose(project: MyProject): void {
     this.switcherOpen.set(false);
     const id = project.project?.id;
@@ -254,6 +328,50 @@ export class ProjectTasksPage {
 
   protected togglePin(projectId: string): void {
     void this.prefs.togglePin(projectId);
+  }
+
+  protected openFilters(): void {
+    this.filterDraft.set(this.filters());
+    this.membersWanted.set(true);
+    this.filterOpen.set(true);
+  }
+
+  /** Applies the sheet's edits as it closes, however it was closed. */
+  protected filtersClosed(): void {
+    this.filterOpen.set(false);
+    const draft = this.filterDraft();
+    if (JSON.stringify(draft) !== JSON.stringify(this.filters())) {
+      this.filters.set(draft);
+      void this.content().scrollToTop(0);
+    }
+  }
+
+  protected clearFilters(): void {
+    this.filters.set(EMPTY_FILTERS);
+  }
+
+  /** Regroups the list, and saves the choice as the project's override. */
+  protected chooseGroupBy(groupBy: GroupBy): void {
+    const projectId = this.currentId();
+    if (!projectId || groupBy === this.groupBy()) {
+      return;
+    }
+    this.groupByChoice.set(groupBy);
+    void this.content().scrollToTop(0);
+    // The list doesn't wait for it: a failed save only loses the choice
+    // for the next session.
+    this.api
+      .updateTaskViewSettings(projectId, { groupBy })
+      .catch((error: unknown) =>
+        console.error('Saving the group-by failed', error)
+      );
+  }
+
+  protected chooseSort(sort: string): void {
+    if (sort !== this.sort()) {
+      this.sort.set(sort);
+      void this.content().scrollToTop(0);
+    }
   }
 
   protected loadMore(event: InfiniteScrollCustomEvent): void {
@@ -291,6 +409,17 @@ export class ProjectTasksPage {
       console.error('Loading more tasks failed', error);
       this.moreFailed.set(true);
     }
+  }
+
+  private assignableMembers(projectId: string): Promise<ProjectMember[]> {
+    let members = this.members.get(projectId);
+    if (!members) {
+      members = this.api.listAssignableMembers(projectId);
+      this.members.set(projectId, members);
+      // A failure isn't cached, so a retry fetches again.
+      members.catch(() => this.members.delete(projectId));
+    }
+    return members;
   }
 
   private workflowStatuses(projectId: string): Promise<WorkflowStatus[]> {

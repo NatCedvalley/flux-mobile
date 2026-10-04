@@ -1,0 +1,88 @@
+// Shared anatomy of the choice sheets (filters, view options), after the
+// switcher (3j) and the status sheet (3h): a title row with Reset and Done,
+// uppercase section labels, and 52px option rows on the sheet background.
+:host {
+  background: var(--flux-bg);
+}
+
+ion-toolbar {
+  --background: var(--flux-bg);
+  --padding-start: var(--flux-space-8);
+  --padding-end: var(--flux-space-8);
+}
+
+ion-title {
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+ion-buttons ion-button {
+  --color: var(--flux-pa11);
+  font: var(--flux-font-sheet-action);
+  letter-spacing: var(--flux-tracking-sheet-action);
+}
+
+ion-content {
+  --background: var(--flux-bg);
+}
+
+section {
+  padding: var(--flux-space-12) var(--flux-space-16) var(--flux-space-4);
+}
+
+h2 {
+  margin: 0 0 var(--flux-space-10);
+  text-transform: uppercase;
+  font: var(--flux-font-section-header);
+  letter-spacing: var(--flux-tracking-section-header);
+  color: var(--flux-na10);
+}
+
+// A note under a section label, e.g. why the section is disabled.
+.note {
+  margin: 0 0 var(--flux-space-10);
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+
+  ion-button {
+    --color: var(--flux-pa11);
+    margin: 0;
+    font: var(--flux-font-meta-strong);
+  }
+}
+
+// Option rows run edge to edge under their section label.
+ion-list {
+  margin: 0 calc(-1 * var(--flux-space-16));
+  padding: 0;
+  background: transparent;
+}
+
+ion-item {
+  --min-height: 52px;
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+  --background: var(--flux-bg);
+  font: var(--flux-font-sheet-item);
+  letter-spacing: var(--flux-tracking-sheet-item);
+  color: var(--flux-n12);
+
+  &.current {
+    --background:
+      linear-gradient(var(--flux-pa2), var(--flux-pa2)), var(--flux-bg);
+  }
+}
+
+.current-mark {
+  margin-inline-start: var(--flux-space-8);
+  font-size: 19px;
+  color: var(--flux-p9);
+}
+
+ion-skeleton-text.loading {
+  height: 52px;
+  border-radius: var(--flux-radius-card);
+}

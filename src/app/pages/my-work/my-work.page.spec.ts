@@ -75,6 +75,14 @@ describe('MyWorkPage', () => {
     expect(button?.querySelector('.avatar')?.textContent?.trim()).toBe('AR');
   });
 
+  it('has a search button that opens the search page', async () => {
+    await create();
+    const button = element().querySelector('.icon-button.search');
+
+    expect(button?.getAttribute('routerLink')).toBe('search');
+    expect(button?.getAttribute('aria-label')).toBe('Search your tasks');
+  });
+
   it('shows the open assigned count in the subtitle', async () => {
     await create();
     await settle();

@@ -11,6 +11,7 @@ export {
   type PriorityFact,
 } from './display';
 export {
+  DEFAULT_SORT,
   GroupedTaskPager,
   PROJECT_PAGE_SIZE,
   type LoadedGroup,

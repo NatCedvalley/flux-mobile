@@ -24,17 +24,47 @@
           aria-hidden="true"
         ></ion-icon>
       </button>
+      <ion-buttons slot="end">
+        <ion-button
+          class="icon-button search"
+          routerLink="search"
+          aria-label="Search tasks"
+          [queryParams]="{ project: currentId(), sort: sort() }"
+        >
+          <ion-icon
+            slot="icon-only"
+            name="search"
+            aria-hidden="true"
+          ></ion-icon>
+        </ion-button>
+      </ion-buttons>
     } @else {
       <h1 class="flux-screen-title">Projects</h1>
     }
   </ion-toolbar>
-  @if (list.hasValue() && list.value().groupBy !== 'none') {
+  @if (title() && listValue()) {
     <div class="strip">
-      <ion-icon
-        name="rows-3"
-        aria-hidden="true"
-      ></ion-icon>
-      {{ groupByLabel() }}
+      <button
+        type="button"
+        class="group-by-button"
+        aria-haspopup="dialog"
+        (click)="viewOpen.set(true)"
+      >
+        <ion-icon
+          name="rows-3"
+          aria-hidden="true"
+        ></ion-icon>
+        {{ groupByLabel() }}
+        <ion-icon
+          class="chevron-down"
+          name="chevron-down"
+          aria-hidden="true"
+        ></ion-icon>
+      </button>
+      <app-filter-button
+        [count]="filterCount()"
+        (click)="openFilters()"
+      />
     </div>
   }
 </ion-header>
@@ -66,6 +96,18 @@
     />
   } @else if (!list.hasValue()) {
     <app-skeleton-rows [rowHeight]="62" />
+  } @else if (empty() && filterCount()) {
+    <app-empty-state
+      icon="search"
+      message="No tasks match these filters"
+    >
+      <ion-button
+        fill="clear"
+        class="clear-filters"
+        (click)="clearFilters()"
+        >Clear filters</ion-button
+      >
+    </app-empty-state>
   } @else if (empty()) {
     <app-empty-state
       icon="circle-check"
@@ -122,7 +164,7 @@
 </ion-content>
 
 <ion-modal
-  class="switcher-sheet"
+  class="flux-sheet"
   [isOpen]="switcherOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -136,6 +178,43 @@
       (selected)="choose($event)"
       (pinToggled)="togglePin($event)"
       (done)="switcherOpen.set(false)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="viewOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="viewOpen.set(false)"
+>
+  <ng-template>
+    <app-view-options-sheet
+      [groupBy]="groupBy()"
+      [sort]="sort()"
+      (groupByChange)="chooseGroupBy($event)"
+      (sortChange)="chooseSort($event)"
+      (done)="viewOpen.set(false)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="filterOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="filtersClosed()"
+>
+  <ng-template>
+    <app-task-filter-sheet
+      [(filters)]="filterDraft"
+      [statusOptions]="statusOptions()"
+      [assignees]="assignees.hasValue() ? assignees.value() : undefined"
+      [assigneesFailed]="!!assignees.error()"
+      (retryAssignees)="assignees.reload()"
+      (done)="filterOpen.set(false)"
     />
   </ng-template>
 </ion-modal>

@@ -7,9 +7,11 @@ import type {
   MyTasksQuery,
   NotificationsQuery,
   Page,
+  ProjectMember,
   ProjectTasksQuery,
   Task,
   TaskViewSettings,
+  TaskViewSettingsUpdate,
   WorkflowStatus,
 } from './types';
 import { type FetchFn, JsonHttpClient, type QueryParams } from '../http';
@@ -69,6 +71,25 @@ export class HttpFluxApi implements FluxApi {
   getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
     return this.get(
       `/projects/${encodeURIComponent(projectId)}/task-view-settings`
+    );
+  }
+
+  updateTaskViewSettings(
+    projectId: string,
+    update: TaskViewSettingsUpdate
+  ): Promise<TaskViewSettings> {
+    return this.withAccessToken((accessToken) =>
+      this.http.request<TaskViewSettings>(
+        'PUT',
+        `/projects/${encodeURIComponent(projectId)}/task-view-settings`,
+        { accessToken, body: update }
+      )
+    );
+  }
+
+  listAssignableMembers(projectId: string): Promise<ProjectMember[]> {
+    return this.get(
+      `/projects/${encodeURIComponent(projectId)}/members/assignable`
     );
   }
 

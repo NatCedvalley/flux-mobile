@@ -4,8 +4,8 @@ import type { TaskGroup } from './groups';
 /** Rows per request: 10 scrolls reach 500 rows. The server caps it at 100. */
 export const PROJECT_PAGE_SIZE = 50;
 
-/** flux-web's default order within a group. */
-const SORT = 'createdAt,desc';
+/** flux-web's default order within a group, unless the base query sorts. */
+export const DEFAULT_SORT = 'createdAt,desc';
 
 /** A group with the rows loaded so far and its server-side total. */
 export type LoadedGroup = {
@@ -32,7 +32,9 @@ type GroupProgress = LoadedGroup & { nextPage: number };
  * workflow status, so each group is its own filtered query (`status=…`):
  * `start` fetches the first page of every group at once, which also gives
  * each header its count and drops empty groups, and `loadMore` pages the
- * first group that isn't complete yet.
+ * first group that isn't complete yet. A group's own filter wins over the
+ * same key in the base query, so narrow the groups to the filter first
+ * (`narrowGroups` in `@core/task-filters`).
  */
 export class GroupedTaskPager {
   private projectId = '';
@@ -85,9 +87,9 @@ export class GroupedTaskPager {
     const pages = await Promise.all(
       groups.map((group) =>
         this.api.listProjectTasks(projectId, {
+          sort: DEFAULT_SORT,
           ...baseQuery,
           ...group.query,
-          sort: SORT,
           page: 0,
           size: this.pageSize,
         })
@@ -133,9 +135,9 @@ export class GroupedTaskPager {
     }
     const generation = this.generation;
     const page = await this.api.listProjectTasks(this.projectId, {
+      sort: DEFAULT_SORT,
       ...this.baseQuery,
       ...target.group.query,
-      sort: SORT,
       page: target.nextPage,
       size: this.pageSize,
     });

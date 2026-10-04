@@ -6,9 +6,11 @@ import type {
   MyTasksQuery,
   NotificationsQuery,
   Page,
+  ProjectMember,
   ProjectTasksQuery,
   Task,
   TaskViewSettings,
+  TaskViewSettingsUpdate,
   WorkflowStatus,
 } from './types';
 
@@ -47,6 +49,18 @@ export type FluxApi = {
    * view overrides (group-by, AI filter, …), each null when not overridden.
    */
   getTaskViewSettings(projectId: string): Promise<TaskViewSettings>;
+
+  /**
+   * PUT /projects/{projectId}/task-view-settings: changes the caller's own
+   * overrides for the project (flux-web writes the same ones).
+   */
+  updateTaskViewSettings(
+    projectId: string,
+    update: TaskViewSettingsUpdate
+  ): Promise<TaskViewSettings>;
+
+  /** GET /projects/{projectId}/members/assignable: unpaged, in no order. */
+  listAssignableMembers(projectId: string): Promise<ProjectMember[]>;
 
   /** GET /notifications */
   listNotifications(query?: NotificationsQuery): Promise<Page<AppNotification>>;

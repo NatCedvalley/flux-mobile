@@ -1,0 +1,94 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="reset"
+        (click)="reset()"
+        >Reset</ion-button
+      >
+    </ion-buttons>
+    <ion-title>Filters</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <section class="status">
+    <h2 id="filter-status">Status</h2>
+    <app-option-chips
+      aria-labelledby="filter-status"
+      [options]="statusOptions()"
+      [selected]="filters().statuses"
+      (selectedChange)="setStatuses($event)"
+    />
+  </section>
+
+  <section class="priority">
+    <h2 id="filter-priority">Priority</h2>
+    <app-option-chips
+      aria-labelledby="filter-priority"
+      [options]="priorityOptions"
+      [selected]="filters().priorities"
+      (selectedChange)="setPriorities($event)"
+    />
+  </section>
+
+  <section class="assignee">
+    <h2 id="filter-assignee">Assignee</h2>
+    @if (assigneesFailed()) {
+      <p class="note">
+        Couldn't load the people on this project.
+        <ion-button
+          fill="clear"
+          size="small"
+          (click)="retryAssignees.emit()"
+          >Retry</ion-button
+        >
+      </p>
+    } @else if (assignees(); as assignees) {
+      <ion-list
+        lines="full"
+        aria-labelledby="filter-assignee"
+      >
+        @for (option of assignees; track option.accountId) {
+          <ion-item
+            button="true"
+            detail="false"
+            role="checkbox"
+            [attr.aria-checked]="isAssignee(option.accountId)"
+            [class.current]="isAssignee(option.accountId)"
+            (click)="toggleAssignee(option.accountId)"
+          >
+            <span
+              slot="start"
+              class="avatar"
+              aria-hidden="true"
+              [style.background]="avatarFill(option)"
+              >{{ initials(option) }}</span
+            >
+            <span class="name">{{ option.label }}</span>
+            @if (isAssignee(option.accountId)) {
+              <ion-icon
+                slot="end"
+                class="current-mark"
+                name="circle-check"
+                aria-hidden="true"
+              ></ion-icon>
+            }
+          </ion-item>
+        }
+      </ion-list>
+    } @else {
+      <ion-skeleton-text
+        animated="true"
+        class="loading"
+      ></ion-skeleton-text>
+    }
+  </section>
+</ion-content>

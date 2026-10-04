@@ -16,8 +16,10 @@ import type {
   MyProjectResponse,
   MyTaskResponse,
   NotificationResponse,
+  ProjectMemberResponse,
   TaskResponse,
   TaskViewSettingsResponse,
+  UpdateTaskViewSettingsRequest,
   WorkflowStatusResponse,
 } from '../generated/operations';
 
@@ -29,6 +31,13 @@ export type MyProject = MyProjectResponse;
 export type WorkflowStatus = WorkflowStatusResponse;
 /** A project's own task view overrides; null fields fall back. */
 export type TaskViewSettings = TaskViewSettingsResponse;
+/**
+ * A change to the caller's own overrides: a missing field is left alone, and
+ * '' clears it so the account default applies again.
+ */
+export type TaskViewSettingsUpdate = UpdateTaskViewSettingsRequest;
+/** A project member, as the assignee pickers list them. */
+export type ProjectMember = ProjectMemberResponse;
 export type AppNotification = NotificationResponse;
 
 /**

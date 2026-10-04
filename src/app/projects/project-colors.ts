@@ -1,3 +1,4 @@
+import type { GroupHue } from '@core/project-list';
 import { type ProjectHue, projectHue } from '@core/my-work';
 
 /** A hue's token prefix: indigo is `p` (`--flux-p9`, `--flux-pa3`). */
@@ -20,4 +21,33 @@ export function projectSwatch(projectId: string): Record<string, string> {
     '--project-fill': `var(--flux-${prefix(projectHue(projectId))}9)`,
     '--project-text': 'var(--flux-avatar-text)',
   };
+}
+
+/** A group hue's dot (9), word (11) and wash. */
+const GROUP_HUE_COLORS: Record<
+  GroupHue,
+  [dot: string, text: string, wash: string]
+> = {
+  gray: ['n8', 'na11', 'na2'],
+  blue: ['blue9', 'blue11', 'bluea3'],
+  amber: ['amber9', 'amber11', 'ambera2'],
+  green: ['green9', 'green11', 'greena2'],
+  purple: ['purple9', 'purple11', 'purplea3'],
+  cyan: ['cyan9', 'cyan11', 'cyana3'],
+  red: ['red9', 'red11', 'reda3'],
+};
+
+/** A group header's colours, as `--group-dot`, `--group-text` and `--group-wash`. */
+export function groupHueColors(hue: GroupHue): Record<string, string> {
+  const [dot, text, wash] = GROUP_HUE_COLORS[hue];
+  return {
+    '--group-dot': `var(--flux-${dot})`,
+    '--group-text': `var(--flux-${text})`,
+    '--group-wash': `var(--flux-${wash})`,
+  };
+}
+
+/** A group hue's dot colour alone, for a status chip. */
+export function groupHueDot(hue: GroupHue): string {
+  return `var(--flux-${GROUP_HUE_COLORS[hue][0]})`;
 }

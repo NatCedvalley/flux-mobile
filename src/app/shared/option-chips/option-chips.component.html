@@ -1,0 +1,18 @@
+@for (option of options(); track option.value) {
+  <ion-chip
+    role="checkbox"
+    [attr.aria-checked]="isSelected(option.value)"
+    [class.selected]="isSelected(option.value)"
+    [disabled]="disabled()"
+    (click)="toggle(option.value)"
+  >
+    @if (option.dot) {
+      <span
+        class="dot"
+        aria-hidden="true"
+        [style.background]="option.dot"
+      ></span>
+    }
+    {{ option.label }}
+  </ion-chip>
+}

@@ -66,6 +66,24 @@ describe('GroupedTaskPager', () => {
     });
   });
 
+  it('sorts by the base query’s sort, on every page', async () => {
+    const { api, listProjectTasks } = fakeApi(rows);
+    const pager = new GroupedTaskPager(api, 2);
+
+    await pager.start('p1', GROUPS, { sort: 'dueDate,asc' });
+    await pager.loadMore();
+
+    expect(
+      listProjectTasks.mock.calls.every(
+        ([, query]) => query?.sort === 'dueDate,asc'
+      )
+    ).toBe(true);
+    expect(listProjectTasks).toHaveBeenLastCalledWith(
+      'p1',
+      expect.objectContaining({ status: 'todo', page: 1 })
+    );
+  });
+
   it('drops empty groups and shows groups only up to the first incomplete one', async () => {
     const { api } = fakeApi(rows);
     const pager = new GroupedTaskPager(api, 2);

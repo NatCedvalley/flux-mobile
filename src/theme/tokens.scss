@@ -284,6 +284,8 @@ $flux-radius: (
   // Read-only pills under 26px, such as a row's project chip.
   tag: 6px,
   chip: 8px,
+  // A selectable filter or sort chip (3k's chip row).
+  chip-select: 9px,
   button: 10px,
   card: 12px,
   card-lg: 14px,
@@ -296,7 +298,8 @@ $flux-radius: (
 
 // Vertical rhythm is 8 / 10 / 12 / 14 / 16; the screen and sheet gutter is 16.
 // 7 and 11 are the gaps inside a task row (meta line, and icon to text),
-// 3 the gap above a project task row's meta line.
+// 3 the gap above a project task row's meta line, 9 the Filters button's
+// side inset.
 $flux-space: (
   2: 2px,
   3: 3px,
@@ -304,6 +307,7 @@ $flux-space: (
   6: 6px,
   7: 7px,
   8: 8px,
+  9: 9px,
   10: 10px,
   11: 11px,
   12: 12px,
@@ -464,6 +468,25 @@ $flux-type: (
   ),
   sheet-action: (
     size: 13.5px,
+    weight: 600,
+  ),
+  // Filters (FM-30): the strip's Filters button and its count badge, and a
+  // filter sheet's chips, unselected and selected (3k's chip row).
+  filter-button: (
+      size: 12.5px,
+      weight: 600,
+    ),
+  badge: (
+    size: 10px,
+    line: 16px,
+    weight: 700,
+  ),
+  chip: (
+    size: 13px,
+    weight: 550,
+  ),
+  chip-selected: (
+    size: 13px,
     weight: 600,
   ),
   tab-label: (

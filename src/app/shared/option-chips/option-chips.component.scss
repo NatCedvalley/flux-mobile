@@ -1,0 +1,35 @@
+// 3k's chip row: 32px chips, radius 9, wrapping. Unselected chips are
+// outlined; selected ones take the indigo wash.
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--flux-space-8);
+}
+
+ion-chip {
+  --background: transparent;
+  --color: var(--flux-na11);
+  height: 32px;
+  margin: 0;
+  padding: 0 var(--flux-space-11);
+  border: 1px solid var(--flux-na4);
+  border-radius: var(--flux-radius-chip-select);
+  font: var(--flux-font-chip);
+  letter-spacing: var(--flux-tracking-chip);
+
+  &.selected {
+    --background: var(--flux-pa3);
+    --color: var(--flux-pa11);
+    border-color: transparent;
+    font: var(--flux-font-chip-selected);
+    letter-spacing: var(--flux-tracking-chip-selected);
+  }
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-end: var(--flux-space-6);
+  border-radius: var(--flux-radius-pill);
+}

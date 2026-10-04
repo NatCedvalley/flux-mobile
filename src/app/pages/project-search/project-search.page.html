@@ -1,0 +1,69 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar class="search-toolbar">
+    <ion-buttons slot="start">
+      <ion-back-button
+        defaultHref="/tabs/projects"
+        text=""
+      ></ion-back-button>
+    </ion-buttons>
+    <ion-searchbar
+      placeholder="Search by key or title"
+      aria-label="Search this project’s tasks"
+      showCancelButton="never"
+      [debounce]="0"
+      [value]="query()"
+      (ionInput)="onInput($event)"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (!search()) {
+    <app-empty-state
+      icon="search"
+      message="Search this project’s tasks by key or title."
+    />
+  } @else if (results.error() && !results.isLoading()) {
+    <app-error-state
+      [error]="results.error()"
+      (retry)="results.reload()"
+    />
+  } @else if (!results.hasValue()) {
+    <app-skeleton-rows [rowHeight]="62" />
+  } @else if (rows().items.length === 0) {
+    <app-empty-state
+      icon="search"
+      [message]="'No tasks match “' + search() + '”'"
+    />
+  } @else {
+    <ion-list lines="full">
+      @for (task of rows().items; track task.id) {
+        <app-project-task-row
+          [task]="task"
+          [today]="today()"
+        />
+      }
+    </ion-list>
+    @if (moreFailed()) {
+      <div
+        class="load-more-error"
+        role="alert"
+      >
+        <span>Couldn't load more tasks.</span>
+        <ion-button
+          fill="clear"
+          size="small"
+          [disabled]="retryingMore()"
+          (click)="retryMore()"
+          >Retry</ion-button
+        >
+      </div>
+    }
+    <ion-infinite-scroll
+      [disabled]="rows().done || moreFailed()"
+      (ionInfinite)="loadMore($event)"
+    >
+      <ion-infinite-scroll-content></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+  }
+</ion-content>

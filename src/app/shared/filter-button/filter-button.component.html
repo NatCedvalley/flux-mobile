@@ -1,0 +1,14 @@
+<button
+  type="button"
+  aria-haspopup="dialog"
+  [attr.aria-label]="label()"
+>
+  <ion-icon
+    name="sliders-horizontal"
+    aria-hidden="true"
+  ></ion-icon>
+  Filters
+  @if (count()) {
+    <ion-badge aria-hidden="true">{{ count() }}</ion-badge>
+  }
+</button>

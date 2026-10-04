@@ -1,0 +1,59 @@
+// Shared by the search pages: a back button beside a 40px search field
+// (`--n3`, radius 11), an optional 38px strip, and the result list.
+.search-toolbar {
+  --padding-start: var(--flux-space-4);
+  --padding-end: var(--flux-space-16);
+  --min-height: 52px;
+}
+
+ion-back-button {
+  --color: var(--flux-na11);
+}
+
+ion-searchbar {
+  --background: var(--flux-n3);
+  --border-radius: var(--flux-radius-field);
+  --box-shadow: none;
+  --icon-color: var(--flux-na10);
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  padding: 0;
+  min-height: 40px;
+}
+
+// The Filters button at the far end, as in the project list's strip.
+.strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 38px;
+  padding: 0 var(--flux-space-16);
+  border-bottom: 1px solid var(--flux-na4);
+  background: var(--ion-toolbar-background);
+}
+
+ion-list {
+  padding: 0;
+}
+
+.clear-filters {
+  --color: var(--flux-pa11);
+  font: var(--flux-font-meta-strong);
+}
+
+// Under the last row when the next page failed: what happened, and Retry.
+.load-more-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-space-4);
+  padding: var(--flux-space-12) var(--flux-space-16);
+  font: var(--flux-font-body);
+  color: var(--flux-na11);
+
+  ion-button {
+    --color: var(--flux-pa11);
+    margin: 0;
+    font: var(--flux-font-sheet-action);
+  }
+}

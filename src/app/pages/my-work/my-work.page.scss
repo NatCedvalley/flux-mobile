@@ -12,6 +12,20 @@
 }
 
 // 44×44 hit target around a 36px avatar (handoff 3a).
+// 44x44 search button, its 22px glyph in `--na11`.
+.icon-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-na11);
+  width: 44px;
+  height: 44px;
+  margin: 0;
+
+  ion-icon {
+    font-size: 22px;
+  }
+}
+
 .avatar-button {
   --padding-start: 0;
   --padding-end: 0;

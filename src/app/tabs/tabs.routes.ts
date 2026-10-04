@@ -5,10 +5,12 @@ import { TabsPage } from './tabs.page';
  * Task detail, pushed onto whichever tab it was opened from, so back returns
  * to that list. Tasks are project-scoped, hence both ids. `backHref` is where
  * the back button goes when the page is opened directly (a deep link).
+ * `under` is the page the rows link from (their link is relative), such as
+ * a tab's search page.
  */
-function taskDetail(tab: string): Route {
+function taskDetail(tab: string, under = ''): Route {
   return {
-    path: 'tasks/:projectId/:taskId',
+    path: `${under}tasks/:projectId/:taskId`,
     loadComponent: () =>
       import('../pages/tasks/task-detail.page').then((m) => m.TaskDetailPage),
     data: { backHref: `/tabs/${tab}` },
@@ -31,6 +33,14 @@ export const routes: Routes = [
               import('../pages/my-work/my-work.page').then((m) => m.MyWorkPage),
           },
           taskDetail('my-work'),
+          {
+            path: 'search',
+            loadComponent: () =>
+              import('../pages/my-work-search/my-work-search.page').then(
+                (m) => m.MyWorkSearchPage
+              ),
+          },
+          taskDetail('my-work', 'search/'),
           // Opened from the My Work avatar: the design has no Settings tab.
           {
             path: 'settings',
@@ -52,6 +62,15 @@ export const routes: Routes = [
               ),
           },
           taskDetail('projects'),
+          // The project to search comes as `?project=`.
+          {
+            path: 'search',
+            loadComponent: () =>
+              import('../pages/project-search/project-search.page').then(
+                (m) => m.ProjectSearchPage
+              ),
+          },
+          taskDetail('projects', 'search/'),
         ],
       },
       {

@@ -10,6 +10,8 @@ import { AlertController, provideIonicAngular } from '@ionic/angular';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../auth/auth.service';
 import { AppLockService } from '../lock/app-lock.service';
+import { MyWorkSearchPage } from '../pages/my-work-search/my-work-search.page';
+import { ProjectSearchPage } from '../pages/project-search/project-search.page';
 import { SettingsPage } from '../pages/settings/settings.page';
 import { TaskDetailPage } from '../pages/tasks/task-detail.page';
 import { FLUX_API } from '../providers/flux-api.token';
@@ -59,6 +61,27 @@ describe('tab routes', () => {
 
       const route = TestBed.inject(Router).routerState.snapshot.root;
       let leaf = route;
+      while (leaf.firstChild) {
+        leaf = leaf.firstChild;
+      }
+      expect(leaf.params).toEqual({ projectId: 'p1', taskId: '1' });
+      expect(leaf.data['backHref']).toBe(`/tabs/${tab}`);
+    }
+  );
+
+  it('opens the search pages within their tabs', async () => {
+    expect(await open('/tabs/my-work/search')).toBe(MyWorkSearchPage);
+    expect(await open('/tabs/projects/search?project=p1')).toBe(
+      ProjectSearchPage
+    );
+  });
+
+  it.each(['my-work', 'projects'])(
+    'routes task detail under the %s search page, with back leading to the tab',
+    async (tab) => {
+      expect(await open(`/tabs/${tab}/search/tasks/p1/1`)).toBe(TaskDetailPage);
+
+      let leaf = TestBed.inject(Router).routerState.snapshot.root;
       while (leaf.firstChild) {
         leaf = leaf.firstChild;
       }

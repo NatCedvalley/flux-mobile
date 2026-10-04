@@ -38,6 +38,28 @@ ion-content {
 }
 
 /*
+ * Bottom sheets (the switcher 3j, filters, view options): they start 120px
+ * from the top, over the scrim, with 22px top corners and the sheet shadow.
+ * Global because an ion-modal's content is moved out of its page.
+ */
+ion-modal.flux-sheet {
+  --height: calc(100% - 120px);
+  --border-radius: var(--flux-radius-sheet);
+  --box-shadow: var(--flux-shadow-sheet);
+  --backdrop-opacity: 1;
+
+  &::part(backdrop) {
+    background: var(--flux-scrim);
+  }
+
+  &::part(handle) {
+    width: 36px;
+    height: 4px;
+    background: var(--flux-na6);
+  }
+}
+
+/*
  * Android draws the app under the navigation bar, and some phones (MIUI on
  * Android 10, with full-screen gestures) report a 0 bottom inset while the
  * gesture pill still covers the bottom of the screen. Keep at least the

@@ -1,0 +1,108 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar class="search-toolbar">
+    <ion-buttons slot="start">
+      <ion-back-button
+        defaultHref="/tabs/my-work"
+        text=""
+      ></ion-back-button>
+    </ion-buttons>
+    <ion-searchbar
+      placeholder="Search by key or title"
+      aria-label="Search your tasks"
+      showCancelButton="never"
+      [debounce]="0"
+      [value]="query()"
+      (ionInput)="onInput($event)"
+    ></ion-searchbar>
+  </ion-toolbar>
+  <div class="strip">
+    <app-filter-button
+      [count]="filterCount()"
+      (click)="openFilters()"
+    />
+  </div>
+</ion-header>
+
+<ion-content>
+  @if (!search() && !filterCount()) {
+    <app-empty-state
+      icon="search"
+      message="Search your tasks in every project by key or title."
+    />
+  } @else if (results.error() && !results.isLoading()) {
+    <app-error-state
+      [error]="results.error()"
+      (retry)="results.reload()"
+    />
+  } @else if (!results.hasValue()) {
+    <app-skeleton-rows />
+  } @else if (rows().items.length === 0 && filterCount()) {
+    <app-empty-state
+      icon="search"
+      message="No tasks match these filters"
+    >
+      <ion-button
+        fill="clear"
+        class="clear-filters"
+        (click)="clearFilters()"
+        >Clear filters</ion-button
+      >
+    </app-empty-state>
+  } @else if (rows().items.length === 0) {
+    <app-empty-state
+      icon="search"
+      [message]="'No tasks match “' + search() + '”'"
+    />
+  } @else {
+    <ion-list lines="full">
+      @for (task of rows().items; track task.id) {
+        <app-task-row
+          [task]="task"
+          [today]="today()"
+        />
+      }
+    </ion-list>
+    @if (moreFailed()) {
+      <div
+        class="load-more-error"
+        role="alert"
+      >
+        <span>Couldn't load more tasks.</span>
+        <ion-button
+          fill="clear"
+          size="small"
+          [disabled]="retryingMore()"
+          (click)="retryMore()"
+          >Retry</ion-button
+        >
+      </div>
+    }
+    <ion-infinite-scroll
+      [disabled]="rows().done || moreFailed()"
+      (ionInfinite)="loadMore($event)"
+    >
+      <ion-infinite-scroll-content></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+  }
+</ion-content>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="filterOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="filtersClosed()"
+>
+  <ng-template>
+    <app-my-task-filter-sheet
+      [(filters)]="filterDraft"
+      [projects]="projects.hasValue() ? projects.value() : undefined"
+      [statusOptions]="
+        statusOptions.hasValue() ? statusOptions.value() : undefined
+      "
+      [loadFailed]="!!projects.error() || !!statusOptions.error()"
+      (retry)="retryOptions()"
+      (done)="filterOpen.set(false)"
+    />
+  </ng-template>
+</ion-modal>

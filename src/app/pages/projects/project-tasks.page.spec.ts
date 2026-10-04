@@ -1,7 +1,10 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { RouterLink, provideRouter } from '@angular/router';
 import type { FluxApi, MyProject } from '@core/api';
+import type { GroupBy } from '@core/project-list';
+import type { TaskFilters } from '@core/task-filters';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
@@ -91,6 +94,31 @@ describe('ProjectTasksPage', () => {
     ).switcherOpen();
   }
 
+  /** The page's protected sheet handlers, as the sheets call them. */
+  function page() {
+    return fixture.componentInstance as unknown as {
+      filterDraft: { set(filters: TaskFilters): void };
+      openFilters(): void;
+      filtersClosed(): void;
+      filterOpen(): boolean;
+      chooseGroupBy(groupBy: GroupBy): void;
+      chooseSort(sort: string): void;
+    };
+  }
+
+  /** Opens the filter sheet, edits it to `filters`, and closes it. */
+  async function applyFilters(filters: Partial<TaskFilters>): Promise<void> {
+    page().openFilters();
+    page().filterDraft.set({
+      statuses: [],
+      priorities: [],
+      assigneeIds: [],
+      ...filters,
+    });
+    page().filtersClosed();
+    await settle();
+  }
+
   /** Calls the page's switcher handler, as picking a row in the sheet does. */
   async function choose(project: MyProject): Promise<void> {
     (
@@ -126,7 +154,7 @@ describe('ProjectTasksPage', () => {
     await create();
     await settle();
 
-    expect(texts('.strip')).toEqual(['Grouped by status']);
+    expect(texts('.group-by-button')).toEqual(['Grouped by status']);
     expect(headers()).toEqual([
       'Backlog 1',
       'To Do 1',
@@ -188,7 +216,7 @@ describe('ProjectTasksPage', () => {
     });
     await settle();
 
-    expect(texts('.strip')).toEqual(['Grouped by priority']);
+    expect(texts('.group-by-button')).toEqual(['Grouped by priority']);
     expect(headers()).toEqual(['Critical 1', 'Medium 2', 'Low 1']);
   });
 
@@ -196,9 +224,178 @@ describe('ProjectTasksPage', () => {
     await create({ defaultGroupBy: 'none' });
     await settle();
 
-    expect(element().querySelector('.strip')).toBeNull();
+    expect(texts('.group-by-button')).toEqual(['Not grouped']);
     expect(element().querySelector('ion-item-divider')).toBeNull();
     expect(texts('app-project-task-row .key')).toHaveLength(4);
+  });
+
+  it('links the search button to the open project’s search', async () => {
+    await create();
+    await settle();
+
+    const link = fixture.debugElement
+      .query(By.css('.icon-button.search'))
+      .injector.get(RouterLink);
+    expect(link.urlTree?.toString()).toBe(
+      '/search?project=p1&sort=createdAt,desc'
+    );
+  });
+
+  it('shows the Filters button with no badge until a filter is applied', async () => {
+    await create();
+    await settle();
+
+    expect(texts('app-filter-button')).toEqual(['Filters']);
+    expect(element().querySelector('app-filter-button ion-badge')).toBeNull();
+  });
+
+  it('refetches with the filters as comma lists and counts them on the badge', async () => {
+    await create();
+    await settle();
+    const listProjectTasks = vi.spyOn(api, 'listProjectTasks');
+
+    await applyFilters({ assigneeIds: ['a1', 'a2'], priorities: ['CRITICAL'] });
+
+    expect(listProjectTasks).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({ assigneeId: 'a1,a2', priority: 'CRITICAL' })
+    );
+    expect(texts('app-project-task-row .key')).toEqual(['CHK-142']);
+    expect(texts('app-filter-button ion-badge')).toEqual(['2']);
+  });
+
+  it('keeps just the chosen status groups when filtering by status', async () => {
+    await create();
+    await settle();
+
+    await applyFilters({ statuses: ['todo', 'done'] });
+
+    expect(headers()).toEqual(['To Do 1', 'Done 1']);
+  });
+
+  it('applies the filter sheet only when it closes, and only if changed', async () => {
+    await create();
+    await settle();
+    const listProjectTasks = vi.spyOn(api, 'listProjectTasks');
+
+    page().openFilters();
+    page().filterDraft.set({
+      statuses: ['todo'],
+      priorities: [],
+      assigneeIds: [],
+    });
+    await settle();
+    expect(listProjectTasks).not.toHaveBeenCalled();
+
+    page().filtersClosed();
+    await settle();
+    expect(listProjectTasks).toHaveBeenCalled();
+
+    listProjectTasks.mockClear();
+    page().openFilters();
+    page().filtersClosed();
+    await settle();
+    expect(listProjectTasks).not.toHaveBeenCalled();
+  });
+
+  it('says when nothing matches the filters, and Clear filters restores the list', async () => {
+    await create();
+    await settle();
+
+    await applyFilters({ priorities: ['HIGH'] });
+    expect(texts('app-empty-state p')).toEqual([
+      'No tasks match these filters',
+    ]);
+
+    element().querySelector<HTMLElement>('.clear-filters')!.click();
+    await settle();
+    expect(texts('app-project-task-row .key')).toHaveLength(4);
+    expect(element().querySelector('app-filter-button ion-badge')).toBeNull();
+  });
+
+  it('loads the assignees when the filter sheet first opens', async () => {
+    const counted = new InMemoryFluxApi();
+    const listAssignableMembers = vi.spyOn(counted, 'listAssignableMembers');
+    await create({ api: counted });
+    await settle();
+    expect(listAssignableMembers).not.toHaveBeenCalled();
+
+    page().openFilters();
+    await settle();
+    page().filtersClosed();
+    page().openFilters();
+    await settle();
+
+    expect(page().filterOpen()).toBe(true);
+    expect(listAssignableMembers.mock.calls).toEqual([['p1']]);
+  });
+
+  it('forgets the filters when the project changes', async () => {
+    await create();
+    await settle();
+    await applyFilters({ priorities: ['HIGH'] });
+    const [checkout, billing] = (await api.listMyProjects()).content!;
+
+    await choose(billing);
+    expect(element().querySelector('app-filter-button ion-badge')).toBeNull();
+    expect(texts('app-project-task-row .key')).toHaveLength(3);
+
+    await choose(checkout);
+    expect(texts('app-project-task-row .key')).toHaveLength(4);
+  });
+
+  it('regroups from the view options and saves it as the project’s override', async () => {
+    await create();
+    await settle();
+    const updateTaskViewSettings = vi.spyOn(api, 'updateTaskViewSettings');
+
+    page().chooseGroupBy('priority');
+    await settle();
+
+    expect(texts('.group-by-button')).toEqual(['Grouped by priority']);
+    expect(headers()).toEqual(['Critical 1', 'Medium 2', 'Low 1']);
+    expect(updateTaskViewSettings).toHaveBeenCalledWith('p1', {
+      groupBy: 'priority',
+    });
+  });
+
+  it('keeps the new grouping when saving it fails', async () => {
+    await create();
+    await settle();
+    vi.spyOn(api, 'updateTaskViewSettings').mockRejectedValue(new ApiError(0));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    page().chooseGroupBy('none');
+    await settle();
+
+    expect(texts('.group-by-button')).toEqual(['Not grouped']);
+    expect(element().querySelector('ion-item-divider')).toBeNull();
+  });
+
+  it('sorts on the server by the chosen sort, kept across projects', async () => {
+    await create({ defaultGroupBy: 'none' });
+    await settle();
+    const listProjectTasks = vi.spyOn(api, 'listProjectTasks');
+
+    page().chooseSort('taskNumber,asc');
+    await settle();
+
+    expect(listProjectTasks).toHaveBeenLastCalledWith(
+      'p1',
+      expect.objectContaining({ sort: 'taskNumber,asc' })
+    );
+    expect(texts('app-project-task-row .key')).toEqual([
+      'CHK-120',
+      'CHK-131',
+      'CHK-142',
+      'CHK-150',
+    ]);
+
+    await choose((await api.listMyProjects()).content![1]);
+    expect(listProjectTasks).toHaveBeenLastCalledWith(
+      'p2',
+      expect.objectContaining({ sort: 'taskNumber,asc' })
+    );
   });
 
   it("applies the project's AI filter", async () => {

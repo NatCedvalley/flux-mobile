@@ -70,16 +70,42 @@
   color: var(--flux-na9);
 }
 
-// 38px strip under the header: how the list is grouped. Read-only until
-// FM-30 adds the Filters button and the group-by picker.
+// 44x44 header icon buttons, the glyph in `--na11`.
+.icon-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-na11);
+  width: 44px;
+  height: 44px;
+  margin: 0;
+
+  ion-icon {
+    font-size: 21px;
+  }
+}
+
+// 38px strip under the header: the group-by button, which opens the view
+// options, and the Filters button at the far end.
 .strip {
   display: flex;
   align-items: center;
-  gap: var(--flux-space-6);
+  justify-content: space-between;
+  gap: var(--flux-space-10);
   height: 38px;
   padding: 0 var(--flux-space-16);
   border-bottom: 1px solid var(--flux-na4);
   background: var(--ion-toolbar-background);
+}
+
+// A bare text button: rows-3, the grouping, chevron-down.
+.group-by-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font: var(--flux-font-strip-label);
   letter-spacing: var(--flux-tracking-strip-label);
   color: var(--flux-na11);
@@ -87,6 +113,15 @@
   ion-icon {
     font-size: 14px;
   }
+
+  .chevron-down {
+    font-size: 13px;
+  }
+}
+
+.clear-filters {
+  --color: var(--flux-pa11);
+  font: var(--flux-font-meta-strong);
 }
 
 ion-list {
@@ -147,24 +182,5 @@ ion-item-group:first-child ion-item-divider {
     --color: var(--flux-pa11);
     margin: 0;
     font: var(--flux-font-sheet-action);
-  }
-}
-
-// Switcher sheet (3j): it starts 120px from the top, over the scrim, with
-// 22px top corners and the sheet shadow.
-.switcher-sheet {
-  --height: calc(100% - 120px);
-  --border-radius: var(--flux-radius-sheet);
-  --box-shadow: var(--flux-shadow-sheet);
-  --backdrop-opacity: 1;
-
-  &::part(backdrop) {
-    background: var(--flux-scrim);
-  }
-
-  &::part(handle) {
-    width: 36px;
-    height: 4px;
-    background: var(--flux-na6);
   }
 }

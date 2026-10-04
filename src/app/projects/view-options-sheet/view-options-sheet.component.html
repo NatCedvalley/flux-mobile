@@ -1,0 +1,74 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>View options</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <section class="group-by">
+    <h2 id="view-group-by">Group by</h2>
+    <ion-list
+      lines="full"
+      role="radiogroup"
+      aria-labelledby="view-group-by"
+    >
+      @for (option of groupByOptions; track option.value) {
+        <ion-item
+          button="true"
+          detail="false"
+          role="radio"
+          [attr.aria-checked]="option.value === groupBy()"
+          [class.current]="option.value === groupBy()"
+          (click)="groupByChange.emit(option.value)"
+        >
+          {{ option.label }}
+          @if (option.value === groupBy()) {
+            <ion-icon
+              slot="end"
+              class="current-mark"
+              name="circle-check"
+              aria-hidden="true"
+            ></ion-icon>
+          }
+        </ion-item>
+      }
+    </ion-list>
+  </section>
+
+  <section class="sort">
+    <h2 id="view-sort">Sort</h2>
+    <ion-list
+      lines="full"
+      role="radiogroup"
+      aria-labelledby="view-sort"
+    >
+      @for (option of sortOptions; track option.value) {
+        <ion-item
+          button="true"
+          detail="false"
+          role="radio"
+          [attr.aria-checked]="option.value === sort()"
+          [class.current]="option.value === sort()"
+          (click)="sortChange.emit(option.value)"
+        >
+          {{ option.label }}
+          @if (option.value === sort()) {
+            <ion-icon
+              slot="end"
+              class="current-mark"
+              name="circle-check"
+              aria-hidden="true"
+            ></ion-icon>
+          }
+        </ion-item>
+      }
+    </ion-list>
+  </section>
+</ion-content>

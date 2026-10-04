@@ -66,7 +66,11 @@ button. Task detail is routed under every tab as
 tab it was opened from and back returns there; its route `data.backHref` is
 the fallback for a deep link. Link to it relative to the current tab
 (`['tasks', task.projectId, task.id]`), never with an absolute
-`/tabs/<tab>/...` path, or the task opens in the wrong stack.
+`/tabs/<tab>/...` path, or the task opens in the wrong stack. The two search
+pages (`/tabs/my-work/search`, `/tabs/projects/search`) register their own
+`search/tasks/:projectId/:taskId` route (`taskDetail(tab, 'search/')`), so
+the same relative link opens detail over the results and back returns to
+them.
 
 The app runs in Ionic's `ios` mode on both platforms
 (`provideIonicAngular({ mode: 'ios' })`), which the design requires and
@@ -103,6 +107,16 @@ CSS animation delay), `app-empty-state` and `app-error-state` (Retry; says
 "Couldn't reach Flux" for an `ApiError` with status 0). Pull-to-refresh
 reloads the visible segment and keeps its rows on screen meanwhile.
 
+The header's search icon opens My Work search
+(`src/app/pages/my-work-search/`): `GET /dashboard/my-tasks` for assigned
+tasks in every project, done ones included (`openOnly=false`), by title or
+key (`search`, sent 300 ms after typing pauses), paged 50 at a time with
+`PagedList` (`src/core/task-filters/`). Its Filters sheet picks one project,
+that project's statuses and priorities (FM-5's "filter by project" lives
+here, since the home screen has no filter chrome). Statuses wait for a
+project: my-tasks matches a status slug in every project, and slugs are
+per project. With filters set, results show before anything is typed.
+
 ### Projects
 
 The Projects tab (handoff 3b, `src/app/pages/projects/`) lists one
@@ -134,14 +148,43 @@ each header its count and drops empty groups. `ion-infinite-scroll` then
 pages the first group that isn't complete yet, and a later group is only
 shown once every group above it is complete. Rows are `app-project-task-row`
 (key, priority, due date and the assignee's avatar). The List/Board/Calendar
-segment, search and filters are not built yet (FM-6, FM-30).
+segment is not built yet (FM-6).
+
+The strip under the header has two buttons, each opening a bottom sheet
+(an inline `ion-modal` with the global `flux-sheet` class, never an
+`ion-action-sheet`):
+
+- **Group-by** ("Grouped by status") opens view options
+  (`src/app/projects/view-options-sheet/`): group-by and sort. A group-by
+  picked here is saved as the project's override with
+  `PUT /projects/{id}/task-view-settings` (per user, as flux-web does), and
+  the list doesn't wait for the save. The sort (`SORT_OPTIONS` in
+  `@core/task-filters`, from the server's whitelist) is kept for the session
+  across projects and not saved, matching the web. `GroupedTaskPager` sends
+  `createdAt,desc` unless the base query has a `sort`.
+- **Filters** (`src/app/projects/task-filter-sheet/`, badge = how many of
+  status, priority and assignee are in use) filters by status, priority and
+  assignee (`GET /projects/{id}/members/assignable`, fetched when the sheet
+  first opens, the caller first as "Me"). The server takes each as a comma
+  list (OR within a filter, AND across them). There is no "Unassigned":
+  `assigneeId` only takes UUIDs. The sheet edits a draft that applies when
+  it closes, however it was closed, so the list refetches once. Filters
+  reset when the project changes. A filter on the grouped field narrows
+  the groups instead (`filteredGroups()`), because each group's own
+  `status=`/`priority=` would override it. When nothing matches, the list
+  says "No tasks match these filters" with Clear filters.
+
+The header's search icon opens project search
+(`src/app/pages/project-search/`, `?project=<id>&sort=<sort>`): a flat
+list of that project's tasks by title or key, in the list's sort and with
+its AI filter but not its filters.
 
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
 tasks, a project's tasks, one task, my projects, workflow statuses, task
-view settings and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+view settings (read and update), assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -153,9 +196,9 @@ written without it) and makes every request through
 (`src/core/http/`) is the request, timeout, query-string and JSON handling
 it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
 test double: its fixtures are dated relative to today and it applies the
-my-tasks filters and the project list's status, priority, type and label
-filters, so page specs use it (`addProjectTasks()` adds rows to page
-through).
+my-tasks filters (including status, priority and search) and the project
+list's filters (comma lists, assignee, labels, search) and sort, so page
+specs use it (`addProjectTasks()` adds rows to page through).
 
 ### Authentication
 

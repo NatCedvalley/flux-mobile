@@ -80,6 +80,78 @@ describe('InMemoryFluxApi', () => {
     expect(await keys({ type: 'EPIC' })).toEqual(['CHK-120']);
   });
 
+  it("filters a project's tasks by comma lists, assignee and search", async () => {
+    const keys = async (query: object) =>
+      (await api.listProjectTasks('p1', query)).content?.map((t) => t.taskKey);
+
+    expect(await keys({ status: 'backlog,done' })).toEqual([
+      'CHK-131',
+      'CHK-120',
+    ]);
+    expect(await keys({ priority: 'CRITICAL, LOW' })).toEqual([
+      'CHK-142',
+      'CHK-131',
+    ]);
+    expect(await keys({ assigneeId: 'a2' })).toEqual(['CHK-131']);
+    expect(await keys({ assigneeId: 'a1,a2' })).toEqual([
+      'CHK-142',
+      'CHK-150',
+      'CHK-131',
+    ]);
+    expect(await keys({ search: 'safari' })).toEqual(['CHK-142']);
+    expect(await keys({ search: 'chk-15' })).toEqual(['CHK-150']);
+  });
+
+  it("sorts a project's tasks, missing values last", async () => {
+    const keys = async (sort: string) =>
+      (await api.listProjectTasks('p1', { sort })).content?.map(
+        (t) => t.taskKey
+      );
+
+    expect(await keys('taskNumber,asc')).toEqual([
+      'CHK-120',
+      'CHK-131',
+      'CHK-142',
+      'CHK-150',
+      'CHK-160',
+    ]);
+    expect(await keys('dueDate,asc')).toEqual([
+      'CHK-120',
+      'CHK-142',
+      'CHK-150',
+      'CHK-131',
+      'CHK-160',
+    ]);
+    expect((await keys('priority,desc'))?.slice(0, 1)).toEqual(['CHK-142']);
+  });
+
+  it('filters my tasks by status, priority and search', async () => {
+    const keys = async (query: object) =>
+      (await api.listMyTasks(query)).content?.map((t) => t.taskKey);
+
+    expect(await keys({ status: 'todo' })).toEqual([
+      'BIL-88',
+      'CHK-150',
+      'BIL-90',
+    ]);
+    expect(await keys({ priority: 'CRITICAL,LOW' })).toEqual([
+      'CHK-142',
+      'CHK-131',
+    ]);
+    expect(await keys({ search: 'BIL', openOnly: false })).toEqual([
+      'BIL-88',
+      'BIL-90',
+    ]);
+    expect(await keys({ search: 'saved', openOnly: false })).toEqual([
+      'CHK-120',
+    ]);
+  });
+
+  it('lists assignable members', async () => {
+    const members = await api.listAssignableMembers('p1');
+    expect(members.map((m) => m.accountId)).toEqual(['a2', 'a1', 'a3']);
+  });
+
   it('adds extra project tasks to page through, kept off My Work', async () => {
     api.addProjectTasks('p1', 30, 'in_progress');
 
@@ -99,6 +171,16 @@ describe('InMemoryFluxApi', () => {
     expect(await api.getTaskViewSettings('p1')).toEqual({
       groupBy: 'priority',
     });
+  });
+
+  it('updates task view settings, clearing a field with an empty string', async () => {
+    api.setTaskViewSettings('p1', { groupBy: 'priority', aiTaskFilter: 'all' });
+
+    await expect(
+      api.updateTaskViewSettings('p1', { groupBy: 'type' })
+    ).resolves.toEqual({ groupBy: 'type', aiTaskFilter: 'all' });
+    await api.updateTaskViewSettings('p1', { groupBy: '' });
+    expect((await api.getTaskViewSettings('p1')).groupBy).toBeUndefined();
   });
 
   it('lists projects and workflow statuses', async () => {

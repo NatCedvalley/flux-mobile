@@ -11,11 +11,13 @@ import type {
 import type {
   GetMyTasksData,
   List2Data,
+  ListMyProjectsData,
   ListTasksData,
   MyProjectResponse,
   MyTaskResponse,
   NotificationResponse,
   TaskResponse,
+  TaskViewSettingsResponse,
   WorkflowStatusResponse,
 } from '../generated/operations';
 
@@ -25,6 +27,8 @@ export type MyTask = MyTaskResponse;
 /** A project with the caller's role and its open and overdue counts. */
 export type MyProject = MyProjectResponse;
 export type WorkflowStatus = WorkflowStatusResponse;
+/** A project's own task view overrides; null fields fall back. */
+export type TaskViewSettings = TaskViewSettingsResponse;
 export type AppNotification = NotificationResponse;
 
 /**
@@ -50,6 +54,7 @@ export type MyTasksQuery = Omit<
   scope?: 'assigned' | 'watching';
 };
 export type ProjectTasksQuery = NonNullable<ListTasksData['query']>;
+export type MyProjectsQuery = NonNullable<ListMyProjectsData['query']>;
 export type NotificationsQuery = NonNullable<List2Data['query']>;
 
 export type Account = AccountResponse;

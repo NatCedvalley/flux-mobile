@@ -289,13 +289,17 @@ $flux-radius: (
   card-lg: 14px,
   docked: 13px,
   segmented: 9px,
+  // The switcher's search field and project swatches.
+  field: 11px,
   sheet: 22px,
 ) !default;
 
 // Vertical rhythm is 8 / 10 / 12 / 14 / 16; the screen and sheet gutter is 16.
-// 7 and 11 are the gaps inside a task row (meta line, and icon to text).
+// 7 and 11 are the gaps inside a task row (meta line, and icon to text),
+// 3 the gap above a project task row's meta line.
 $flux-space: (
   2: 2px,
+  3: 3px,
   4: 4px,
   6: 6px,
   7: 7px,
@@ -420,6 +424,48 @@ $flux-type: (
       size: 13px,
       weight: 650,
     ),
+  // Project task list (3b): the switcher button's subline and 30px avatar,
+  // the group-by strip, group headers (status word and count) and the
+  // row's 28px assignee avatar.
+  project-subline: (
+      size: 11px,
+      line: 14px,
+      weight: 450,
+    ),
+  project-avatar: (
+    size: 11px,
+    weight: 700,
+  ),
+  strip-label: (
+    size: 12.5px,
+    weight: 550,
+  ),
+  group-header: (
+    size: 12px,
+    weight: 700,
+  ),
+  group-count: (
+    size: 12px,
+    weight: 450,
+  ),
+  row-avatar: (
+    size: 10.5px,
+    weight: 650,
+  ),
+  // Project switcher (3j): the 38px swatch, the project name and the
+  // title row's Done.
+  project-swatch: (
+      size: 13px,
+      weight: 700,
+    ),
+  switcher-name: (
+    size: 15px,
+    weight: 650,
+  ),
+  sheet-action: (
+    size: 13.5px,
+    weight: 600,
+  ),
   tab-label: (
     size: 10px,
     weight: 550,

@@ -3,6 +3,7 @@ export { addDays, localIsoDate, shortDate } from './dates';
 export {
   FOCUS_DAYS,
   PROJECT_HUES,
+  dueFact,
   focusBuckets,
   isOverdue,
   projectHue,

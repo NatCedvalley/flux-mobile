@@ -58,21 +58,32 @@ export function secondFact(
   if (task.priority === 'HIGH') {
     return { kind: 'priority', level: 'HIGH', label: 'High' };
   }
-  const due = task.dueDate;
+  const due = dueFact(task.dueDate, today);
+  return due && { kind: 'due', ...due };
+}
+
+/**
+ * A due date as a row shows it: `Due today`, `Thu 17 Sep`, or, once past,
+ * `Due yesterday` / `Due Thu 10 Sep`. `null` when there is none.
+ */
+export function dueFact(
+  due: string | undefined,
+  today: string
+): { label: string; overdue: boolean } | null {
   if (!due) {
     return null;
   }
   if (due === today) {
-    return { kind: 'due', label: 'Due today', overdue: false };
+    return { label: 'Due today', overdue: false };
   }
   if (due > today) {
-    return { kind: 'due', label: shortDate(due, today), overdue: false };
+    return { label: shortDate(due, today), overdue: false };
   }
   const label =
     due === addDays(today, -1)
       ? 'Due yesterday'
       : `Due ${shortDate(due, today)}`;
-  return { kind: 'due', label, overdue: true };
+  return { label, overdue: true };
 }
 
 /** The status dot's colour family, from the status's category. */

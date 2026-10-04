@@ -1,0 +1,111 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Switch project</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar class="search-bar">
+    <ion-searchbar
+      [placeholder]="placeholder()"
+      [value]="search()"
+      (ionInput)="onSearch($event)"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @let g = groups();
+  @if (g.pinned.length === 0 && g.others.length === 0) {
+    <p class="no-match">No projects match</p>
+  } @else {
+    <ion-list lines="full">
+      @if (g.pinned.length) {
+        <ion-item-group class="pinned">
+          <ion-item-divider>
+            <ion-icon
+              name="pin"
+              aria-hidden="true"
+            ></ion-icon>
+            Pinned
+          </ion-item-divider>
+          @for (p of g.pinned; track p.project?.id) {
+            <ng-container
+              *ngTemplateOutlet="row; context: { $implicit: p, pinned: true }"
+            />
+          }
+        </ion-item-group>
+      }
+      @if (g.others.length) {
+        <ion-item-group class="others">
+          <ion-item-divider>All projects</ion-item-divider>
+          @for (p of g.others; track p.project?.id) {
+            <ng-container
+              *ngTemplateOutlet="row; context: { $implicit: p, pinned: false }"
+            />
+          }
+        </ion-item-group>
+      }
+    </ion-list>
+  }
+</ion-content>
+
+<ng-template
+  #row
+  let-p
+  let-pinned="pinned"
+>
+  <ion-item-sliding #sliding>
+    <ion-item
+      button="true"
+      detail="false"
+      [class.current]="p.project?.id === currentId()"
+      (click)="selected.emit(p)"
+    >
+      <span
+        slot="start"
+        class="swatch"
+        [class.read-only]="readOnly(p)"
+        [style]="swatch(p)"
+        aria-hidden="true"
+        >{{ initials(p.project) }}</span
+      >
+      <div class="body">
+        <div class="name">{{ p.project?.name }}</div>
+        <div class="subline">{{ subline(p) }}</div>
+      </div>
+      @if (p.project?.id === currentId()) {
+        <ion-icon
+          slot="end"
+          class="current-mark"
+          name="circle-check"
+          aria-label="Current project"
+        ></ion-icon>
+      } @else if (readOnly(p)) {
+        <ion-icon
+          slot="end"
+          class="lock"
+          name="lock"
+          aria-label="Read-only"
+        ></ion-icon>
+      }
+    </ion-item>
+    <ion-item-options side="end">
+      <ion-item-option
+        class="pin"
+        (click)="togglePin(p, sliding)"
+      >
+        <ion-icon
+          slot="top"
+          name="pin"
+          aria-hidden="true"
+        ></ion-icon>
+        {{ pinned ? 'Unpin' : 'Pin' }}
+      </ion-item-option>
+    </ion-item-options>
+  </ion-item-sliding>
+</ng-template>

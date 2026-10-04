@@ -1,0 +1,141 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar class="project-bar">
+    @if (title(); as title) {
+      <button
+        type="button"
+        class="switcher-button"
+        aria-haspopup="dialog"
+        [attr.aria-label]="'Switch project. Current: ' + title.name"
+        (click)="switcherOpen.set(true)"
+      >
+        <span
+          class="project-avatar"
+          aria-hidden="true"
+          [style]="title.colors"
+          >{{ title.initials }}</span
+        >
+        <span class="project-text">
+          <span class="project-name">{{ title.name }}</span>
+          <span class="project-subline">{{ title.subline }}</span>
+        </span>
+        <ion-icon
+          class="chevron"
+          name="chevrons-up-down"
+          aria-hidden="true"
+        ></ion-icon>
+      </button>
+    } @else {
+      <h1 class="flux-screen-title">Projects</h1>
+    }
+  </ion-toolbar>
+  @if (list.hasValue() && list.value().groupBy !== 'none') {
+    <div class="strip">
+      <ion-icon
+        name="rows-3"
+        aria-hidden="true"
+      ></ion-icon>
+      {{ groupByLabel() }}
+    </div>
+  }
+</ion-header>
+
+<ion-content>
+  <ion-refresher
+    slot="fixed"
+    (ionRefresh)="refresh($event)"
+  >
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  @if (projects.error() && !projects.isLoading()) {
+    <app-error-state
+      [error]="projects.error()"
+      (retry)="retry()"
+    />
+  } @else if (!projects.hasValue()) {
+    <app-skeleton-rows [rowHeight]="62" />
+  } @else if (projectList().length === 0) {
+    <app-empty-state
+      icon="folder-kanban"
+      message="You're not on any projects yet."
+    />
+  } @else if (list.error() && !list.isLoading()) {
+    <app-error-state
+      [error]="list.error()"
+      (retry)="retry()"
+    />
+  } @else if (!list.hasValue()) {
+    <app-skeleton-rows [rowHeight]="62" />
+  } @else if (empty()) {
+    <app-empty-state
+      icon="circle-check"
+      message="No tasks in this project."
+    />
+  } @else {
+    <ion-list lines="full">
+      @for (group of pages().groups; track group.group.key) {
+        <ion-item-group>
+          @if (group.group.label) {
+            <ion-item-divider
+              sticky="true"
+              [style]="hueColors(group.group.hue)"
+            >
+              <span
+                class="dot"
+                aria-hidden="true"
+              ></span>
+              <span class="group-name">{{ group.group.label }}</span>
+              <span class="group-count">{{ group.total }}</span>
+            </ion-item-divider>
+          }
+          @for (task of group.tasks; track task.id) {
+            <app-project-task-row
+              [task]="task"
+              [today]="today()"
+            />
+          }
+        </ion-item-group>
+      }
+    </ion-list>
+    @if (moreFailed()) {
+      <div
+        class="load-more-error"
+        role="alert"
+      >
+        <span>Couldn't load more tasks.</span>
+        <ion-button
+          fill="clear"
+          size="small"
+          [disabled]="retryingMore()"
+          (click)="retryMore()"
+          >Retry</ion-button
+        >
+      </div>
+    }
+    <ion-infinite-scroll
+      [disabled]="pages().done || moreFailed()"
+      (ionInfinite)="loadMore($event)"
+    >
+      <ion-infinite-scroll-content></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+  }
+</ion-content>
+
+<ion-modal
+  class="switcher-sheet"
+  [isOpen]="switcherOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="switcherOpen.set(false)"
+>
+  <ng-template>
+    <app-project-switcher
+      [projects]="projectList()"
+      [currentId]="currentId()"
+      [pinnedIds]="prefs.pinned()"
+      (selected)="choose($event)"
+      (pinToggled)="togglePin($event)"
+      (done)="switcherOpen.set(false)"
+    />
+  </ng-template>
+</ion-modal>

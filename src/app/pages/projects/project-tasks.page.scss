@@ -1,0 +1,170 @@
+// Handoff 3b header: a 52px bar whose left side is the switcher button.
+.project-bar {
+  --padding-start: var(--flux-space-12);
+  --padding-end: var(--flux-space-8);
+  --min-height: 52px;
+}
+
+// 44px tall, no visible background: avatar, name over subline, chevron.
+.switcher-button {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-8);
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 var(--flux-space-8);
+  border: 0;
+  border-radius: var(--flux-radius-card);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  font: inherit;
+
+  &:active {
+    background: var(--flux-na3);
+  }
+}
+
+// 30px, radius 9, the project's a3 tint with its 11 for text.
+.project-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--flux-radius-segmented);
+  background: var(--project-fill);
+  color: var(--project-text);
+  font: var(--flux-font-project-avatar);
+  letter-spacing: var(--flux-tracking-project-avatar);
+}
+
+.project-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.project-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-project-name);
+  letter-spacing: var(--flux-tracking-project-name);
+  color: var(--flux-n12);
+}
+
+.project-subline {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-project-subline);
+  letter-spacing: var(--flux-tracking-project-subline);
+  color: var(--flux-na11);
+}
+
+.chevron {
+  flex: none;
+  font-size: 15px;
+  color: var(--flux-na9);
+}
+
+// 38px strip under the header: how the list is grouped. Read-only until
+// FM-30 adds the Filters button and the group-by picker.
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  height: 38px;
+  padding: 0 var(--flux-space-16);
+  border-bottom: 1px solid var(--flux-na4);
+  background: var(--ion-toolbar-background);
+  font: var(--flux-font-strip-label);
+  letter-spacing: var(--flux-tracking-strip-label);
+  color: var(--flux-na11);
+
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+ion-list {
+  padding: 0;
+}
+
+// Group headers: 36px, a dot in the status's 9, its name in 11 and the
+// count, on its wash over the row background, so rows don't show through
+// while it sticks.
+ion-item-divider {
+  --background:
+    linear-gradient(var(--group-wash), var(--group-wash)),
+    var(--ion-item-background);
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  min-height: 36px;
+  border-top: 1px solid var(--flux-na3);
+  border-bottom: 1px solid var(--flux-na3);
+}
+
+ion-item-group:first-child ion-item-divider {
+  border-top: 0;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-inline-end: var(--flux-space-8);
+  border-radius: var(--flux-radius-pill);
+  background: var(--group-dot);
+}
+
+.group-name {
+  font: var(--flux-font-group-header);
+  letter-spacing: var(--flux-tracking-group-header);
+  color: var(--group-text);
+}
+
+.group-count {
+  margin-inline-start: var(--flux-space-8);
+  font: var(--flux-font-group-count);
+  letter-spacing: var(--flux-tracking-group-count);
+  color: var(--flux-na10);
+}
+
+// Under the last row when the next page failed: what happened, and Retry.
+.load-more-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-space-4);
+  padding: var(--flux-space-12) var(--flux-space-16);
+  font: var(--flux-font-body);
+  color: var(--flux-na11);
+
+  ion-button {
+    --color: var(--flux-pa11);
+    margin: 0;
+    font: var(--flux-font-sheet-action);
+  }
+}
+
+// Switcher sheet (3j): it starts 120px from the top, over the scrim, with
+// 22px top corners and the sheet shadow.
+.switcher-sheet {
+  --height: calc(100% - 120px);
+  --border-radius: var(--flux-radius-sheet);
+  --box-shadow: var(--flux-shadow-sheet);
+  --backdrop-opacity: 1;
+
+  &::part(backdrop) {
+    background: var(--flux-scrim);
+  }
+
+  &::part(handle) {
+    width: 36px;
+    height: 4px;
+    background: var(--flux-na6);
+  }
+}

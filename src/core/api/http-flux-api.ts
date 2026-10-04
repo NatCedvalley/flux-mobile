@@ -2,12 +2,14 @@ import type { FluxApi } from './flux-api';
 import type {
   AppNotification,
   MyProject,
+  MyProjectsQuery,
   MyTask,
   MyTasksQuery,
   NotificationsQuery,
   Page,
   ProjectTasksQuery,
   Task,
+  TaskViewSettings,
   WorkflowStatus,
 } from './types';
 import { type FetchFn, JsonHttpClient, type QueryParams } from '../http';
@@ -54,16 +56,19 @@ export class HttpFluxApi implements FluxApi {
     );
   }
 
-  listMyProjects(query?: {
-    page?: number;
-    size?: number;
-  }): Promise<Page<MyProject>> {
+  listMyProjects(query?: MyProjectsQuery): Promise<Page<MyProject>> {
     return this.get('/projects/mine', query);
   }
 
   listWorkflowStatuses(projectId: string): Promise<WorkflowStatus[]> {
     return this.get(
       `/projects/${encodeURIComponent(projectId)}/workflow-statuses`
+    );
+  }
+
+  getTaskViewSettings(projectId: string): Promise<TaskViewSettings> {
+    return this.get(
+      `/projects/${encodeURIComponent(projectId)}/task-view-settings`
     );
   }
 

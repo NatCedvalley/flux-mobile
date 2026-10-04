@@ -20,4 +20,15 @@ describe('SkeletonRowsComponent', () => {
       (fixture.nativeElement as HTMLElement).querySelectorAll('ion-item')
     ).toHaveLength(2);
   });
+
+  it('sets the row height, 68px unless asked otherwise', () => {
+    const fixture = TestBed.createComponent(SkeletonRowsComponent);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.style.getPropertyValue('--row-height')).toBe('68px');
+
+    fixture.componentRef.setInput('rowHeight', 62);
+    fixture.detectChanges();
+    expect(host.style.getPropertyValue('--row-height')).toBe('62px');
+  });
 });

@@ -17,7 +17,7 @@ ion-list {
 }
 
 ion-item {
-  --min-height: 68px;
+  --min-height: var(--row-height);
   --padding-start: var(--flux-space-16);
   --inner-padding-end: var(--flux-space-16);
   --border-color: var(--flux-na3);

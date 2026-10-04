@@ -67,6 +67,40 @@ describe('InMemoryFluxApi', () => {
     expect(page.content?.every((t) => t.projectId === 'p2')).toBe(true);
   });
 
+  it("filters a project's tasks by status, priority, type and label", async () => {
+    const keys = async (query: object) =>
+      (await api.listProjectTasks('p1', query)).content?.map((t) => t.taskKey);
+
+    expect(await keys({ status: 'todo' })).toEqual(['CHK-150', 'CHK-160']);
+    expect(
+      await keys({ status: 'todo', excludeLabel: 'ai:candidate' })
+    ).toEqual(['CHK-150']);
+    expect(await keys({ requireLabel: 'ai:candidate' })).toEqual(['CHK-160']);
+    expect(await keys({ priority: 'CRITICAL' })).toEqual(['CHK-142']);
+    expect(await keys({ type: 'EPIC' })).toEqual(['CHK-120']);
+  });
+
+  it('adds extra project tasks to page through, kept off My Work', async () => {
+    api.addProjectTasks('p1', 30, 'in_progress');
+
+    const page = await api.listProjectTasks('p1', {
+      status: 'in_progress',
+      size: 20,
+    });
+    expect(page.totalElements).toBe(31);
+    expect((await api.listMyTasks({ scope: 'assigned' })).totalElements).toBe(
+      5
+    );
+  });
+
+  it('returns task view settings once set', async () => {
+    expect(await api.getTaskViewSettings('p1')).toEqual({});
+    api.setTaskViewSettings('p1', { groupBy: 'priority' });
+    expect(await api.getTaskViewSettings('p1')).toEqual({
+      groupBy: 'priority',
+    });
+  });
+
   it('lists projects and workflow statuses', async () => {
     expect((await api.listMyProjects()).content).toHaveLength(2);
     const statuses = await api.listWorkflowStatuses('p1');

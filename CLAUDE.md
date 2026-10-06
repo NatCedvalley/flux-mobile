@@ -39,7 +39,8 @@ src/
 │             typography.scss). See §7.
 └── app/      Angular/Ionic UI only: pages, routes, the handoff icon set
               (icons/), shared list components (shared/), the project
-              switcher and on-device project preferences (projects/), and
+              switcher, on-device project preferences and the cached
+              project list with the caller's roles (projects/), and
               the providers that bridge into src/core
 ```
 
@@ -179,12 +180,68 @@ The header's search icon opens project search
 list of that project's tasks by title or key, in the list's sort and with
 its AI filter but not its filters.
 
+### Task detail
+
+Task detail (handoff 3e–3g, `src/app/pages/tasks/`) has a header block
+(back, type icon, key with a copy button, the watch bell, a disabled ⋯
+until FM-33's overflow sheet, the title up to 3 lines, then status,
+priority and type chips) over Details, Comments and Activity tabs. Only
+the bell writes: it subscribes with `POST .../subscribe` and unsubscribes
+with `DELETE`, showing the change at once and putting it back with a
+toast if the server refuses. The key is copied with `@capacitor/clipboard`.
+
+- List rows pass themselves in the navigation state (`[state]="{ task }"`),
+  so the header fills from the row while the task loads and only the body
+  shows skeletons. A deep link has no row, so the header shows skeletons
+  too.
+- A task only carries its status slug, so the status pill's name and hue
+  come from the project's workflow statuses (`status-pill.ts`).
+- **Details** (`task-details/`) is display-only: the first assignee plus
+  `+n`, the reporter, due date (`12 Sep · overdue` in red), release (the
+  first linked release), parent, labels (two, then `+n`), the description
+  clamped to 6 lines with Show more, and subtasks for MASTER and EPIC only
+  (`GET .../children`). Parent and subtask links push onto the same stack.
+- **Comments** (`task-comments/`) loads with the page, so the tab shows a
+  count: the server pages top-level comments (100 a page, oldest first)
+  with their replies nested, and its total counts threads only, so
+  `commentCount()` adds the replies. Read-only, with reactions; the
+  caller's own comments are tinted.
+- **Activity** (`task-activity/`) loads the first time its tab opens,
+  newest first, grouped by day (`activityDays()`), with `activityView()`
+  (`src/core/task-detail/`) deciding each entry's icon, tint and wording.
+- Pull-to-refresh reloads everything; each part has its own error state
+  with Retry.
+
+**Rich text.** Descriptions and comments are stored as MARKDOWN, HTML or
+EDITORJS, and older rows hold Editor.js JSON under MARKDOWN, so the format
+is detected by content too. `renderRichText()` (`src/core/rich-text/`)
+renders Markdown with `marked`, converts Editor.js JSON with a trimmed port
+of flux-web's `json-to-html.ts`, and always finishes with DOMPurify, using
+flux-web's sanitizer policy (no scripts, frames, forms or inline styles).
+`app-rich-text` binds that output with `bypassSecurityTrustHtml`, since
+Angular's own sanitizer would strip mention ids. Links get
+`target="_blank"`, so they open in the system browser instead of replacing
+the WebView. Editor.js images that are uploads show a placeholder until
+attachments (FM-36) can sign their URLs.
+
+**Roles.** `can(role, action)` (`src/core/permissions/`) holds the
+backend's minimum role for each action: VIEWER reads, COMMENTER comments,
+EDITOR edits, changes status, creates and archives, and LEAD reassigns and
+deletes (MANAGER ranks above LEAD). `MyProjectsService`
+(`src/app/projects/`) caches `GET /projects/mine` once per signed-in
+account, and exposes `role(projectId)` and `can(projectId, action)`. The
+Projects tab and My Work search load their projects through it, and the
+Projects tab's pull-to-refresh calls `invalidate()` first, so the counts
+are fresh.
+
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
-tasks, a project's tasks, one task, my projects, workflow statuses, task
-view settings (read and update), assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+tasks, a project's tasks, one task, its children, activities, comments and
+subscription (read, subscribe, unsubscribe), my projects, workflow
+statuses, resolutions (for FM-32), task view settings (read and update),
+assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -193,12 +250,15 @@ because springdoc emits the list endpoints' 200 responses as `unknown`.
 it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
 written without it) and makes every request through
 `AuthService.withAccessToken` (see below). `JsonHttpClient`
-(`src/core/http/`) is the request, timeout, query-string and JSON handling
-it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
+(`src/core/http/`) is the request (GET, POST, PUT and DELETE), timeout,
+query-string and JSON handling it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
 test double: its fixtures are dated relative to today and it applies the
 my-tasks filters (including status, priority and search) and the project
 list's filters (comma lists, assignee, labels, search) and sort, so page
-specs use it (`addProjectTasks()` adds rows to page through).
+specs use it (`addProjectTasks()` adds rows to page through). CHK-142
+carries the detail fixtures (Markdown description, parent, release, a
+comment thread with a reply, reactions and an Editor.js body, a day-split
+activity timeline), and the EPIC CHK-120 has two subtasks.
 
 ### Authentication
 
@@ -467,7 +527,8 @@ flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
 sign in as a fixed test account), `scripts/ci/mock-operations.mjs` for
 flux-operations on `localhost:9003` (one project, `CI`, with its
 workflow statuses and three tasks dated around today, so My Work and the
-Projects list have rows), and
+Projects list have rows, and empty comments, activity and subtasks for
+task detail; it answers GETs only), and
 `scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
@@ -477,8 +538,11 @@ iPhone 17 and judges the result from screenshots with Pillow. Sign-in must
 reach the mock IAM (checked in its log). After each tap or swipe the script
 polls screenshots for up to 45 s, because idb can deliver input ~15 s late
 on a slow runner: switching to Projects must change over 2% of pixels,
-opening the task over 5%, and the swipe must bring the screen back to within
-2% of the list. Moving the login fields, the tab bar or the Projects list's
+opening the task over 20%, and the swipe must bring the screen back to within
+2% of the list. Detail changes about 35%. The limit stays well above the
+~7% of the tapped row's pressed highlight, which can hold still while a slow
+runner loads the detail page; at 5% the script once swiped on the list
+before detail opened. Moving the login fields, the tab bar or the Projects list's
 first row means updating the points at the top of the script.
 
 Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and

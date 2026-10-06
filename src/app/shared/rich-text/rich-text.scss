@@ -1,0 +1,221 @@
+// app-rich-text's styles. A global stylesheet (listed in angular.json),
+// because the component's rendered HTML can't be encapsulated: every rule
+// starts at app-rich-text. Sizes follow the container's font, so a comment
+// bubble and a description card can each set their own type role.
+app-rich-text {
+  display: block;
+  overflow-wrap: anywhere;
+
+  .rich-text-content {
+    > :first-child {
+      margin-top: 0;
+    }
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+
+    &.clamped {
+      // Lines × line height (line-clamp can't count lines across blocks).
+      // The container sets `--rich-text-line` to its type role's line height.
+      max-height: calc(var(--clamp-lines) * var(--rich-text-line, 1.5em));
+      overflow: hidden;
+      // Blocks of other heights (headings, list items) can land the cut
+      // mid-line, so the last line fades out instead of showing a sliver.
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 calc(100% - var(--rich-text-line, 1.5em)),
+        transparent
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        #000 calc(100% - var(--rich-text-line, 1.5em)),
+        transparent
+      );
+    }
+
+    p,
+    ul,
+    ol,
+    blockquote,
+    pre,
+    table,
+    figure,
+    details,
+    aside,
+    section {
+      margin: 0 0 var(--flux-space-8);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      margin: var(--flux-space-12) 0 var(--flux-space-6);
+      font-weight: 650;
+      line-height: 1.3;
+      color: var(--flux-n12);
+    }
+
+    h1 {
+      font-size: 1.25em;
+    }
+
+    h2 {
+      font-size: 1.15em;
+    }
+
+    h3,
+    h4 {
+      font-size: 1.05em;
+    }
+
+    ul,
+    ol {
+      padding-inline-start: 1.4em;
+    }
+
+    li + li {
+      margin-top: var(--flux-space-2);
+    }
+
+    ul.checklist {
+      padding-inline-start: 0;
+      list-style: none;
+
+      li {
+        display: flex;
+        gap: var(--flux-space-6);
+
+        &::before {
+          content: '';
+          flex: none;
+          width: 14px;
+          height: 14px;
+          margin-top: 0.2em;
+          border: 1.5px solid var(--flux-na8);
+          border-radius: var(--flux-radius-code);
+        }
+
+        &.checked {
+          color: var(--flux-na11);
+          text-decoration: line-through;
+
+          &::before {
+            border-color: var(--flux-p9);
+            background: var(--flux-p9);
+          }
+        }
+      }
+    }
+
+    blockquote {
+      padding-inline-start: var(--flux-space-12);
+      border-inline-start: 3px solid var(--flux-na4);
+      color: var(--flux-na11);
+
+      cite {
+        display: block;
+        margin-top: var(--flux-space-4);
+        font-style: normal;
+        font: var(--flux-font-meta);
+      }
+    }
+
+    code {
+      padding: 1px var(--flux-space-4);
+      border-radius: var(--flux-radius-code);
+      background: var(--flux-na3);
+      font: var(--flux-font-inline-code);
+      letter-spacing: var(--flux-tracking-inline-code);
+    }
+
+    pre {
+      padding: var(--flux-space-10) var(--flux-space-12);
+      border-radius: var(--flux-radius-button);
+      background: var(--flux-na2);
+      overflow-x: auto;
+
+      code {
+        padding: 0;
+        background: none;
+        white-space: pre;
+      }
+    }
+
+    a {
+      color: var(--flux-pa11);
+      font-weight: 600;
+    }
+
+    .mention,
+    .editorjs-mention {
+      color: var(--flux-pa11);
+      font-weight: 600;
+    }
+
+    mark {
+      padding: 0 2px;
+      border-radius: 2px;
+      background: var(--flux-ambera3);
+      color: inherit;
+    }
+
+    hr {
+      margin: var(--flux-space-12) 0;
+      border: 0;
+      border-top: 1px solid var(--flux-na4);
+    }
+
+    table {
+      display: block;
+      max-width: 100%;
+      overflow-x: auto;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: var(--flux-space-4) var(--flux-space-8);
+      border: 1px solid var(--flux-na4);
+      text-align: start;
+    }
+
+    th {
+      font-weight: 650;
+      background: var(--flux-na2);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: var(--flux-radius-chip);
+    }
+
+    figcaption,
+    .image-placeholder {
+      font: var(--flux-font-meta);
+      color: var(--flux-na11);
+    }
+
+    summary {
+      font-weight: 600;
+    }
+
+    aside.callout {
+      padding: var(--flux-space-10) var(--flux-space-12);
+      border-radius: var(--flux-radius-button);
+      background: var(--flux-pa2);
+    }
+  }
+
+  .rich-text-toggle {
+    margin-top: var(--flux-space-8);
+    padding: 0;
+    border: 0;
+    background: none;
+    font: var(--flux-font-text-link);
+    letter-spacing: var(--flux-tracking-text-link);
+    color: var(--flux-pa11);
+  }
+}

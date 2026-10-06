@@ -47,6 +47,20 @@ export function groupHueColors(hue: GroupHue): Record<string, string> {
   };
 }
 
+/**
+ * A status pill's colours (the detail header, the activity timeline):
+ * `--status-dot`, `--status-text` and an a3 `--status-fill`, a step
+ * stronger than a group's wash.
+ */
+export function statusPillColors(hue: GroupHue): Record<string, string> {
+  const [dot, text] = GROUP_HUE_COLORS[hue];
+  return {
+    '--status-dot': `var(--flux-${dot})`,
+    '--status-text': `var(--flux-${text})`,
+    '--status-fill': `var(--flux-${hue === 'gray' ? 'na3' : `${hue}a3`})`,
+  };
+}
+
 /** A group hue's dot colour alone, for a status chip. */
 export function groupHueDot(hue: GroupHue): string {
   return `var(--flux-${GROUP_HUE_COLORS[hue][0]})`;

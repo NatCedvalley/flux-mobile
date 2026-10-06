@@ -50,6 +50,7 @@ import {
 } from '@core/task-filters';
 import type { ChipOption } from '../../shared/option-chips/option-chips.component';
 import { AuthService } from '../../auth/auth.service';
+import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { ProjectSwitcherComponent } from '../../projects/project-switcher/project-switcher.component';
@@ -62,9 +63,6 @@ import { ErrorStateComponent } from '../../shared/error-state/error-state.compon
 import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
-
-/** The server's page cap: more projects than this aren't listed. */
-const PROJECTS_PAGE_SIZE = 100;
 
 const GROUP_BY_LABELS: Record<GroupBy, string> = {
   none: 'Not grouped',
@@ -116,6 +114,7 @@ type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
 })
 export class ProjectTasksPage {
   private readonly api = inject(FLUX_API);
+  private readonly myProjects = inject(MyProjectsService);
   private readonly account = inject(AuthService).account;
   protected readonly prefs = inject(ProjectPrefsService);
   private readonly content = viewChild.required(IonContent);
@@ -126,15 +125,11 @@ export class ProjectTasksPage {
   /** The user's projects, and which one to open first. */
   protected readonly projects = resource({
     loader: async () => {
-      const [page, lastId] = await Promise.all([
-        this.api.listMyProjects({
-          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          size: PROJECTS_PAGE_SIZE,
-        }),
+      const [projects, lastId] = await Promise.all([
+        this.myProjects.load(),
         this.prefs.lastProjectId(),
         this.prefs.load(),
       ]);
-      const projects = page.content ?? [];
       return {
         projects,
         initialId:
@@ -387,6 +382,7 @@ export class ProjectTasksPage {
   /** Reloads the projects (their counts) and the open project's list. */
   protected refresh(event: RefresherCustomEvent): void {
     this.today.set(localIsoDate(new Date()));
+    this.myProjects.invalidate();
     this.projects.reload();
     this.list.reload();
     // Set after the reloads start, so the effect sees them loading.

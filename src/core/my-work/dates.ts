@@ -41,3 +41,10 @@ export function shortDate(isoDate: string, today: string): string {
   const label = `${weekday} ${day} ${MONTHS[month - 1]}`;
   return today.startsWith(`${year}-`) ? label : `${label} ${year}`;
 }
+
+/** `17 Sep`, with the year added when it isn't `today`'s year. */
+export function dayMonth(isoDate: string, today: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const label = `${day} ${MONTHS[month - 1]}`;
+  return today.startsWith(`${year}-`) ? label : `${label} ${year}`;
+}

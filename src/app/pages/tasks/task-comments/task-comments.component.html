@@ -1,0 +1,82 @@
+<ol class="thread">
+  @for (comment of comments(); track comment.id) {
+    <li>
+      <ng-container
+        *ngTemplateOutlet="entry; context: { $implicit: comment }"
+      ></ng-container>
+      @if (comment.replies?.length) {
+        <ol
+          class="replies"
+          [attr.aria-label]="'Replies to ' + author(comment)"
+        >
+          @for (reply of comment.replies; track reply.id) {
+            <li>
+              <ng-container
+                *ngTemplateOutlet="entry; context: { $implicit: reply }"
+              ></ng-container>
+            </li>
+          }
+        </ol>
+      }
+    </li>
+  }
+</ol>
+
+<ng-template
+  #entry
+  let-comment
+>
+  <article class="comment">
+    <span
+      class="avatar"
+      aria-hidden="true"
+      [style.background]="fill(comment)"
+      >{{ initials(comment) }}</span
+    >
+    <div class="body">
+      <div class="meta">
+        <span class="author">{{ author(comment) }}</span>
+        <span class="age">
+          @if (isMine(comment)) {
+            You ·
+          }
+          {{ age(comment) }}
+          @if (comment.edited) {
+            · edited
+          }
+        </span>
+      </div>
+      <div
+        class="bubble"
+        [class.mine]="isMine(comment)"
+      >
+        <app-rich-text
+          [body]="comment.body"
+          [format]="comment.bodyFormat"
+        />
+      </div>
+      @if (comment.reactions?.length) {
+        <ul
+          class="reactions"
+          aria-label="Reactions"
+        >
+          @for (reaction of comment.reactions; track reaction.emoji) {
+            <li
+              class="reaction"
+              [class.mine]="reaction.reactedByMe"
+              [attr.aria-label]="
+                reaction.emoji +
+                ' ' +
+                reaction.count +
+                (reaction.reactedByMe ? ', including you' : '')
+              "
+            >
+              <span aria-hidden="true">{{ reaction.emoji }}</span>
+              <span aria-hidden="true">{{ reaction.count }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </article>
+</ng-template>

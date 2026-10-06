@@ -194,6 +194,64 @@ describe('InMemoryFluxApi', () => {
     ]);
   });
 
+  it("lists a task's children", async () => {
+    const children = await api.listChildTasks('p1', '6');
+    expect(children.map((t) => t.taskKey)).toEqual(['CHK-142', 'CHK-131']);
+    expect(await api.listChildTasks('p1', '1')).toEqual([]);
+  });
+
+  it("pages a task's comments, replies nested under their parent", async () => {
+    const page = await api.listTaskComments('p1', '1', { size: 1 });
+    expect(page.content?.map((c) => c.id)).toEqual(['c1']);
+    expect(page.content?.[0].replies?.map((c) => c.id)).toEqual(['c2']);
+    expect(page.totalElements).toBe(2);
+    expect(page.last).toBe(false);
+    expect((await api.listTaskComments('p1', '2')).content).toEqual([]);
+  });
+
+  it("lists a task's activities newest first", async () => {
+    const page = await api.listTaskActivities('p1', '1');
+    expect(page.content?.map((e) => e.action)).toEqual([
+      'COMMENT_ADDED',
+      'STATUS_CHANGED',
+      'FIELD_UPDATED',
+      'ASSIGNED',
+      'CREATED',
+    ]);
+  });
+
+  it('subscribes and unsubscribes, starting from the watched tasks', async () => {
+    expect(await api.getTaskSubscription('p2', '7')).toEqual({
+      subscribed: true,
+    });
+    expect(await api.getTaskSubscription('p1', '1')).toEqual({
+      subscribed: false,
+    });
+    await api.subscribeToTask('p1', '1');
+    expect(await api.getTaskSubscription('p1', '1')).toEqual({
+      subscribed: true,
+    });
+    await api.unsubscribeFromTask('p1', '1');
+    expect(await api.getTaskSubscription('p1', '1')).toEqual({
+      subscribed: false,
+    });
+  });
+
+  it('rejects task sub-resources of an unknown task', async () => {
+    await expect(api.listTaskComments('p1', 'nope')).rejects.toThrow(
+      'Task not found: p1/nope'
+    );
+    await expect(api.subscribeToTask('p2', '1')).rejects.toThrow();
+  });
+
+  it('lists resolutions', async () => {
+    expect((await api.listResolutions('p1')).map((r) => r.slug)).toEqual([
+      'done',
+      'wont-do',
+      'duplicate',
+    ]);
+  });
+
   it('lists notifications, optionally only unread ones', async () => {
     expect((await api.listNotifications()).content).toHaveLength(3);
     expect(

@@ -1,37 +1,235 @@
-<ion-header>
-  <ion-toolbar>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="nav">
     <ion-buttons slot="start">
-      <ion-back-button [defaultHref]="backHref()"></ion-back-button>
+      <ion-back-button
+        [defaultHref]="backHref()"
+        text=""
+        icon="arrow-left"
+      ></ion-back-button>
     </ion-buttons>
-    <ion-title>Task</ion-title>
+    <div class="key-group">
+      @if (header(); as header) {
+        <ion-icon
+          class="type-icon"
+          [name]="typeIcon()"
+          aria-hidden="true"
+        ></ion-icon>
+        <span class="key">{{ header.taskKey }}</span>
+        <ion-button
+          class="copy"
+          fill="clear"
+          size="small"
+          aria-label="Copy the task key"
+          (click)="copyKey()"
+        >
+          <ion-icon
+            slot="icon-only"
+            name="copy"
+            aria-hidden="true"
+          ></ion-icon>
+        </ion-button>
+      } @else if (!task.error()) {
+        <ion-skeleton-text
+          class="key-skeleton"
+          [animated]="true"
+        ></ion-skeleton-text>
+      }
+    </div>
+    <ion-buttons slot="end">
+      <ion-button
+        class="icon-button bell"
+        [class.watching]="watching()"
+        [disabled]="watching() === undefined"
+        [attr.aria-pressed]="!!watching()"
+        aria-label="Watch this task"
+        (click)="toggleWatch()"
+      >
+        <ion-icon
+          slot="icon-only"
+          [name]="watching() ? 'bell-ring' : 'bell'"
+          aria-hidden="true"
+        ></ion-icon>
+      </ion-button>
+      <!-- The overflow sheet (3n) comes with field editing (FM-33). -->
+      <ion-button
+        class="icon-button more"
+        disabled="true"
+        aria-label="More actions"
+      >
+        <ion-icon
+          slot="icon-only"
+          name="ellipsis-vertical"
+          aria-hidden="true"
+        ></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
+
+  <div class="head">
+    @if (header(); as header) {
+      <h1 class="title">{{ header.title }}</h1>
+      <div class="chips">
+        @if (status(); as status) {
+          <span
+            class="status"
+            [style]="status.colors"
+          >
+            <span
+              class="dot"
+              aria-hidden="true"
+            ></span>
+            {{ status.name }}
+          </span>
+        }
+        @if (priority(); as priority) {
+          <span
+            class="chip priority"
+            [attr.data-level]="priority.level"
+          >
+            <ion-icon
+              [name]="priority.icon"
+              aria-hidden="true"
+            ></ion-icon>
+            {{ priority.label }}
+          </span>
+        }
+        @if (typeLabel()) {
+          <span class="chip">{{ typeLabel() }}</span>
+        }
+      </div>
+    } @else if (!task.error()) {
+      <div class="title-skeleton">
+        <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+      </div>
+    }
+
+    <div
+      class="tabs"
+      role="tablist"
+    >
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="tab() === 'details'"
+        (click)="select('details')"
+      >
+        Details
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="tab() === 'comments'"
+        (click)="select('comments')"
+      >
+        Comments
+        @if (commentTotal()) {
+          <ion-badge
+            class="count"
+            [attr.aria-label]="commentTotal() + ' comments'"
+            >{{ commentTotal() }}</ion-badge
+          >
+        }
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="tab() === 'activity'"
+        (click)="select('activity')"
+      >
+        Activity
+      </button>
+    </div>
+  </div>
 </ion-header>
 
 <ion-content>
-  @if (task.isLoading()) {
-    <div class="ion-text-center ion-padding">
-      <ion-spinner name="crescent"></ion-spinner>
-    </div>
-  } @else if (task.value(); as t) {
-    <ion-list>
-      <ion-item>
-        <ion-label>
-          <h1>{{ t.title }}</h1>
-          @if (t.description) {
-            <p>{{ t.description }}</p>
-          }
-        </ion-label>
-      </ion-item>
-      <ion-item>
-        <ion-label>Status</ion-label>
-        <ion-label slot="end">{{ t.status }}</ion-label>
-      </ion-item>
-      @if (t.dueDate) {
-        <ion-item>
-          <ion-label>Due</ion-label>
-          <ion-label slot="end">{{ t.dueDate | date }}</ion-label>
-        </ion-item>
+  <ion-refresher
+    slot="fixed"
+    (ionRefresh)="refresh($event)"
+  >
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  @switch (tab()) {
+    @case ('details') {
+      @if (loadedTask(); as task) {
+        <app-task-details
+          [task]="task"
+          [today]="today()"
+          [subtasks]="subtasks.hasValue() ? subtasks.value() : undefined"
+          [detailBase]="detailBase()"
+        />
+      } @else if (task.error() && !task.isLoading()) {
+        <app-error-state
+          subject="this task"
+          [error]="task.error()"
+          (retry)="retry()"
+        />
+      } @else {
+        <app-task-details-skeleton />
       }
-    </ion-list>
+    }
+    @case ('comments') {
+      @if (comments().state; as state) {
+        @if (state.items.length) {
+          <app-task-comments
+            [comments]="state.items"
+            [myId]="myId()"
+            [now]="now()"
+          />
+        } @else {
+          <app-empty-state
+            icon="message-circle"
+            message="No comments yet"
+          />
+        }
+      } @else if (comments().error) {
+        <app-error-state
+          subject="the comments"
+          [error]="comments().error"
+          (retry)="startComments()"
+        />
+      } @else {
+        <app-skeleton-rows
+          [count]="3"
+          [rowHeight]="72"
+        />
+      }
+    }
+    @case ('activity') {
+      @if (activity().state; as state) {
+        @if (state.items.length) {
+          <app-task-activity
+            [entries]="state.items"
+            [statuses]="statuses.hasValue() ? statuses.value() : []"
+            [now]="now()"
+          />
+        } @else {
+          <app-empty-state
+            icon="history"
+            message="No activity yet"
+          />
+        }
+      } @else if (activity().error) {
+        <app-error-state
+          subject="the activity"
+          [error]="activity().error"
+          (retry)="startActivity()"
+        />
+      } @else {
+        <app-skeleton-rows
+          [count]="4"
+          [rowHeight]="56"
+        />
+      }
+    }
   }
+
+  <ion-infinite-scroll
+    [disabled]="!pagedTab()"
+    (ionInfinite)="loadMore($event)"
+  >
+    <ion-infinite-scroll-content></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
 </ion-content>

@@ -281,6 +281,10 @@ $flux-scrim: (
 
 $flux-radius: (
   pill: 99px,
+  // Inline code, and a comment bubble's top-left corner.
+  code: 4px,
+  // The 20px status pills in the activity timeline.
+  value-chip: 5px,
   // Read-only pills under 26px, such as a row's project chip.
   tag: 6px,
   chip: 8px,
@@ -496,6 +500,96 @@ $flux-type: (
   tab-label-active: (
     size: 10px,
     weight: 650,
+  ),
+  // Task detail (3e–3g): the header's key, status pill, outline chips and
+  // underline tabs with their count badge; the Details cards' row labels,
+  // values, value chips and avatars; the description and its Show more;
+  // comments (name, bubble text, 30px avatar, reactions, inline code); and
+  // the activity timeline's text.
+  detail-key: (
+      size: 13.5px,
+      weight: 650,
+      mono: true,
+    ),
+  detail-status: (
+    size: 13px,
+    weight: 650,
+  ),
+  detail-chip: (
+    size: 12.5px,
+    weight: 600,
+  ),
+  detail-tab: (
+    size: 13.5px,
+    weight: 500,
+  ),
+  detail-tab-active: (
+    size: 13.5px,
+    weight: 650,
+  ),
+  tab-badge: (
+    size: 10.5px,
+    weight: 650,
+  ),
+  field-row: (
+    size: 13px,
+    weight: 450,
+  ),
+  field-value: (
+    size: 13.5px,
+    weight: 550,
+  ),
+  field-value-strong: (
+    size: 13.5px,
+    weight: 650,
+  ),
+  value-chip: (
+    size: 11.5px,
+    weight: 650,
+  ),
+  label-chip: (
+    size: 11.5px,
+    weight: 600,
+  ),
+  detail-avatar: (
+    size: 9.5px,
+    weight: 650,
+  ),
+  detail-body: (
+    size: 13.5px,
+    line: 21px,
+    weight: 450,
+  ),
+  text-link: (
+    size: 13px,
+    weight: 600,
+  ),
+  comment-name: (
+    size: 13px,
+    weight: 650,
+  ),
+  comment-body: (
+    size: 13.5px,
+    line: 20px,
+    weight: 450,
+  ),
+  comment-avatar: (
+    size: 11px,
+    weight: 650,
+  ),
+  reaction: (
+    size: 12px,
+    weight: 600,
+  ),
+  inline-code: (
+    size: 12.5px,
+    weight: 450,
+    mono: true,
+  ),
+  activity-text: (
+    size: 13.5px,
+    line: 19px,
+    weight: 450,
   ),
 ) !default;
 

@@ -139,8 +139,11 @@ if ! wait_until 'list.png' 'my-work.png' above 0.02; then
   exit 1
 fi
 tap "$FIRST_TASK_ROW"
-# Opening a task changes ~17% of the screen.
-if ! wait_until 'detail.png' 'list.png' above 0.05; then
+# Opening a task changes ~35% of the screen. The tapped row's pressed
+# highlight alone changes ~7%, and holds still while a slow runner loads
+# the detail page, so a lower limit can swipe on the list before detail
+# opens.
+if ! wait_until 'detail.png' 'list.png' above 0.2; then
   echo "Tapping the first row didn't open a task (see detail.png)"
   exit 1
 fi

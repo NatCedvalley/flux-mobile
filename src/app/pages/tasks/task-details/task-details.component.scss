@@ -27,7 +27,10 @@
   color: var(--flux-na10);
 }
 
+// Never wraps or shrinks: the title beside it truncates instead.
 .key {
+  flex: none;
+  white-space: nowrap;
   font: var(--flux-font-key);
   letter-spacing: var(--flux-tracking-key);
   color: var(--flux-pa11);

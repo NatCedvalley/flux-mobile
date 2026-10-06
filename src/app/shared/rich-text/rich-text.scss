@@ -20,6 +20,18 @@ app-rich-text {
       // The container sets `--rich-text-line` to its type role's line height.
       max-height: calc(var(--clamp-lines) * var(--rich-text-line, 1.5em));
       overflow: hidden;
+      // Blocks of other heights (headings, list items) can land the cut
+      // mid-line, so the last line fades out instead of showing a sliver.
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 calc(100% - var(--rich-text-line, 1.5em)),
+        transparent
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        #000 calc(100% - var(--rich-text-line, 1.5em)),
+        transparent
+      );
     }
 
     p,

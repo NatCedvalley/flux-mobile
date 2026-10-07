@@ -13,7 +13,9 @@ import type {
   TaskActivity,
   TaskComment,
   TaskResolution,
+  TaskStatusChange,
   TaskSubscription,
+  TaskUnarchive,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -39,6 +41,30 @@ export type FluxApi = {
 
   /** GET /projects/{projectId}/tasks/{taskId}: tasks are project-scoped. */
   getTask(projectId: string, taskId: string): Promise<Task>;
+
+  /**
+   * PATCH /projects/{projectId}/tasks/{taskId}/status. The response leaves
+   * out assignees, the parent and other joined fields, so fetch the task
+   * again rather than using it.
+   */
+  changeTaskStatus(
+    projectId: string,
+    taskId: string,
+    change: TaskStatusChange
+  ): Promise<Task>;
+
+  /**
+   * POST /projects/{projectId}/tasks/{taskId}/archive: archives the task and
+   * its subtasks, which must all be in a DONE-category status.
+   */
+  archiveTask(projectId: string, taskId: string): Promise<Task>;
+
+  /** POST /projects/{projectId}/tasks/{taskId}/unarchive */
+  unarchiveTask(
+    projectId: string,
+    taskId: string,
+    request: TaskUnarchive
+  ): Promise<Task>;
 
   /** GET /projects/{projectId}/tasks/{taskId}/children: unpaged. */
   listChildTasks(projectId: string, taskId: string): Promise<Task[]>;

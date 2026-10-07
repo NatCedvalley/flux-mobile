@@ -1,0 +1,36 @@
+<ion-footer class="ion-no-border">
+  <div class="actions">
+    <!-- The composer comes with comment writing (FM-34). -->
+    <ion-button
+      class="comment"
+      fill="outline"
+      aria-label="Comments"
+      (click)="comment.emit()"
+    >
+      <ion-icon
+        slot="icon-only"
+        name="message-circle"
+        aria-hidden="true"
+      ></ion-icon>
+    </ion-button>
+    @if (canMove()) {
+      <ion-button
+        class="move"
+        expand="block"
+        [disabled]="moveDisabled()"
+        (click)="move.emit()"
+      >
+        <ion-icon
+          slot="start"
+          name="arrow-right"
+          aria-hidden="true"
+        ></ion-icon>
+        @if (next(); as next) {
+          Move to {{ next.name ?? next.slug }}
+        } @else {
+          Change status
+        }
+      </ion-button>
+    }
+  </div>
+</ion-footer>

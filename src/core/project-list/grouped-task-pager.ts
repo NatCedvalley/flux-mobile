@@ -18,7 +18,8 @@ export type LoadedGroup = {
 export type PagerState = {
   /**
    * The groups to render, in order: every complete group, then the first
-   * incomplete one. A later group never shows above an unfinished one.
+   * incomplete one. A later group never shows above an unfinished one, and
+   * an empty group isn't shown.
    */
   groups: LoadedGroup[];
   /** Every group is fully loaded: nothing left to scroll for. */
@@ -34,7 +35,8 @@ type GroupProgress = LoadedGroup & { nextPage: number };
  * each header its count and drops empty groups, and `loadMore` pages the
  * first group that isn't complete yet. A group's own filter wins over the
  * same key in the base query, so narrow the groups to the filter first
- * (`narrowGroups` in `@core/task-filters`).
+ * (`narrowGroups` in `@core/task-filters`). `placeTask` moves a changed row
+ * without a refetch.
  */
 export class GroupedTaskPager {
   private projectId = '';
@@ -57,12 +59,14 @@ export class GroupedTaskPager {
         ? this.groups
         : this.groups.slice(0, firstIncomplete + 1);
     return {
-      groups: visible.map(({ group, tasks, total, complete }) => ({
-        group,
-        tasks,
-        total,
-        complete,
-      })),
+      groups: visible
+        .filter((g) => g.total > 0)
+        .map(({ group, tasks, total, complete }) => ({
+          group,
+          tasks,
+          total,
+          complete,
+        })),
       done: firstIncomplete < 0,
     };
   }
@@ -75,7 +79,8 @@ export class GroupedTaskPager {
   /**
    * Loads the first page of every group, replacing the current list only
    * once all of them land (so a refresh keeps the old rows meanwhile).
-   * Rejects with the first failure.
+   * Rejects with the first failure. Empty groups are kept (but not shown),
+   * so `placeTask` can move a row into one.
    */
   async start(
     projectId: string,
@@ -100,19 +105,49 @@ export class GroupedTaskPager {
     }
     this.projectId = projectId;
     this.baseQuery = baseQuery;
-    this.groups = groups
-      .map((group, i) => {
-        const tasks = pages[i].content ?? [];
-        const total = pages[i].totalElements ?? tasks.length;
-        return {
-          group,
-          tasks,
-          total,
-          complete: pages[i].last ?? tasks.length >= total,
-          nextPage: 1,
-        };
-      })
-      .filter((g) => g.total > 0);
+    this.groups = groups.map((group, i) => {
+      const tasks = pages[i].content ?? [];
+      const total = pages[i].totalElements ?? tasks.length;
+      return {
+        group,
+        tasks,
+        total,
+        complete: pages[i].last ?? tasks.length >= total,
+        nextPage: 1,
+      };
+    });
+    this.listener(this.state);
+  }
+
+  /** Whether a task's row is loaded, shown or not. */
+  has(taskId: string): boolean {
+    return this.groups.some((g) => g.tasks.some((t) => t.id === taskId));
+  }
+
+  /**
+   * Puts a changed task in the group keyed `groupKey`: in place if it's
+   * already there, otherwise at the top, taking it out of its old group and
+   * moving one off that group's count. With no group (or one not in the
+   * list, e.g. filtered out) the row is only taken out.
+   *
+   * Taking a row out of a group still paging shifts the server's pages
+   * under it, so the next page can skip one row until the list reloads.
+   */
+  placeTask(task: Task, groupKey: string | undefined): void {
+    const from = this.groups.find((g) => g.tasks.some((t) => t.id === task.id));
+    const to = this.groups.find((g) => g.group.key === groupKey);
+    if (from && from === to) {
+      from.tasks = from.tasks.map((t) => (t.id === task.id ? task : t));
+    } else {
+      if (from) {
+        from.tasks = from.tasks.filter((t) => t.id !== task.id);
+        from.total = Math.max(0, from.total - 1);
+      }
+      if (to) {
+        to.tasks = [task, ...to.tasks];
+        to.total++;
+      }
+    }
     this.listener(this.state);
   }
 

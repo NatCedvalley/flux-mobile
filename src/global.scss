@@ -60,6 +60,21 @@ ion-modal.flux-sheet {
 }
 
 /*
+ * A sheet as tall as its content (the status sheet, 3h), as Ionic's
+ * auto-height sheet does it: the page flows instead of filling the modal,
+ * so the sheet scrolls its own body.
+ */
+ion-modal.flux-sheet.flux-sheet-auto {
+  --height: auto;
+
+  .ion-page {
+    position: relative;
+    display: block;
+    contain: content;
+  }
+}
+
+/*
  * Android draws the app under the navigation bar, and some phones (MIUI on
  * Android 10, with full-screen gestures) report a 0 bottom inset while the
  * gesture pill still covers the bottom of the screen. Keep at least the

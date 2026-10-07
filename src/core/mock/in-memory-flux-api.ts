@@ -14,12 +14,16 @@ import type {
   TaskActivity,
   TaskComment,
   TaskResolution,
+  TaskStatusChange,
   TaskSubscription,
+  TaskUnarchive,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
 } from '../api';
+import { ApiError } from '../auth/api-error';
 import { addDays, localIsoDate } from '../my-work';
+import { allowedStatusCategories } from '../task-status';
 
 /**
  * A fixture task: a my-tasks row that is also a full task. `notMine` keeps it
@@ -86,6 +90,7 @@ const STATUSES: WorkflowStatus[] = [
     category: 'DONE',
     color: 'green',
     position: 3,
+    isClosed: true,
   },
 ];
 
@@ -453,6 +458,10 @@ function notFound(projectId: string, taskId: string): Error {
   return new Error(`Task not found: ${projectId}/${taskId}`);
 }
 
+function badRequest(code: string, message: string): ApiError {
+  return new ApiError(400, { code, message });
+}
+
 /**
  * Static in-memory `FluxApi` for tests. It applies the my-tasks filters
  * (scope, openOnly, the due window, project, status, priority, search) and
@@ -460,6 +469,7 @@ function notFound(projectId: string, taskId: string): Error {
  * list's filters (comma lists for status, priority, type and assignee,
  * labels, search) and sort, so pages can be tested against it. Tasks
  * without a sort value (fixtures have no createdAt) keep their order.
+ * Status changes and archiving follow the backend's rules and errors.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
@@ -509,7 +519,7 @@ export class InMemoryFluxApi implements FluxApi {
   listMyTasks(query: MyTasksQuery = {}): Promise<Page<MyTask>> {
     const watching = query.scope === 'watching';
     const rows = this.tasks
-      .filter((t) => !t.notMine)
+      .filter((t) => !t.notMine && !t.isArchived)
       .filter((t) => !!t.watching === watching)
       .filter((t) => query.openOnly === false || t.statusCategory !== 'DONE')
       .filter(
@@ -538,7 +548,7 @@ export class InMemoryFluxApi implements FluxApi {
   ): Promise<Page<Task>> {
     const assignees = csv(query.assigneeId);
     const rows = this.tasks
-      .filter((t) => t.projectId === projectId)
+      .filter((t) => t.projectId === projectId && !t.isArchived)
       .filter((t) => inList(t.status, query.status))
       .filter((t) => inList(t.priority, query.priority))
       .filter((t) => inList(t.type, query.type))
@@ -566,6 +576,109 @@ export class InMemoryFluxApi implements FluxApi {
     return task
       ? Promise.resolve(task)
       : Promise.reject(notFound(projectId, taskId));
+  }
+
+  changeTaskStatus(
+    projectId: string,
+    taskId: string,
+    change: TaskStatusChange
+  ): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    const status = STATUSES.find((s) => s.slug === change.status);
+    if (!status?.category) {
+      return Promise.reject(
+        badRequest('INVALID_WORKFLOW_STATUS', 'Unknown workflow status')
+      );
+    }
+    if (!allowedStatusCategories(task.type).includes(status.category)) {
+      const container = task.type === 'MASTER' || task.type === 'EPIC';
+      return Promise.reject(
+        container
+          ? badRequest(
+              'CONTAINER_TASK_REQUIRES_PLANNING_OR_DONE',
+              'Masters and epics can only use planning or done statuses'
+            )
+          : badRequest(
+              'LEAF_TASK_CANNOT_USE_PLANNING_STATUS',
+              'Only masters and epics can use planning statuses'
+            )
+      );
+    }
+    if (status.isClosed && !change.resolution) {
+      return Promise.reject(
+        badRequest('RESOLUTION_REQUIRED', 'A resolution is required')
+      );
+    }
+    if (!status.isClosed && change.resolution) {
+      return Promise.reject(
+        badRequest(
+          'RESOLUTION_NOT_ALLOWED_ON_OPEN_STATUS',
+          'An open status can’t have a resolution'
+        )
+      );
+    }
+    const resolution = RESOLUTIONS.find((r) => r.slug === change.resolution);
+    if (change.resolution && !resolution) {
+      return Promise.reject(
+        badRequest('INVALID_RESOLUTION', 'Unknown resolution')
+      );
+    }
+    const updated = this.replace({
+      ...task,
+      status: status.slug,
+      statusName: status.name,
+      statusCategory: status.category,
+      isClosedStatus: !!status.isClosed,
+      resolution: resolution?.slug,
+      resolutionName: resolution?.name,
+    });
+    // Like the server's response, without the joined fields.
+    return Promise.resolve({
+      ...updated,
+      assignees: [],
+      parentTask: undefined,
+    });
+  }
+
+  archiveTask(projectId: string, taskId: string): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    const subtree = [task, ...this.descendants(task)];
+    if (subtree.some((t) => t.statusCategory !== 'DONE')) {
+      return Promise.reject(
+        badRequest(
+          'TASK_ARCHIVE_REQUIRES_DONE',
+          'Only done tasks whose subtasks are all done can be archived'
+        )
+      );
+    }
+    for (const t of subtree) {
+      this.replace({ ...t, isArchived: true });
+    }
+    return Promise.resolve(this.find(projectId, taskId)!);
+  }
+
+  unarchiveTask(
+    projectId: string,
+    taskId: string,
+    request: TaskUnarchive
+  ): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    if (!request.reason) {
+      return Promise.reject(badRequest('VALIDATION_ERROR', 'Give a reason'));
+    }
+    for (const t of [task, ...this.descendants(task)]) {
+      this.replace({ ...t, isArchived: false });
+    }
+    return Promise.resolve(this.find(projectId, taskId)!);
   }
 
   listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
@@ -668,6 +781,22 @@ export class InMemoryFluxApi implements FluxApi {
       (n) => query.isRead === undefined || n.isRead === query.isRead
     );
     return Promise.resolve(pageOf(rows, query.page, query.size));
+  }
+
+  private find(projectId: string, taskId: string): FixtureTask | undefined {
+    return this.tasks.find((t) => t.projectId === projectId && t.id === taskId);
+  }
+
+  /** Swaps in a changed copy, so rows already handed out don't change. */
+  private replace(task: FixtureTask): FixtureTask {
+    const i = this.tasks.findIndex((t) => t.id === task.id);
+    this.tasks[i] = task;
+    return task;
+  }
+
+  private descendants(task: FixtureTask): FixtureTask[] {
+    const children = this.tasks.filter((t) => t.parentTaskId === task.id);
+    return children.flatMap((c) => [c, ...this.descendants(c)]);
   }
 
   /** `result()` for an existing task, else the not-found rejection. */

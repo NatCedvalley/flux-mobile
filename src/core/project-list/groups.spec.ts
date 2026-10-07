@@ -1,5 +1,5 @@
 import type { WorkflowStatus } from '../api';
-import { statusHue, taskGroups } from './groups';
+import { statusHue, taskGroupKey, taskGroups } from './groups';
 
 const STATUSES: WorkflowStatus[] = [
   { slug: 'done', name: 'Done', category: 'DONE', position: 3, color: 'green' },
@@ -91,5 +91,16 @@ describe('taskGroups', () => {
     expect(taskGroups('none', STATUSES)).toEqual([
       { key: 'all', label: null, hue: 'gray', query: {} },
     ]);
+  });
+});
+
+describe('taskGroupKey', () => {
+  const task = { status: 'review', priority: 'HIGH', type: 'BUG' } as const;
+
+  it("matches the key of the task's group", () => {
+    expect(taskGroupKey('status', task)).toBe('review');
+    expect(taskGroupKey('priority', task)).toBe('HIGH');
+    expect(taskGroupKey('type', task)).toBe('BUG');
+    expect(taskGroupKey('none', task)).toBe('all');
   });
 });

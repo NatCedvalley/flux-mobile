@@ -1,0 +1,51 @@
+// Handoff 3e's docked action bar: a 48px outline comment button and the
+// primary "Move to <next>" on `--bg`. Detail sits in a tab, so the tab bar
+// below already keeps clear of the safe area.
+:host {
+  display: block;
+}
+
+ion-footer {
+  background: var(--flux-bg);
+  border-top: 1px solid var(--flux-na4);
+  box-shadow: var(--flux-shadow-docked);
+}
+
+.actions {
+  display: flex;
+  gap: var(--flux-space-10);
+  padding: var(--flux-space-10) var(--flux-space-16);
+}
+
+.actions ion-button {
+  height: 48px;
+  margin: 0;
+  --border-radius: var(--flux-radius-docked);
+}
+
+.comment {
+  flex: none;
+  width: 48px;
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-width: 1px;
+  --border-color: var(--flux-na5);
+  --color: var(--flux-na11);
+
+  ion-icon {
+    font-size: 21px;
+  }
+}
+
+.move {
+  flex: auto;
+  min-width: 0;
+  --background: var(--flux-p9);
+  --color: var(--ion-color-primary-contrast);
+  font: var(--flux-font-docked-action);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-8);
+    font-size: 18px;
+  }
+}

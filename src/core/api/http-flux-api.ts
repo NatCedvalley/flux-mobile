@@ -14,7 +14,9 @@ import type {
   TaskActivity,
   TaskComment,
   TaskResolution,
+  TaskStatusChange,
   TaskSubscription,
+  TaskUnarchive,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -59,6 +61,30 @@ export class HttpFluxApi implements FluxApi {
 
   getTask(projectId: string, taskId: string): Promise<Task> {
     return this.get(taskPath(projectId, taskId));
+  }
+
+  changeTaskStatus(
+    projectId: string,
+    taskId: string,
+    change: TaskStatusChange
+  ): Promise<Task> {
+    return this.send('PATCH', `${taskPath(projectId, taskId)}/status`, change);
+  }
+
+  archiveTask(projectId: string, taskId: string): Promise<Task> {
+    return this.send('POST', `${taskPath(projectId, taskId)}/archive`);
+  }
+
+  unarchiveTask(
+    projectId: string,
+    taskId: string,
+    request: TaskUnarchive
+  ): Promise<Task> {
+    return this.send(
+      'POST',
+      `${taskPath(projectId, taskId)}/unarchive`,
+      request
+    );
   }
 
   listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
@@ -152,7 +178,7 @@ export class HttpFluxApi implements FluxApi {
   }
 
   private send<T>(
-    method: 'DELETE' | 'POST' | 'PUT',
+    method: 'DELETE' | 'PATCH' | 'POST' | 'PUT',
     path: string,
     body?: unknown
   ): Promise<T> {

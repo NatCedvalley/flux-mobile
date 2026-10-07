@@ -9,6 +9,7 @@ import type {
   RefreshTokenRequest as IamRefreshTokenRequest,
 } from '../generated/iam';
 import type {
+  ChangeTaskStatusRequest,
   CommentReactionResponse,
   GetMyTasksData,
   List2Data,
@@ -24,6 +25,7 @@ import type {
   TaskResolutionResponse,
   TaskResponse,
   TaskViewSettingsResponse,
+  UnarchiveTaskRequest,
   UpdateTaskViewSettingsRequest,
   WorkflowStatusResponse,
 } from '../generated/operations';
@@ -50,6 +52,13 @@ export type TaskActivity = TaskActivityResponse;
 export type TaskComment = TaskCommentResponse;
 export type CommentReaction = CommentReactionResponse;
 export type TaskResolution = TaskResolutionResponse;
+/**
+ * A status change: the status's slug, and a resolution's slug when (and
+ * only when) the status is closed.
+ */
+export type TaskStatusChange = ChangeTaskStatusRequest;
+/** Restoring an archived task: `reason` is required. */
+export type TaskUnarchive = UnarchiveTaskRequest;
 /**
  * Whether the caller gets the task's activity notifications. Hand-written:
  * the spec types the body as a map of booleans without naming the key.

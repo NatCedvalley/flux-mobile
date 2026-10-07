@@ -194,4 +194,99 @@ describe('GroupedTaskPager', () => {
     );
     expect(summary(pager.state)[0]).toEqual(['todo', 3, 3]);
   });
+
+  describe('placeTask', () => {
+    async function loaded() {
+      const { api } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 10);
+      await pager.start('p1', GROUPS);
+      return pager;
+    }
+
+    it('moves a row to the top of another group, updating both counts', async () => {
+      const pager = await loaded();
+
+      pager.placeTask({ id: 'todo-1', status: 'done' }, 'done');
+
+      expect(summary(pager.state)).toEqual([
+        ['todo', 2, 2],
+        ['doing', 5, 5],
+        ['done', 3, 3],
+      ]);
+      expect(pager.state.groups[2].tasks[0]).toEqual({
+        id: 'todo-1',
+        status: 'done',
+      });
+    });
+
+    it('moves a row into a group that was empty', async () => {
+      const pager = await loaded();
+
+      pager.placeTask({ id: 'doing-0', status: 'review' }, 'review');
+
+      expect(summary(pager.state)).toEqual([
+        ['todo', 3, 3],
+        ['doing', 4, 4],
+        ['review', 1, 1],
+        ['done', 2, 2],
+      ]);
+    });
+
+    it('replaces a row in place when its group is unchanged', async () => {
+      const pager = await loaded();
+
+      pager.placeTask(
+        { id: 'doing-2', status: 'doing', title: 'New' },
+        'doing'
+      );
+
+      const doing = pager.state.groups[1];
+      expect(doing.total).toBe(5);
+      expect(doing.tasks[2]).toEqual({
+        id: 'doing-2',
+        status: 'doing',
+        title: 'New',
+      });
+    });
+
+    it('takes a row out with no group, hiding a group it empties', async () => {
+      const pager = await loaded();
+
+      pager.placeTask({ id: 'done-0' }, undefined);
+      pager.placeTask({ id: 'done-1' }, undefined);
+
+      expect(summary(pager.state)).toEqual([
+        ['todo', 3, 3],
+        ['doing', 5, 5],
+      ]);
+    });
+
+    it('puts back a row that was taken out', async () => {
+      const pager = await loaded();
+      pager.placeTask({ id: 'done-0', status: 'done' }, undefined);
+
+      pager.placeTask({ id: 'done-0', status: 'done' }, 'done');
+
+      expect(summary(pager.state).at(-1)).toEqual(['done', 2, 2]);
+    });
+
+    it('knows which rows are loaded', async () => {
+      const pager = await loaded();
+      expect(pager.has('doing-4')).toBe(true);
+
+      pager.placeTask({ id: 'doing-4' }, undefined);
+
+      expect(pager.has('doing-4')).toBe(false);
+    });
+
+    it('notifies the listener', async () => {
+      const pager = await loaded();
+      const listener = vi.fn();
+      pager.onChange(listener);
+
+      pager.placeTask({ id: 'todo-0', status: 'doing' }, 'doing');
+
+      expect(listener).toHaveBeenCalledWith(pager.state);
+    });
+  });
 });

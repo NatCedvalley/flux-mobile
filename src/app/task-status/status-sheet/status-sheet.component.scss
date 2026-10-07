@@ -1,0 +1,160 @@
+// Handoff 3h on top of the shared sheet anatomy (sheet.scss): a title and
+// subtitle, the statuses grouped by category in 52px rows, and an outline
+// Cancel. The sheet is as tall as its content, up to most of the screen.
+header {
+  padding: var(--flux-space-16) var(--flux-space-16) var(--flux-space-10);
+}
+
+h1 {
+  margin: 0;
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.subtitle {
+  margin: var(--flux-space-2) 0 0;
+  font: var(--flux-font-sheet-subtitle);
+  color: var(--flux-na11);
+}
+
+.body {
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+}
+
+section {
+  padding-top: var(--flux-space-4);
+}
+
+h2 {
+  margin-bottom: var(--flux-space-4);
+}
+
+// A status row: a 9px dot in the status's hue, then its name.
+ion-item {
+  --group-wash: transparent;
+
+  &.current {
+    --background:
+      linear-gradient(var(--group-wash), var(--group-wash)), var(--flux-bg);
+
+    .name {
+      font: var(--flux-font-sheet-item-current);
+      color: var(--group-text);
+    }
+  }
+
+  // Blocked rows stay readable: only the dot and the name fade.
+  &.blocked {
+    opacity: 1;
+
+    .dot {
+      opacity: 0.45;
+    }
+
+    .name {
+      color: var(--flux-na8);
+    }
+  }
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  margin-inline-end: var(--flux-space-11);
+  border-radius: var(--flux-radius-pill);
+  background: var(--group-dot);
+}
+
+// Ionic's item styles keep the label a block, so the note gets a margin.
+.current-note {
+  margin-inline-start: var(--flux-space-8);
+  font: var(--flux-font-status-note);
+  color: var(--flux-na10);
+}
+
+.check {
+  font-size: 18px;
+  color: var(--group-text);
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-space-4);
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+
+  ion-icon {
+    font-size: 15px;
+    color: var(--flux-na8);
+    transition: transform 150ms ease-out;
+  }
+
+  &.open ion-icon {
+    transform: rotate(90deg);
+  }
+}
+
+.blocked .hint {
+  color: var(--flux-na9);
+
+  ion-icon {
+    font-size: 13px;
+    color: var(--flux-na9);
+  }
+}
+
+.suggested {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 var(--flux-space-8);
+  border-radius: var(--flux-radius-pill);
+  background: var(--flux-pa3);
+  font: var(--flux-font-value-chip);
+  letter-spacing: var(--flux-tracking-value-chip);
+  color: var(--flux-pa11);
+}
+
+// The inline resolution picker under a closed status, indented to line up
+// with the status names (the dot and its gap).
+.resolutions {
+  --resolution-indent: calc(9px + var(--flux-space-11));
+  padding: var(--flux-space-8) 0 var(--flux-space-4);
+  background: var(--flux-na2);
+
+  .note {
+    margin: 0 var(--flux-space-16) var(--flux-space-4);
+    padding-inline-start: var(--resolution-indent);
+  }
+
+  ion-skeleton-text.loading {
+    width: auto;
+    margin: 0 var(--flux-space-16) var(--flux-space-8);
+  }
+}
+
+ion-item.resolution {
+  --background: transparent;
+  --padding-start: calc(var(--flux-space-16) + var(--resolution-indent));
+}
+
+footer {
+  margin-top: var(--flux-space-8);
+  padding: var(--flux-space-14) var(--flux-space-16)
+    calc(var(--flux-space-8) + var(--ion-safe-area-bottom, 0px));
+  border-top: 1px solid var(--flux-na4);
+}
+
+.cancel {
+  --border-color: var(--flux-na5);
+  --border-width: 1px;
+  --border-radius: var(--flux-radius-docked);
+  --color: var(--flux-n12);
+  height: 48px;
+  margin: 0;
+  font: var(--flux-font-sheet-button);
+}

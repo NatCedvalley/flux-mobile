@@ -145,7 +145,7 @@ its category's hue.
 The server can't sort tasks by status, so `GroupedTaskPager` pages each
 group as its own filtered query (`status=<slug>`, 50 rows, `createdAt,desc`).
 On open it fetches the first page of every group at once, which also gives
-each header its count and drops empty groups. `ion-infinite-scroll` then
+each header its count and hides empty groups. `ion-infinite-scroll` then
 pages the first group that isn't complete yet, and a later group is only
 shown once every group above it is complete. Rows are `app-project-task-row`
 (key, priority, due date and the assignee's avatar). The List/Board/Calendar
@@ -180,15 +180,37 @@ The header's search icon opens project search
 list of that project's tasks by title or key, in the list's sort and with
 its AI filter but not its filters.
 
+**Swipe actions** (EDITOR+; `ion-item-sliding` is disabled below that).
+The page wraps each row, so project search rows don't swipe.
+
+- The end side has the row's next status (`nextStatus()`, in its hue,
+  `expandable`, so a full swipe commits) and More, which opens the status
+  sheet. Ionic's full swipe commits about 30px past the buttons (about half
+  the row), not the handoff's 70%.
+- The start side has Archive, shown for DONE-category tasks only.
+- A light haptic plays when the buttons are fully revealed, and a medium
+  one on commit (`src/app/task-status/haptics.ts`, native only).
+- A change moves the row with `GroupedTaskPager.placeTask()` rather than a
+  refetch. Taking a row out of a group still paging can make the next page
+  skip a row until the list reloads.
+- A status change made on task detail moves the row too
+  (`TaskChangesService`), if it's loaded.
+
 ### Task detail
 
 Task detail (handoff 3e–3g, `src/app/pages/tasks/`) has a header block
 (back, type icon, key with a copy button, the watch bell, a disabled ⋯
 until FM-33's overflow sheet, the title up to 3 lines, then status,
-priority and type chips) over Details, Comments and Activity tabs. Only
-the bell writes: it subscribes with `POST .../subscribe` and unsubscribes
-with `DELETE`, showing the change at once and putting it back with a
-toast if the server refuses. The key is copied with `@capacitor/clipboard`.
+priority and type chips) over Details, Comments and Activity tabs. The bell
+subscribes with `POST .../subscribe` and unsubscribes with `DELETE`,
+showing the change at once and putting it back with a toast if the server
+refuses. The key is copied with `@capacitor/clipboard`.
+
+The docked action bar (`task-action-bar/`) has a comment button (it opens
+the Comments tab until FM-34's composer). For an EDITOR+ it also has "Move
+to <next status>", or "Change status" when there is no next one. A VIEWER
+gets no bar. The caller's role and the project's `categoryPositions` come
+from `MyProjectsService`.
 
 - List rows pass themselves in the navigation state (`[state]="{ task }"`),
   so the header fills from the row while the task loads and only the body
@@ -211,6 +233,38 @@ toast if the server refuses. The key is copied with `@capacitor/clipboard`.
   (`src/core/task-detail/`) deciding each entry's icon, tint and wording.
 - Pull-to-refresh reloads everything; each part has its own error state
   with Retry.
+
+**Status changes.** These come from the status pill (a button for an
+EDITOR+), the docked bar and the list's swipe actions.
+
+- The status sheet (3h, `src/app/task-status/status-sheet/`, an
+  auto-height `flux-sheet flux-sheet-auto` modal) groups the workflow by
+  category. It marks the current status and the suggested next one, and
+  shows statuses the type can't use as disabled, with the reason.
+- A closed status (`isClosed`) opens its resolution picker inline
+  (`GET /projects/{id}/resolutions`), so it can't be chosen without one.
+  The docked button and the swipe open the sheet that way when the next
+  status is closed.
+- The rules are in `src/core/task-status/`:
+  - `allowedStatusCategories()`: MASTER/EPIC use PLANNING or DONE, other
+    types use TODO, IN_PROGRESS or DONE. This is the backend's only
+    transition limit.
+  - `nextStatus()`: the first later status in `workflowOrder()` that the
+    type may use.
+  - `statusSheetGroups()`: the sheet's groups and rows.
+- `TaskStatusService` (`src/app/task-status/`) does the write:
+  1. It shows the change at once.
+  2. It sends `PATCH .../status`.
+  3. It fetches the task again (`GET`), because the response has
+     `assignees: []` and no joined fields.
+  4. It offers a 4 s Undo toast, above the tab bar or the docked bar.
+
+  If the server refuses, the task is put back and the server's message
+  shown.
+
+- Archive (`POST .../archive`, which archives the subtree, so the list
+  drops the subtasks it shows too) also offers Undo. That calls
+  `POST .../unarchive` with a fixed reason.
 
 **Rich text.** Descriptions and comments are stored as MARKDOWN, HTML or
 EDITORJS, and older rows hold Editor.js JSON under MARKDOWN, so the format
@@ -238,10 +292,10 @@ are fresh.
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
-tasks, a project's tasks, one task, its children, activities, comments and
-subscription (read, subscribe, unsubscribe), my projects, workflow
-statuses, resolutions (for FM-32), task view settings (read and update),
-assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+tasks, a project's tasks, one task, a status change, archive and
+unarchive, its children, activities, comments and subscription (read,
+subscribe, unsubscribe), my projects, workflow statuses, resolutions, task
+view settings (read and update), assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -250,12 +304,14 @@ because springdoc emits the list endpoints' 200 responses as `unknown`.
 it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
 written without it) and makes every request through
 `AuthService.withAccessToken` (see below). `JsonHttpClient`
-(`src/core/http/`) is the request (GET, POST, PUT and DELETE), timeout,
+(`src/core/http/`) is the request (GET, POST, PUT, PATCH and DELETE), timeout,
 query-string and JSON handling it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
 test double: its fixtures are dated relative to today and it applies the
 my-tasks filters (including status, priority and search) and the project
 list's filters (comma lists, assignee, labels, search) and sort, so page
-specs use it (`addProjectTasks()` adds rows to page through). CHK-142
+specs use it (`addProjectTasks()` adds rows to page through). Its status
+changes and archiving follow the backend's rules and error codes, and
+`done` is the closed status. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
 comment thread with a reply, reactions and an Editor.js body, a day-split
 activity timeline), and the EPIC CHK-120 has two subtasks.
@@ -713,6 +769,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-task writes (status changes, edits, create: FM-6), push notifications
+task edits and create (FM-6), push notifications
 (FM-7 also unregisters the device token in `AuthSession.logout()`), offline
 caching, app store assets, and Play Store upload.

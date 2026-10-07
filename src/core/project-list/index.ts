@@ -17,7 +17,13 @@ export {
   type LoadedGroup,
   type PagerState,
 } from './grouped-task-pager';
-export { statusHue, taskGroups, type GroupHue, type TaskGroup } from './groups';
+export {
+  statusHue,
+  taskGroupKey,
+  taskGroups,
+  type GroupHue,
+  type TaskGroup,
+} from './groups';
 export {
   AI_CANDIDATE_LABEL,
   GROUP_BY_VALUES,

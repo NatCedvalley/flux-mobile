@@ -115,7 +115,8 @@ ion-back-button {
   gap: var(--flux-space-8);
   margin-bottom: var(--flux-space-12);
 
-  > span {
+  > span,
+  > button {
     display: inline-flex;
     align-items: center;
     gap: var(--flux-space-4);
@@ -125,14 +126,22 @@ ion-back-button {
   }
 }
 
-// Read-only for now: the status sheet (and its chevron) comes in FM-32.
+// A button that opens the status sheet for an EDITOR+, a plain pill below.
 .status {
   gap: var(--flux-space-6);
   padding: 0 var(--flux-space-10);
+  border: 0;
   background: var(--status-fill);
   font: var(--flux-font-detail-status);
   letter-spacing: var(--flux-tracking-detail-status);
   color: var(--status-text);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+
+  ion-icon {
+    font-size: 14px;
+  }
 
   .dot {
     width: 7px;

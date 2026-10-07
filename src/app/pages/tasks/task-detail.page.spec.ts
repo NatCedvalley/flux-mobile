@@ -22,7 +22,7 @@ describe('TaskDetailPage', () => {
     TestBed.resetTestingModule();
     api = options.api ?? new InMemoryFluxApi();
     toast = {
-      create: vi.fn().mockResolvedValue({ present: vi.fn() }),
+      create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
     };
     await TestBed.configureTestingModule({
       imports: [TaskDetailPage],
@@ -228,6 +228,173 @@ describe('TaskDetailPage', () => {
     expect(
       element().querySelector<HTMLIonButtonElement>('.more')?.disabled
     ).toBe(true);
+  });
+
+  describe('status changes', () => {
+    /** An API where the caller has `role` in p1. */
+    function withRole(role: 'COMMENTER' | 'EDITOR' | 'VIEWER') {
+      const withRoleApi = new InMemoryFluxApi();
+      vi.spyOn(withRoleApi, 'listMyProjects').mockResolvedValue({
+        content: [{ project: { id: 'p1', name: 'Checkout' }, role }],
+      });
+      return withRoleApi;
+    }
+
+    const move = () => element().querySelector<HTMLElement>('ion-footer .move');
+    const pill = () => text('.status');
+    const loaded = () =>
+      (
+        fixture.componentInstance as unknown as {
+          loadedTask(): { status?: string; assignees?: unknown[] };
+        }
+      ).loadedTask();
+    /** The options of the last toast offering Undo. */
+    const undoToast = () =>
+      toast.create.mock.calls
+        .map(([options]) => options)
+        .filter((o) => o.buttons?.[0]?.text === 'Undo')
+        .at(-1);
+
+    it('docks the comment button and Move to the next status', async () => {
+      await create({ taskId: '2' });
+      await settle();
+
+      expect(element().querySelector('ion-footer .comment')).not.toBeNull();
+      expect(move()?.textContent?.trim()).toBe('Move to In Progress');
+      expect(element().querySelector('button.status')).not.toBeNull();
+    });
+
+    it('gives a COMMENTER only the comment button, and a VIEWER no bar', async () => {
+      await create({ taskId: '2', api: withRole('COMMENTER') });
+      await settle();
+      expect(element().querySelector('ion-footer .comment')).not.toBeNull();
+      expect(move()).toBeNull();
+      expect(element().querySelector('button.status')).toBeNull();
+      expect(pill()).toBe('To Do');
+
+      await create({ taskId: '2', api: withRole('VIEWER') });
+      await settle();
+      expect(element().querySelector('ion-footer')).toBeNull();
+    });
+
+    it('opens the Comments tab from the comment button', async () => {
+      await create({ taskId: '2' });
+      await settle();
+
+      element().querySelector<HTMLElement>('ion-footer .comment')!.click();
+      fixture.detectChanges();
+
+      expect(tab('Comments').getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('moves at once, then fetches the task again instead of using the response', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      const getTask = vi.spyOn(api, 'getTask');
+
+      move()!.click();
+      fixture.detectChanges();
+      expect(pill()).toBe('In Progress');
+      await settle();
+
+      expect((await api.getTask('p1', '2')).status).toBe('in_progress');
+      expect(getTask).toHaveBeenCalledWith('p1', '2');
+      // The response has no assignees; the fetched task does.
+      expect(loaded()?.assignees).toHaveLength(1);
+      expect(undoToast()).toMatchObject({
+        message: 'Moved to In Progress',
+        duration: 4000,
+        position: 'bottom',
+      });
+      expect(move()?.textContent?.trim()).toBe('Move to Done');
+    });
+
+    it('undoes a move from the toast', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      move()!.click();
+      await settle();
+
+      undoToast().buttons[0].handler();
+      await settle();
+
+      expect((await api.getTask('p1', '2')).status).toBe('todo');
+      expect(pill()).toBe('To Do');
+      expect(undoToast().message).toBe('Moved to In Progress');
+    });
+
+    it('puts the status back and shows the server’s message when refused', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(
+        new ApiError(400, { message: 'Not in this workflow' })
+      );
+
+      move()!.click();
+      fixture.detectChanges();
+      expect(pill()).toBe('In Progress');
+      await settle();
+
+      expect(pill()).toBe('To Do');
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Not in this workflow' })
+      );
+      expect(undoToast()).toBeUndefined();
+    });
+
+    it('opens the sheet with the resolutions when the next status is closed', async () => {
+      await create();
+      await settle();
+      const page = fixture.componentInstance as unknown as {
+        sheetOpen(): boolean;
+        sheetExpand(): string | undefined;
+      };
+
+      expect(move()?.textContent?.trim()).toBe('Move to Done');
+      move()!.click();
+
+      expect(page.sheetOpen()).toBe(true);
+      expect(page.sheetExpand()).toBe('done');
+    });
+
+    it('opens the sheet from the status pill', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      const page = fixture.componentInstance as unknown as {
+        sheetOpen(): boolean;
+        sheetExpand(): string | undefined;
+      };
+
+      element().querySelector<HTMLElement>('button.status')!.click();
+
+      expect(page.sheetOpen()).toBe(true);
+      expect(page.sheetExpand()).toBeUndefined();
+    });
+
+    it('moves to a closed status with the resolution chosen in the sheet', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      const statuses = await api.listWorkflowStatuses('p1');
+
+      await fixture.componentInstance['move']({
+        status: statuses[3],
+        resolution: 'wont-do',
+      });
+      await settle();
+
+      expect(await api.getTask('p1', '2')).toMatchObject({
+        status: 'done',
+        resolution: 'wont-do',
+      });
+      expect(pill()).toBe('Done');
+    });
+
+    it('offers Change status when there is no next status', async () => {
+      await create({ taskId: '6' });
+      await settle();
+
+      expect(move()?.textContent?.trim()).toBe('Change status');
+    });
   });
 
   it('fetches subtasks for a container only', async () => {

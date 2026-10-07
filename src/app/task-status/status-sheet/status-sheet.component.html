@@ -1,0 +1,139 @@
+<header>
+  <h1>Move task</h1>
+  @if (subtitle()) {
+    <p class="subtitle">{{ subtitle() }}</p>
+  }
+</header>
+
+<div class="body">
+  @for (group of groups(); track group.category) {
+    <section>
+      <h2 [id]="'status-group-' + group.category">{{ group.label }}</h2>
+      <ion-list
+        lines="full"
+        [attr.aria-labelledby]="'status-group-' + group.category"
+      >
+        @for (row of group.rows; track row.status.slug) {
+          <ion-item
+            button="true"
+            detail="false"
+            [disabled]="!!row.blocked"
+            [class.current]="row.current"
+            [class.blocked]="!!row.blocked"
+            [attr.aria-current]="row.current ? 'true' : null"
+            [attr.aria-expanded]="
+              row.needsResolution && !row.current
+                ? expanded() === row.status.slug
+                : null
+            "
+            [style]="colors(row.status)"
+            (click)="choose(row)"
+          >
+            <span
+              slot="start"
+              class="dot"
+              aria-hidden="true"
+            ></span>
+            <ion-label>
+              <span class="name">{{ row.status.name ?? row.status.slug }}</span>
+              @if (row.current) {
+                <span class="current-note">current</span>
+              }
+            </ion-label>
+            @if (row.current) {
+              <ion-icon
+                slot="end"
+                class="check"
+                name="check"
+                aria-hidden="true"
+              ></ion-icon>
+            } @else if (row.blocked) {
+              <span
+                slot="end"
+                class="hint"
+              >
+                <ion-icon
+                  name="lock"
+                  aria-hidden="true"
+                ></ion-icon>
+                {{ row.blocked }}
+              </span>
+            } @else {
+              @if (row.suggested) {
+                <span
+                  slot="end"
+                  class="suggested"
+                  >Suggested next</span
+                >
+              }
+              @if (row.needsResolution) {
+                <span
+                  slot="end"
+                  class="hint"
+                  [class.open]="expanded() === row.status.slug"
+                >
+                  @if (!row.suggested) {
+                    Resolution required
+                  }
+                  <ion-icon
+                    name="chevron-right"
+                    aria-hidden="true"
+                  ></ion-icon>
+                </span>
+              }
+            }
+          </ion-item>
+          @if (expanded() === row.status.slug && !row.current) {
+            <div
+              class="resolutions"
+              role="group"
+              [attr.aria-label]="'Resolution for ' + row.status.name"
+            >
+              <p class="note">Choose a resolution</p>
+              @if (resolutions.hasValue()) {
+                @for (
+                  resolution of resolutions.value();
+                  track resolution.slug
+                ) {
+                  <ion-item
+                    button="true"
+                    detail="false"
+                    class="resolution"
+                    (click)="resolve(row.status, resolution)"
+                  >
+                    {{ resolution.name ?? resolution.slug }}
+                  </ion-item>
+                }
+              } @else if (resolutions.error()) {
+                <p class="note">
+                  Couldn’t load the resolutions.
+                  <ion-button
+                    fill="clear"
+                    size="small"
+                    (click)="resolutions.reload()"
+                    >Retry</ion-button
+                  >
+                </p>
+              } @else {
+                <ion-skeleton-text
+                  class="loading"
+                  [animated]="true"
+                ></ion-skeleton-text>
+              }
+            </div>
+          }
+        }
+      </ion-list>
+    </section>
+  }
+</div>
+
+<footer>
+  <ion-button
+    class="cancel"
+    fill="outline"
+    expand="block"
+    (click)="done.emit()"
+    >Cancel</ion-button
+  >
+</footer>

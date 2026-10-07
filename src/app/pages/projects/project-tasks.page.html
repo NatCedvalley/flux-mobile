@@ -131,10 +131,62 @@
             </ion-item-divider>
           }
           @for (task of group.tasks; track task.id) {
-            <app-project-task-row
-              [task]="task"
-              [today]="today()"
-            />
+            <ion-item-sliding
+              #sliding
+              [disabled]="!canMove()"
+              (ionDrag)="dragged($event)"
+            >
+              @if (canArchive() && task.statusCategory === 'DONE') {
+                <ion-item-options side="start">
+                  <ion-item-option
+                    class="archive"
+                    (click)="archive(task, sliding)"
+                  >
+                    <ion-icon
+                      slot="top"
+                      name="archive"
+                      aria-hidden="true"
+                    ></ion-icon>
+                    Archive
+                  </ion-item-option>
+                </ion-item-options>
+              }
+              <app-project-task-row
+                [task]="task"
+                [today]="today()"
+              />
+              <ion-item-options
+                side="end"
+                (ionSwipe)="moveNext(task, sliding)"
+              >
+                @if (nextFor(task); as next) {
+                  <ion-item-option
+                    class="next"
+                    expandable="true"
+                    [style]="statusColors(next)"
+                    (click)="moveNext(task, sliding)"
+                  >
+                    <ion-icon
+                      slot="top"
+                      name="arrow-right"
+                      aria-hidden="true"
+                    ></ion-icon>
+                    {{ next.name ?? next.slug }}
+                  </ion-item-option>
+                }
+                <ion-item-option
+                  class="more"
+                  (click)="more(task, sliding)"
+                >
+                  <ion-icon
+                    slot="top"
+                    name="ellipsis"
+                    aria-hidden="true"
+                  ></ion-icon>
+                  More
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
           }
         </ion-item-group>
       }
@@ -216,5 +268,26 @@
       (retryAssignees)="assignees.reload()"
       (done)="filterOpen.set(false)"
     />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="sheetOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="sheetOpen.set(false)"
+>
+  <ng-template>
+    @if (sheetTask(); as task) {
+      <app-status-sheet
+        [task]="task"
+        [statuses]="orderedStatuses()"
+        [projectName]="current()?.project?.name"
+        [expand]="sheetExpand()"
+        (moved)="move(task, $event)"
+        (done)="sheetOpen.set(false)"
+      />
+    }
   </ng-template>
 </ion-modal>

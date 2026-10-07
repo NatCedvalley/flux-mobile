@@ -70,16 +70,37 @@
       <h1 class="title">{{ header.title }}</h1>
       <div class="chips">
         @if (status(); as status) {
-          <span
-            class="status"
-            [style]="status.colors"
-          >
+          @if (canMove()) {
+            <button
+              type="button"
+              class="status"
+              [style]="status.colors"
+              [disabled]="!statusReady()"
+              [attr.aria-label]="'Status: ' + status.name + '. Change status'"
+              (click)="openSheet()"
+            >
+              <span
+                class="dot"
+                aria-hidden="true"
+              ></span>
+              {{ status.name }}
+              <ion-icon
+                name="chevron-down"
+                aria-hidden="true"
+              ></ion-icon>
+            </button>
+          } @else {
             <span
-              class="dot"
-              aria-hidden="true"
-            ></span>
-            {{ status.name }}
-          </span>
+              class="status"
+              [style]="status.colors"
+            >
+              <span
+                class="dot"
+                aria-hidden="true"
+              ></span>
+              {{ status.name }}
+            </span>
+          }
         }
         @if (priority(); as priority) {
           <span
@@ -233,3 +254,34 @@
     <ion-infinite-scroll-content></ion-infinite-scroll-content>
   </ion-infinite-scroll>
 </ion-content>
+
+@if (canComment()) {
+  <app-task-action-bar
+    [next]="next()"
+    [canMove]="canMove()"
+    [moveDisabled]="!statusReady()"
+    (comment)="select('comments')"
+    (move)="moveNext()"
+  />
+}
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="sheetOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="sheetOpen.set(false)"
+>
+  <ng-template>
+    @if (loadedTask(); as task) {
+      <app-status-sheet
+        [task]="task"
+        [statuses]="orderedStatuses()"
+        [projectName]="projectName()"
+        [expand]="sheetExpand()"
+        (moved)="move($event)"
+        (done)="sheetOpen.set(false)"
+      />
+    }
+  </ng-template>
+</ion-modal>

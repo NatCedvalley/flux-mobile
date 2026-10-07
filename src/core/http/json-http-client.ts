@@ -30,7 +30,7 @@ export class JsonHttpClient {
   ) {}
 
   async request<T>(
-    method: 'DELETE' | 'GET' | 'POST' | 'PUT',
+    method: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT',
     path: string,
     options: { accessToken?: string; body?: unknown; query?: QueryParams } = {}
   ): Promise<T> {

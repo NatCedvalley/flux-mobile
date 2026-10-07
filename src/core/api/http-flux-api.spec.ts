@@ -158,6 +158,35 @@ describe('HttpFluxApi', () => {
     expect(init().method).toBe('DELETE');
   });
 
+  it('changes a task’s status with a PATCH', async () => {
+    const { api, url, init } = setup({ id: 't1', status: 'done' });
+    await expect(
+      api.changeTaskStatus('p1', 't1', { status: 'done', resolution: 'fixed' })
+    ).resolves.toEqual({ id: 't1', status: 'done' });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/status`);
+    expect(init().method).toBe('PATCH');
+    expect(JSON.parse(init().body)).toEqual({
+      status: 'done',
+      resolution: 'fixed',
+    });
+  });
+
+  it('archives a task with a POST and no body', async () => {
+    const { api, url, init } = setup({ id: 't1' });
+    await api.archiveTask('p1', 't1');
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/archive`);
+    expect(init().method).toBe('POST');
+    expect(init().body).toBeUndefined();
+  });
+
+  it('unarchives a task with a reason', async () => {
+    const { api, url, init } = setup({ id: 't1' });
+    await api.unarchiveTask('p1', 't1', { reason: 'Undone' });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/unarchive`);
+    expect(init().method).toBe('POST');
+    expect(JSON.parse(init().body)).toEqual({ reason: 'Undone' });
+  });
+
   it('lists a project’s resolutions', async () => {
     const { api, url } = setup([{ slug: 'fixed' }]);
     await expect(api.listResolutions('p1')).resolves.toEqual([

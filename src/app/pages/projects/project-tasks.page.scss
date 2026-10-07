@@ -184,3 +184,32 @@ ion-item-group:first-child ion-item-divider {
     font: var(--flux-font-sheet-action);
   }
 }
+
+// Swipe actions (3b): the next status on its hue (92px) and More on gray
+// (64px) at the end, Archive in red at the start.
+ion-item-option {
+  font: var(--flux-font-meta-strong);
+
+  ion-icon {
+    margin-bottom: var(--flux-space-3);
+    font-size: 19px;
+  }
+
+  &.next {
+    --background: var(--group-dot);
+    --color: var(--ion-color-primary-contrast);
+    min-width: 92px;
+  }
+
+  &.more {
+    --background: var(--flux-n6);
+    --color: var(--flux-n12);
+    min-width: 64px;
+  }
+
+  &.archive {
+    --background: var(--flux-red9);
+    --color: var(--ion-color-danger-contrast);
+    min-width: 80px;
+  }
+}

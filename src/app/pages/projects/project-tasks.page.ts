@@ -6,6 +6,7 @@ import {
   linkedSignal,
   resource,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -19,16 +20,21 @@ import {
   IonInfiniteScrollContent,
   IonItemDivider,
   IonItemGroup,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonList,
   IonModal,
   IonRefresher,
   IonRefresherContent,
   IonToolbar,
   type InfiniteScrollCustomEvent,
+  type ItemSlidingCustomEvent,
   type RefresherCustomEvent,
 } from '@ionic/angular';
-import type { MyProject, ProjectMember, WorkflowStatus } from '@core/api';
+import type { MyProject, ProjectMember, Task, WorkflowStatus } from '@core/api';
 import { localIsoDate } from '@core/my-work';
+import { can } from '@core/permissions';
 import {
   DEFAULT_SORT,
   type GroupBy,
@@ -39,6 +45,8 @@ import {
   projectInitials,
   projectSubline,
   resolveGroupBy,
+  statusHue,
+  taskGroupKey,
   taskGroups,
 } from '@core/project-list';
 import {
@@ -48,6 +56,7 @@ import {
   assigneeOptions,
   filteredGroups,
 } from '@core/task-filters';
+import { nextStatus, workflowOrder } from '@core/task-status';
 import type { ChipOption } from '../../shared/option-chips/option-chips.component';
 import { AuthService } from '../../auth/auth.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
@@ -63,6 +72,13 @@ import { ErrorStateComponent } from '../../shared/error-state/error-state.compon
 import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
+import { impact } from '../../task-status/haptics';
+import {
+  type StatusChoice,
+  StatusSheetComponent,
+} from '../../task-status/status-sheet/status-sheet.component';
+import { TaskChangesService } from '../../task-status/task-changes.service';
+import { TaskStatusService } from '../../task-status/task-status.service';
 
 const GROUP_BY_LABELS: Record<GroupBy, string> = {
   none: 'Not grouped',
@@ -71,8 +87,18 @@ const GROUP_BY_LABELS: Record<GroupBy, string> = {
   type: 'Grouped by type',
 };
 
-/** How the loaded list is grouped, and the filter sheet's status chips. */
-type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
+/**
+ * How the loaded list is grouped, the filter sheet's status chips, and the
+ * workflow in order (for the swipe actions and the status sheet).
+ */
+type ListView = {
+  groupBy: GroupBy;
+  statusOptions: ChipOption[];
+  statuses: WorkflowStatus[];
+};
+
+/** The tab bar's id: toasts sit above it. */
+const TAB_BAR = 'tab-bar';
 
 /**
  * Projects tab (handoff 3b): one project's tasks, grouped under sticky
@@ -80,7 +106,9 @@ type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
  * project open last is remembered. The strip under it opens the view
  * options (group-by, saved as the project's override as on the web, and
  * sort, kept for the session) and the filters (kept until the project
- * changes).
+ * changes). For an EDITOR+, rows swipe: the end side moves the task to its
+ * next status (or opens the status sheet from More), the start side
+ * archives a done task.
  */
 @Component({
   selector: 'app-project-tasks',
@@ -97,6 +125,9 @@ type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
     IonList,
     IonItemGroup,
     IonItemDivider,
+    IonItemSliding,
+    IonItemOptions,
+    IonItemOption,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     IonModal,
@@ -108,6 +139,7 @@ type ListView = { groupBy: GroupBy; statusOptions: ChipOption[] };
     ProjectSwitcherComponent,
     ProjectTaskRowComponent,
     SkeletonRowsComponent,
+    StatusSheetComponent,
     TaskFilterSheetComponent,
     ViewOptionsSheetComponent,
   ],
@@ -116,6 +148,8 @@ export class ProjectTasksPage {
   private readonly api = inject(FLUX_API);
   private readonly myProjects = inject(MyProjectsService);
   private readonly account = inject(AuthService).account;
+  private readonly statusChanges = inject(TaskStatusService);
+  private readonly taskChanges = inject(TaskChangesService);
   protected readonly prefs = inject(ProjectPrefsService);
   private readonly content = viewChild.required(IonContent);
 
@@ -236,6 +270,7 @@ export class ProjectTasksPage {
       return {
         groupBy,
         statusOptions: statusChipOptions(statuses, categoryPositions),
+        statuses: workflowOrder(statuses, categoryPositions),
       };
     },
   });
@@ -259,6 +294,16 @@ export class ProjectTasksPage {
   protected readonly statusOptions = computed(
     () => this.listValue()?.statusOptions ?? []
   );
+  protected readonly orderedStatuses = computed(
+    () => this.listValue()?.statuses ?? []
+  );
+  /** Rows swipe for an EDITOR+ only (archiving needs the same role). */
+  protected readonly canMove = computed(() =>
+    can(this.current()?.role, 'changeStatus')
+  );
+  protected readonly canArchive = computed(() =>
+    can(this.current()?.role, 'archive')
+  );
   protected readonly empty = computed(() => this.pages().groups.length === 0);
   /**
    * The next page failed to load. Infinite scroll stops until Retry, so the
@@ -270,6 +315,15 @@ export class ProjectTasksPage {
   protected readonly switcherOpen = signal(false);
   protected readonly filterOpen = signal(false);
   protected readonly viewOpen = signal(false);
+
+  /** The status sheet: the row it was opened for, kept while it closes. */
+  protected readonly sheetOpen = signal(false);
+  protected readonly sheetTask = signal<Task | undefined>(undefined);
+  protected readonly sheetExpand = signal<string | undefined>(undefined);
+  /** Rows with a change on its way, which don't take another. */
+  private readonly busy = new Set<string>();
+  /** The row whose swipe actions are fully showing (one light haptic). */
+  private revealed: EventTarget | null = null;
 
   /** The filter sheet's assignee rows, loaded the first time it opens. */
   private readonly membersWanted = signal(false);
@@ -301,6 +355,20 @@ export class ProjectTasksPage {
       if (id) {
         void this.prefs.setLastProject(id);
       }
+    });
+
+    // A task changed elsewhere (task detail) moves here too.
+    effect(() => {
+      const task = this.taskChanges.changed();
+      untracked(() => {
+        if (
+          task?.id &&
+          task.projectId === this.currentId() &&
+          this.pager.has(task.id)
+        ) {
+          this.place(task);
+        }
+      });
     });
 
     effect(() => {
@@ -369,6 +437,93 @@ export class ProjectTasksPage {
     }
   }
 
+  /** The status a row's swipe moves it to; undefined at the workflow's end. */
+  protected nextFor(task: Task): WorkflowStatus | undefined {
+    return nextStatus(this.orderedStatuses(), task);
+  }
+
+  protected statusColors(status: WorkflowStatus): Record<string, string> {
+    return groupHueColors(statusHue(status.color, status.category));
+  }
+
+  /** A light haptic once a row's swipe actions are fully showing. */
+  protected dragged(event: ItemSlidingCustomEvent): void {
+    const ratio = Math.abs((event.detail as { ratio: number }).ratio);
+    if (ratio >= 1 && this.revealed !== event.target) {
+      this.revealed = event.target;
+      void impact('light');
+    } else if (ratio < 1 && this.revealed === event.target) {
+      this.revealed = null;
+    }
+  }
+
+  /**
+   * The swipe's primary action (a full swipe or a tap): moves the task to
+   * its next status, or opens the sheet when that status needs a resolution.
+   */
+  protected moveNext(task: Task, sliding: IonItemSliding): void {
+    void sliding.close();
+    void impact('medium');
+    const next = this.nextFor(task);
+    if (!next || next.isClosed) {
+      this.openSheet(task, next?.slug);
+    } else {
+      void this.move(task, { status: next });
+    }
+  }
+
+  /** More: the status sheet for the row. */
+  protected more(task: Task, sliding: IonItemSliding): void {
+    void sliding.close();
+    this.openSheet(task);
+  }
+
+  protected async move(task: Task, choice: StatusChoice): Promise<void> {
+    this.sheetOpen.set(false);
+    const id = task.id ?? '';
+    if (this.busy.has(id)) {
+      return;
+    }
+    this.busy.add(id);
+    try {
+      await this.statusChanges.move(task, choice.status, choice.resolution, {
+        apply: (t) => this.place(t),
+        anchor: TAB_BAR,
+      });
+    } finally {
+      this.busy.delete(id);
+    }
+  }
+
+  /** Archives a done task; the server archives its subtasks with it. */
+  protected async archive(task: Task, sliding: IonItemSliding): Promise<void> {
+    void sliding.close();
+    const id = task.id ?? '';
+    if (this.busy.has(id)) {
+      return;
+    }
+    void impact('medium');
+    this.busy.add(id);
+    const subtasks = this.loadedSubtasks(id);
+    try {
+      await this.statusChanges.archive(task, {
+        removed: () => {
+          for (const t of [task, ...subtasks]) {
+            this.pager.placeTask(t, undefined);
+          }
+        },
+        restored: (t) => {
+          for (const s of [t, ...subtasks]) {
+            this.place(s);
+          }
+        },
+        anchor: TAB_BAR,
+      });
+    } finally {
+      this.busy.delete(id);
+    }
+  }
+
   protected loadMore(event: InfiniteScrollCustomEvent): void {
     void this.nextPage().finally(() => void event.target.complete());
   }
@@ -395,6 +550,49 @@ export class ProjectTasksPage {
     } else {
       this.list.reload();
     }
+  }
+
+  /** The listed descendants of a task, at any depth. */
+  private loadedSubtasks(taskId: string): Task[] {
+    const rows = this.pages().groups.flatMap((g) => g.tasks);
+    const ids = new Set([taskId]);
+    const found: Task[] = [];
+    let added = true;
+    while (added) {
+      added = false;
+      for (const row of rows) {
+        if (
+          row.parentTaskId &&
+          ids.has(row.parentTaskId) &&
+          !ids.has(row.id!)
+        ) {
+          ids.add(row.id!);
+          found.push(row);
+          added = true;
+        }
+      }
+    }
+    return found;
+  }
+
+  private openSheet(task: Task, expand?: string): void {
+    this.sheetTask.set(task);
+    this.sheetExpand.set(expand);
+    this.sheetOpen.set(true);
+  }
+
+  /**
+   * Shows a changed task in the group it now belongs to, or drops it when
+   * the status filter no longer matches. (With status groups the filter has
+   * already narrowed the groups, so the pager drops it anyway.)
+   */
+  private place(task: Task): void {
+    const statuses = this.filters().statuses;
+    const matches = !statuses.length || statuses.includes(task.status ?? '');
+    this.pager.placeTask(
+      task,
+      matches ? taskGroupKey(this.groupBy(), task) : undefined
+    );
   }
 
   /** Loads the next page; a failure shows the Retry row. Never rejects. */

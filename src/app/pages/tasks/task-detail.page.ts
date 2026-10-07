@@ -1,5 +1,6 @@
 import {
   Component,
+  ElementRef,
   computed,
   effect,
   inject,
@@ -8,6 +9,7 @@ import {
   resource,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Clipboard } from '@capacitor/clipboard';
@@ -21,6 +23,7 @@ import {
   IonIcon,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
+  IonModal,
   IonRefresher,
   IonRefresherContent,
   IonSkeletonText,
@@ -32,16 +35,25 @@ import {
 import type { MyTask, Task, TaskActivity, TaskComment } from '@core/api';
 import { ApiError } from '@core/auth';
 import { localIsoDate } from '@core/my-work';
+import { can } from '@core/permissions';
 import { priorityFact } from '@core/project-list';
 import { commentCount } from '@core/task-detail';
 import { PagedList, type PagedListState } from '@core/task-filters';
+import { nextStatus, workflowOrder } from '@core/task-status';
 import { AuthService } from '../../auth/auth.service';
+import { MyProjectsService } from '../../projects/my-projects.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 import { TYPE_ICONS } from '../../shared/task-row/task-row.component';
+import {
+  type StatusChoice,
+  StatusSheetComponent,
+} from '../../task-status/status-sheet/status-sheet.component';
+import { TaskStatusService } from '../../task-status/task-status.service';
 import { statusPill } from './status-pill';
+import { TaskActionBarComponent } from './task-action-bar/task-action-bar.component';
 import { TaskActivityComponent } from './task-activity/task-activity.component';
 import { TaskCommentsComponent } from './task-comments/task-comments.component';
 import { TaskDetailsSkeletonComponent } from './task-details/task-details-skeleton.component';
@@ -74,8 +86,9 @@ type ListView<T> = {
 
 /**
  * Task detail (handoff 3e–3g): a header with the key, watch bell, title and
- * chips, then Details, Comments and Activity tabs. Display-only apart from
- * the bell; editing comes in later FM-6 slices.
+ * chips, then Details, Comments and Activity tabs, over a docked action bar.
+ * The bell and status changes (the status pill's sheet and the bar's "Move
+ * to") write; other editing comes in later FM-6 slices.
  */
 @Component({
   selector: 'app-task-detail',
@@ -90,6 +103,7 @@ type ListView<T> = {
     IonIcon,
     IonBadge,
     IonContent,
+    IonModal,
     IonRefresher,
     IonRefresherContent,
     IonInfiniteScroll,
@@ -102,11 +116,15 @@ type ListView<T> = {
     TaskDetailsSkeletonComponent,
     TaskCommentsComponent,
     TaskActivityComponent,
+    StatusSheetComponent,
+    TaskActionBarComponent,
   ],
 })
 export class TaskDetailPage {
   private readonly api = inject(FLUX_API);
   private readonly toasts = inject(ToastController);
+  private readonly statusChanges = inject(TaskStatusService);
+  private readonly myProjects = inject(MyProjectsService);
   private readonly route = inject(ActivatedRoute);
   private readonly account = inject(AuthService).account;
   protected readonly myId = computed(() => this.account()?.id);
@@ -156,6 +174,22 @@ export class TaskDetailPage {
       this.api.listChildTasks(params.projectId, params.taskId),
   });
 
+  /** The caller's project: their role, its name and its category order. */
+  private readonly project = resource({
+    params: () => this.projectId(),
+    loader: async ({ params }) =>
+      (await this.myProjects.load()).find((p) => p.project?.id === params),
+  });
+  private readonly role = computed(() =>
+    this.project.hasValue() ? this.project.value()?.role : undefined
+  );
+  /** A VIEWER gets no docked bar, a COMMENTER only its comment button. */
+  protected readonly canComment = computed(() => can(this.role(), 'comment'));
+  protected readonly canMove = computed(() => can(this.role(), 'changeStatus'));
+  protected readonly projectName = computed(() =>
+    this.project.hasValue() ? this.project.value()?.project?.name : undefined
+  );
+
   /** The last successful load (`value()` throws while in error). */
   protected readonly loadedTask = computed(() =>
     this.task.hasValue() ? this.task.value() : undefined
@@ -190,6 +224,33 @@ export class TaskDetailPage {
   protected readonly priority = computed(() =>
     priorityFact(this.header()?.priority)
   );
+
+  /** The workflow in order, for the sheet and the suggested next status. */
+  protected readonly orderedStatuses = computed(() =>
+    workflowOrder(
+      this.statuses.hasValue() ? this.statuses.value() : [],
+      this.project.hasValue()
+        ? this.project.value()?.project?.categoryPositions
+        : undefined
+    )
+  );
+  /** The docked button's status, from the project's workflow. */
+  protected readonly next = computed(() => {
+    const task = this.loadedTask();
+    return task ? nextStatus(this.orderedStatuses(), task) : undefined;
+  });
+  /** The status can change once the task and its workflow have loaded. */
+  protected readonly statusReady = computed(
+    () => !!this.loadedTask() && this.statuses.hasValue() && !this.statusBusy()
+  );
+  private readonly statusBusy = signal(false);
+  protected readonly sheetOpen = signal(false);
+  /** A closed status to open the sheet at, with its resolutions showing. */
+  protected readonly sheetExpand = signal<string | undefined>(undefined);
+  /** The docked bar, which toasts sit above. */
+  private readonly actionBar = viewChild(TaskActionBarComponent, {
+    read: ElementRef,
+  });
 
   /** The bell: set as soon as it's tapped, put back if the server refuses. */
   protected readonly watching = linkedSignal(() =>
@@ -309,6 +370,52 @@ export class TaskDetailPage {
       );
     } finally {
       this.bellBusy.set(false);
+    }
+  }
+
+  protected openSheet(expand?: string): void {
+    if (this.statusReady()) {
+      this.sheetExpand.set(expand);
+      this.sheetOpen.set(true);
+    }
+  }
+
+  /**
+   * The docked button: moves to the next status, or opens the sheet when
+   * that status needs a resolution or there is no next one.
+   */
+  protected moveNext(): void {
+    const next = this.next();
+    if (!next || next.isClosed) {
+      this.openSheet(next?.slug);
+    } else {
+      void this.move({ status: next });
+    }
+  }
+
+  protected async move(choice: StatusChoice): Promise<void> {
+    this.sheetOpen.set(false);
+    const task = this.loadedTask();
+    if (!task || !this.statusReady()) {
+      return;
+    }
+    this.statusBusy.set(true);
+    try {
+      const moved = await this.statusChanges.move(
+        task,
+        choice.status,
+        choice.resolution,
+        {
+          apply: (t) => this.task.set(t),
+          anchor: this.actionBar()?.nativeElement,
+        }
+      );
+      // The timeline has a new entry.
+      if (moved && this.activityStarted) {
+        void this.startActivity();
+      }
+    } finally {
+      this.statusBusy.set(false);
     }
   }
 

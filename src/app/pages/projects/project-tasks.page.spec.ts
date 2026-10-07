@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { RouterLink, provideRouter } from '@angular/router';
+import { ToastController } from '@ionic/angular';
 import type { FluxApi, MyProject } from '@core/api';
 import type { GroupBy } from '@core/project-list';
 import type { TaskFilters } from '@core/task-filters';
@@ -10,6 +11,7 @@ import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
+import { TaskChangesService } from '../../task-status/task-changes.service';
 import { ProjectTasksPage } from './project-tasks.page';
 
 /** Stands in for Preferences: pins and the last project, in memory. */
@@ -33,6 +35,7 @@ describe('ProjectTasksPage', () => {
   let fixture: ComponentFixture<ProjectTasksPage>;
   let api: FluxApi;
   let prefs: ReturnType<typeof fakePrefs>;
+  let toast: { create: ReturnType<typeof vi.fn> };
 
   async function create(
     options: {
@@ -43,12 +46,16 @@ describe('ProjectTasksPage', () => {
   ) {
     api = options.api ?? new InMemoryFluxApi();
     prefs = options.prefs ?? fakePrefs();
+    toast = {
+      create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
+    };
     await TestBed.configureTestingModule({
       imports: [ProjectTasksPage],
       providers: [
         provideRouter([]),
         { provide: FLUX_API, useValue: api },
         { provide: ProjectPrefsService, useValue: prefs },
+        { provide: ToastController, useValue: toast },
         {
           provide: AuthService,
           useValue: {
@@ -599,5 +606,235 @@ describe('ProjectTasksPage', () => {
     await settle();
 
     expect(texts('.project-name')).toEqual(['Checkout']);
+  });
+
+  describe('swipe actions', () => {
+    /** The sliding row of the task keyed `key`. */
+    function sliding(key: string): HTMLIonItemSlidingElement {
+      return Array.from(
+        element().querySelectorAll<HTMLIonItemSlidingElement>(
+          'ion-item-sliding'
+        )
+      ).find((s) => s.querySelector('.key')?.textContent === key)!;
+    }
+
+    function option(key: string, kind: 'archive' | 'more' | 'next') {
+      return sliding(key).querySelector<HTMLElement>(`ion-item-option.${kind}`);
+    }
+
+    function sheet() {
+      return fixture.componentInstance as unknown as {
+        sheetOpen(): boolean;
+        sheetExpand(): string | undefined;
+        sheetTask(): { taskKey?: string } | undefined;
+      };
+    }
+
+    /** The options of the last toast offering Undo. */
+    const undoToast = () =>
+      toast.create.mock.calls
+        .map(([options]) => options)
+        .filter((o) => o.buttons?.[0]?.text === 'Undo')
+        .at(-1);
+
+    it('offers the next status from the workflow, and More', async () => {
+      await create();
+      await settle();
+
+      expect(option('CHK-131', 'next')?.textContent?.trim()).toBe('To Do');
+      expect(option('CHK-150', 'next')?.textContent?.trim()).toBe(
+        'In Progress'
+      );
+      expect(option('CHK-150', 'next')?.getAttribute('expandable')).toBe(
+        'true'
+      );
+      expect(option('CHK-150', 'more')?.textContent?.trim()).toBe('More');
+      expect(sliding('CHK-150').disabled).toBe(false);
+    });
+
+    it('moves a row to its next status group at once', async () => {
+      await create();
+      await settle();
+
+      option('CHK-150', 'next')!.click();
+      fixture.detectChanges();
+
+      expect(headers()).toEqual(['Backlog 1', 'In Progress 2', 'Done 1']);
+      await settle();
+      expect((await api.getTask('p1', '2')).status).toBe('in_progress');
+      expect(undoToast()).toMatchObject({
+        message: 'Moved to In Progress',
+        duration: 4000,
+        positionAnchor: 'tab-bar',
+      });
+    });
+
+    it('moves on a full swipe', async () => {
+      await create();
+      await settle();
+
+      sliding('CHK-150')
+        .querySelector('ion-item-options[side="end"]')!
+        .dispatchEvent(new CustomEvent('ionSwipe'));
+      await settle();
+
+      expect((await api.getTask('p1', '2')).status).toBe('in_progress');
+    });
+
+    it('undoes a move, back into the old group', async () => {
+      await create();
+      await settle();
+      option('CHK-150', 'next')!.click();
+      await settle();
+
+      undoToast().buttons[0].handler();
+      await settle();
+
+      expect(headers()).toEqual([
+        'Backlog 1',
+        'To Do 1',
+        'In Progress 1',
+        'Done 1',
+      ]);
+    });
+
+    it('puts the row back and shows the server’s message when refused', async () => {
+      await create();
+      await settle();
+      vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(
+        new ApiError(400, { message: 'Not allowed here' })
+      );
+
+      option('CHK-150', 'next')!.click();
+      await settle();
+
+      expect(headers()).toEqual([
+        'Backlog 1',
+        'To Do 1',
+        'In Progress 1',
+        'Done 1',
+      ]);
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Not allowed here' })
+      );
+    });
+
+    it('opens the sheet to pick a resolution when the next status is closed', async () => {
+      await create();
+      await settle();
+
+      expect(option('CHK-142', 'next')?.textContent?.trim()).toBe('Done');
+      option('CHK-142', 'next')!.click();
+
+      expect(sheet().sheetOpen()).toBe(true);
+      expect(sheet().sheetTask()?.taskKey).toBe('CHK-142');
+      expect(sheet().sheetExpand()).toBe('done');
+    });
+
+    it('opens the status sheet from More', async () => {
+      await create();
+      await settle();
+
+      option('CHK-131', 'more')!.click();
+
+      expect(sheet().sheetOpen()).toBe(true);
+      expect(sheet().sheetTask()?.taskKey).toBe('CHK-131');
+      expect(sheet().sheetExpand()).toBeUndefined();
+    });
+
+    it('offers Archive for done tasks only', async () => {
+      await create();
+      await settle();
+
+      expect(option('CHK-120', 'archive')).not.toBeNull();
+      expect(option('CHK-150', 'archive')).toBeNull();
+    });
+
+    it('archives a done task and its subtasks, with Undo', async () => {
+      const withDone = new InMemoryFluxApi();
+      // The epic's subtasks must be done too.
+      await withDone.changeTaskStatus('p1', '1', {
+        status: 'done',
+        resolution: 'done',
+      });
+      await withDone.changeTaskStatus('p1', '4', {
+        status: 'done',
+        resolution: 'done',
+      });
+      await create({ api: withDone });
+      await settle();
+      expect(headers()).toEqual(['To Do 1', 'Done 3']);
+
+      option('CHK-120', 'archive')!.click();
+      fixture.detectChanges();
+      // The server archives the epic's subtasks with it.
+      expect(headers()).toEqual(['To Do 1']);
+      await settle();
+      expect(undoToast().message).toBe('Archived CHK-120');
+
+      undoToast().buttons[0].handler();
+      // Unarchiving, then fetching the task again.
+      await settle();
+      await settle();
+      expect(headers()).toEqual(['To Do 1', 'Done 3']);
+    });
+
+    it('puts an archived row back when the server refuses', async () => {
+      await create();
+      await settle();
+
+      option('CHK-120', 'archive')!.click();
+      await settle();
+
+      expect(headers()).toContain('Done 1');
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            'Only done tasks whose subtasks are all done can be archived',
+        })
+      );
+    });
+
+    it('drops a moved row the status filter no longer matches', async () => {
+      await create();
+      await settle();
+      page().chooseGroupBy('priority');
+      await settle();
+      await applyFilters({ statuses: ['todo'] });
+      expect(texts('app-project-task-row .key')).toEqual(['CHK-150']);
+
+      option('CHK-150', 'next')!.click();
+      await settle();
+
+      expect(texts('app-project-task-row .key')).toEqual([]);
+    });
+
+    it('can’t swipe without the role to change status', async () => {
+      const viewer = new InMemoryFluxApi();
+      vi.spyOn(viewer, 'listMyProjects').mockResolvedValue({
+        content: [{ project: { id: 'p1', name: 'Checkout' }, role: 'VIEWER' }],
+      });
+      await create({ api: viewer });
+      await settle();
+
+      expect(sliding('CHK-150').disabled).toBe(true);
+      expect(option('CHK-120', 'archive')).toBeNull();
+    });
+
+    it('moves a row changed on task detail', async () => {
+      await create();
+      await settle();
+      const changed = await api.changeTaskStatus('p1', '2', {
+        status: 'in_progress',
+      });
+
+      TestBed.inject(TaskChangesService).report({
+        ...(await api.getTask('p1', '2')),
+        ...{ status: changed.status },
+      });
+      await settle();
+
+      expect(headers()).toEqual(['Backlog 1', 'In Progress 2', 'Done 1']);
+    });
   });
 });

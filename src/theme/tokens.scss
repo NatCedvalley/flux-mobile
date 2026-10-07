@@ -591,6 +591,29 @@ $flux-type: (
     line: 19px,
     weight: 450,
   ),
+  // Status changes (FM-32): the status sheet's subtitle, the current
+  // status's name and its `current` note, the sheet's Cancel, and the docked
+  // action bar's primary button.
+  sheet-subtitle: (
+      size: 12.5px,
+      weight: 450,
+    ),
+  sheet-item-current: (
+    size: 15px,
+    weight: 650,
+  ),
+  status-note: (
+    size: 12px,
+    weight: 450,
+  ),
+  sheet-button: (
+    size: 15px,
+    weight: 600,
+  ),
+  docked-action: (
+    size: 15px,
+    weight: 650,
+  ),
 ) !default;
 
 // Ionic's named colours, built from the scales above. Each needs only a

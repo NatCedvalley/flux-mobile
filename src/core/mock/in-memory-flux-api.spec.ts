@@ -1,3 +1,4 @@
+import { ApiError } from '../auth/api-error';
 import { InMemoryFluxApi } from './in-memory-flux-api';
 
 const TODAY = new Date(2026, 9, 1);
@@ -257,5 +258,81 @@ describe('InMemoryFluxApi', () => {
     expect(
       (await api.listNotifications({ isRead: false })).content
     ).toHaveLength(2);
+  });
+
+  it('changes a status, answering without the joined fields', async () => {
+    const before = await api.getTask('p1', '2');
+
+    const response = await api.changeTaskStatus('p1', '2', {
+      status: 'in_progress',
+    });
+
+    expect(response).toMatchObject({ status: 'in_progress', assignees: [] });
+    expect(await api.getTask('p1', '2')).toMatchObject({
+      status: 'in_progress',
+      statusName: 'In Progress',
+      statusCategory: 'IN_PROGRESS',
+      isClosedStatus: false,
+      assignees: [{ accountId: 'a1' }],
+    });
+    // A row handed out earlier doesn't change under its holder.
+    expect(before.status).toBe('todo');
+  });
+
+  it('closes a task with a resolution, and reopening drops it', async () => {
+    await api.changeTaskStatus('p1', '2', {
+      status: 'done',
+      resolution: 'wont-do',
+    });
+    expect(await api.getTask('p1', '2')).toMatchObject({
+      isClosedStatus: true,
+      resolution: 'wont-do',
+      resolutionName: 'Won’t do',
+    });
+
+    await api.changeTaskStatus('p1', '2', { status: 'todo' });
+    expect((await api.getTask('p1', '2')).resolution).toBeUndefined();
+  });
+
+  it('rejects status changes the backend rejects, with its codes', async () => {
+    const code = (promise: Promise<unknown>) =>
+      promise.catch((e: ApiError) => [e.status, e.body.code]);
+
+    expect(
+      await code(api.changeTaskStatus('p1', '2', { status: 'done' }))
+    ).toEqual([400, 'RESOLUTION_REQUIRED']);
+    expect(
+      await code(
+        api.changeTaskStatus('p1', '2', { status: 'todo', resolution: 'done' })
+      )
+    ).toEqual([400, 'RESOLUTION_NOT_ALLOWED_ON_OPEN_STATUS']);
+    expect(
+      await code(api.changeTaskStatus('p1', '2', { status: 'backlog' }))
+    ).toEqual([400, 'LEAF_TASK_CANNOT_USE_PLANNING_STATUS']);
+    expect(
+      await code(api.changeTaskStatus('p1', '6', { status: 'todo' }))
+    ).toEqual([400, 'CONTAINER_TASK_REQUIRES_PLANNING_OR_DONE']);
+  });
+
+  it('archives a done task and its subtree, off the lists until unarchived', async () => {
+    await expect(api.archiveTask('p1', '6')).rejects.toMatchObject({
+      body: { code: 'TASK_ARCHIVE_REQUIRES_DONE' },
+    });
+    await api.changeTaskStatus('p1', '1', {
+      status: 'done',
+      resolution: 'done',
+    });
+    await api.changeTaskStatus('p1', '4', {
+      status: 'done',
+      resolution: 'done',
+    });
+
+    await api.archiveTask('p1', '6');
+    const ids = async () =>
+      (await api.listProjectTasks('p1')).content?.map((t) => t.id);
+    expect(await ids()).toEqual(['2', '8']);
+
+    await api.unarchiveTask('p1', '6', { reason: 'Undone' });
+    expect(await ids()).toEqual(['1', '2', '4', '6', '8']);
   });
 });

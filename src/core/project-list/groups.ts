@@ -1,5 +1,6 @@
 import type { ProjectTasksQuery, Task, WorkflowStatus } from '../api';
 import type { GroupBy } from './view-settings';
+import { workflowOrder } from '../task-status';
 
 /**
  * The hues a group header can take: the status hues the theme defines, and
@@ -103,22 +104,26 @@ export function taskGroups(
         hue: 'gray',
         query: { type },
       }));
-    case 'status': {
-      const categoryOrder = (status: WorkflowStatus) =>
-        categoryPositions[status.category ?? ''] ?? 99;
-      return statuses
-        .filter((status) => !!status.slug)
-        .sort(
-          (a, b) =>
-            categoryOrder(a) - categoryOrder(b) ||
-            (a.position ?? 0) - (b.position ?? 0)
-        )
-        .map((status) => ({
-          key: status.slug!,
-          label: status.name ?? status.slug!,
-          hue: statusHue(status.color, status.category),
-          query: { status: status.slug },
-        }));
-    }
+    case 'status':
+      return workflowOrder(statuses, categoryPositions).map((status) => ({
+        key: status.slug!,
+        label: status.name ?? status.slug!,
+        hue: statusHue(status.color, status.category),
+        query: { status: status.slug },
+      }));
+  }
+}
+
+/** The key of the group `task` belongs in (`TaskGroup.key`). */
+export function taskGroupKey(groupBy: GroupBy, task: Task): string {
+  switch (groupBy) {
+    case 'none':
+      return 'all';
+    case 'priority':
+      return task.priority ?? '';
+    case 'type':
+      return task.type ?? '';
+    case 'status':
+      return task.status ?? '';
   }
 }

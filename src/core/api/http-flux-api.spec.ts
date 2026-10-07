@@ -187,6 +187,64 @@ describe('HttpFluxApi', () => {
     expect(JSON.parse(init().body)).toEqual({ reason: 'Undone' });
   });
 
+  it('updates a task with a PUT of the whole body', async () => {
+    const { api, url, init } = setup({ id: 't1' });
+    await api.updateTask('p1', 't1', { title: 'New', labels: ['a'] });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1`);
+    expect(init().method).toBe('PUT');
+    expect(JSON.parse(init().body)).toEqual({ title: 'New', labels: ['a'] });
+  });
+
+  it('moves a task to the root with a null parent', async () => {
+    const { api, url, init } = setup({ id: 't1' });
+    await api.changeTaskParent('p1', 't1', { parentTaskId: null });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/parent`);
+    expect(init().method).toBe('PATCH');
+    expect(JSON.parse(init().body)).toEqual({ parentTaskId: null });
+  });
+
+  it('assigns a task with a PATCH of every assignee', async () => {
+    const { api, url, init } = setup({ id: 't1' });
+    await api.assignTask('p1', 't1', { assigneeIds: ['a1', 'a2'] });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/assign`);
+    expect(init().method).toBe('PATCH');
+    expect(JSON.parse(init().body)).toEqual({ assigneeIds: ['a1', 'a2'] });
+  });
+
+  it('deletes a task, taking the empty 204', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new HttpFluxApi(BASE_URL, withToken, fetchFn);
+    await expect(api.deleteTask('p1', 't1')).resolves.toBeUndefined();
+    expect(fetchFn.mock.calls[0][0]).toBe(`${BASE_URL}/projects/p1/tasks/t1`);
+    expect(fetchFn.mock.calls[0][1].method).toBe('DELETE');
+  });
+
+  it('lists a project’s labels', async () => {
+    const { api, url } = setup([{ id: 'l1', name: 'safari' }]);
+    await expect(api.listLabels('p1')).resolves.toEqual([
+      { id: 'l1', name: 'safari' },
+    ]);
+    expect(url()).toBe(`${BASE_URL}/projects/p1/labels`);
+  });
+
+  it('adds and removes a task’s label by the label’s id', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(new Response(null, { status: 204 }))
+      );
+    const api = new HttpFluxApi(BASE_URL, withToken, fetchFn);
+    await api.addTaskLabel('p1', 'l1', 't1');
+    await api.removeTaskLabel('p1', 'l1', 't1');
+    const path = `${BASE_URL}/projects/p1/labels/l1/tasks/t1`;
+    expect(fetchFn.mock.calls.map(([u, i]) => [u, i.method])).toEqual([
+      [path, 'POST'],
+      [path, 'DELETE'],
+    ]);
+  });
+
   it('lists a project’s resolutions', async () => {
     const { api, url } = setup([{ slug: 'fixed' }]);
     await expect(api.listResolutions('p1')).resolves.toEqual([

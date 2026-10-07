@@ -96,6 +96,25 @@ ion-back-button {
   color: var(--flux-n12);
 }
 
+// An EDITOR+ taps the title to edit it: the button clamps like the title.
+.edit-title {
+  display: -webkit-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: start;
+  text-wrap: pretty;
+}
+
 .title-skeleton {
   margin-bottom: var(--flux-space-12);
 
@@ -159,6 +178,12 @@ ion-back-button {
 
   ion-icon {
     font-size: 13px;
+  }
+
+  // A button for an EDITOR+, opening the priority or type picker.
+  @at-root button#{&} {
+    border: 0;
+    background: none;
   }
 
   &.priority {

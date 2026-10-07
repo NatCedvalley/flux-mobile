@@ -335,4 +335,108 @@ describe('InMemoryFluxApi', () => {
     await api.unarchiveTask('p1', '6', { reason: 'Undone' });
     expect(await ids()).toEqual(['1', '2', '4', '6', '8']);
   });
+
+  describe('edits', () => {
+    const code = (promise: Promise<unknown>) =>
+      promise.catch((e: ApiError) => e.body.code);
+
+    it('keeps the title, type and priority a PUT leaves out, and clears the rest', async () => {
+      await api.updateTask('p1', '1', { title: 'Renamed' });
+      const task = await api.getTask('p1', '1');
+      expect(task).toMatchObject({
+        title: 'Renamed',
+        type: 'BUG',
+        priority: 'CRITICAL',
+      });
+      expect(task.description).toContain('expired sessions');
+      expect(task.dueDate).toBeUndefined();
+      expect(task.labels).toBeUndefined();
+      expect(task.bugOccurredAt).toBeUndefined();
+    });
+
+    it('answers a PUT without assignees, like the server', async () => {
+      const response = await api.updateTask('p1', '2', { priority: 'LOW' });
+      expect(response.assignees).toEqual([]);
+      expect((await api.getTask('p1', '2')).assignees).toHaveLength(1);
+    });
+
+    it('moves the status when the new type can’t use it', async () => {
+      await api.updateTask('p1', '2', { type: 'EPIC' });
+      expect(await api.getTask('p1', '2')).toMatchObject({
+        type: 'EPIC',
+        status: 'backlog',
+        statusCategory: 'PLANNING',
+      });
+    });
+
+    it('refuses the type changes and archived edits the server refuses', async () => {
+      expect(await code(api.updateTask('p1', '6', { type: 'TASK' }))).toBe(
+        'CANNOT_CHANGE_TYPE_WITH_CHILDREN'
+      );
+      expect(await code(api.updateTask('p1', '1', { type: 'MASTER' }))).toBe(
+        'INVALID_TYPE_UNDER_EPIC'
+      );
+      await api.changeTaskStatus('p1', '2', {
+        status: 'done',
+        resolution: 'done',
+      });
+      await api.archiveTask('p1', '2');
+      expect(await code(api.updateTask('p1', '2', { title: 'x' }))).toBe(
+        'TASK_ARCHIVED_READ_ONLY'
+      );
+    });
+
+    it('moves a task under an epic, or to the root', async () => {
+      await api.changeTaskParent('p1', '2', { parentTaskId: '6' });
+      expect((await api.getTask('p1', '2')).parentTask).toMatchObject({
+        id: '6',
+        taskKey: 'CHK-120',
+      });
+      await api.changeTaskParent('p1', '2', { parentTaskId: null });
+      const task = await api.getTask('p1', '2');
+      expect(task.parentTaskId).toBeUndefined();
+      expect(task.parentTask).toBeUndefined();
+    });
+
+    it('refuses parents the server refuses', async () => {
+      expect(
+        await code(api.changeTaskParent('p1', '6', { parentTaskId: '2' }))
+      ).toBe('INVALID_PARENT_TYPE');
+      expect(
+        await code(api.changeTaskParent('p1', '6', { parentTaskId: '6' }))
+      ).toBe('INVALID_PARENT_CYCLE');
+    });
+
+    it('replaces every assignee', async () => {
+      await api.assignTask('p1', '1', { assigneeIds: ['a2', 'a3'] });
+      expect(
+        (await api.getTask('p1', '1')).assignees?.map((a) => a.firstName)
+      ).toEqual(['Ben', 'Chen']);
+      expect(
+        await code(api.assignTask('p1', '1', { assigneeIds: ['nobody'] }))
+      ).toBe('ASSIGNEE_NOT_PROJECT_MEMBER');
+    });
+
+    it('deletes a task', async () => {
+      await api.deleteTask('p1', '2');
+      await expect(api.getTask('p1', '2')).rejects.toThrow();
+    });
+
+    it('lists a project’s labels by name, and adds and removes them by id', async () => {
+      expect((await api.listLabels('p1')).map((l) => l.name)).toEqual([
+        '3ds',
+        'android',
+        'ios',
+        'payments',
+        'safari',
+      ]);
+      await api.addTaskLabel('p1', 'l4', '1');
+      await api.removeTaskLabel('p1', 'l1', '1');
+      expect((await api.getTask('p1', '1')).labels).toEqual([
+        'payments',
+        '3ds',
+        'ios',
+      ]);
+    });
+  });
 });

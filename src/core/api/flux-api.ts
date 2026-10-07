@@ -1,5 +1,6 @@
 import type {
   AppNotification,
+  Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -11,11 +12,14 @@ import type {
   ProjectTasksQuery,
   Task,
   TaskActivity,
+  TaskAssign,
   TaskComment,
+  TaskParentChange,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
   TaskUnarchive,
+  TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -41,6 +45,40 @@ export type FluxApi = {
 
   /** GET /projects/{projectId}/tasks/{taskId}: tasks are project-scoped. */
   getTask(projectId: string, taskId: string): Promise<Task>;
+
+  /**
+   * PUT /projects/{projectId}/tasks/{taskId}: replaces the task, clearing
+   * the fields `update` leaves out (see `TaskUpdate`). The response has no
+   * assignees, so fetch the task again rather than using it.
+   */
+  updateTask(
+    projectId: string,
+    taskId: string,
+    update: TaskUpdate
+  ): Promise<Task>;
+
+  /**
+   * PATCH /projects/{projectId}/tasks/{taskId}/parent: moves the task under
+   * a MASTER or EPIC, or to the root.
+   */
+  changeTaskParent(
+    projectId: string,
+    taskId: string,
+    change: TaskParentChange
+  ): Promise<Task>;
+
+  /**
+   * PATCH /projects/{projectId}/tasks/{taskId}/assign: replaces every
+   * assignee (LEAD and above).
+   */
+  assignTask(
+    projectId: string,
+    taskId: string,
+    assign: TaskAssign
+  ): Promise<Task>;
+
+  /** DELETE /projects/{projectId}/tasks/{taskId}: a soft delete (LEAD+). */
+  deleteTask(projectId: string, taskId: string): Promise<void>;
 
   /**
    * PATCH /projects/{projectId}/tasks/{taskId}/status. The response leaves
@@ -130,6 +168,26 @@ export type FluxApi = {
     projectId: string,
     update: TaskViewSettingsUpdate
   ): Promise<TaskViewSettings>;
+
+  /** GET /projects/{projectId}/labels: unpaged, by name. */
+  listLabels(projectId: string): Promise<Label[]>;
+
+  /**
+   * POST /projects/{projectId}/labels/{labelId}/tasks/{taskId}: adds the
+   * label to the task (and to its `labels` names).
+   */
+  addTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void>;
+
+  /** DELETE /projects/{projectId}/labels/{labelId}/tasks/{taskId} */
+  removeTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void>;
 
   /** GET /projects/{projectId}/members/assignable: unpaged, in no order. */
   listAssignableMembers(projectId: string): Promise<ProjectMember[]>;

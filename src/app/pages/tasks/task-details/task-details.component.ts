@@ -1,9 +1,11 @@
-import { Component, computed, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonIcon } from '@ionic/angular';
 import type { Task } from '@core/api';
 import { type PersonName, avatarFillIndex, initials } from '@core/people';
 import { assigneeSummary, detailDue } from '@core/task-detail';
+import { canEditDescription } from '@core/task-edit';
 import { RichTextComponent } from '../../../shared/rich-text/rich-text.component';
 import { TYPE_ICONS } from '../../../shared/task-row/task-row.component';
 
@@ -19,15 +21,18 @@ type Person = {
 };
 
 /**
- * The Details tab (3e), display-only: assignee and reporter, the due date,
- * release, parent and labels, the description, and a container's subtasks.
- * Editing these comes in later slices (FM-33).
+ * The Details tab (3e): assignee and reporter, the due date, release, parent
+ * and labels, the description, and a container's subtasks. When `editable`,
+ * the due date and labels rows and the description's pencil ask the page to
+ * open their editors. The parent row always opens the parent; it changes
+ * from the overflow sheet. A description the app can't write (HTML,
+ * Editor.js) gets a note to edit it on the web instead of the pencil.
  */
 @Component({
   selector: 'app-task-details',
   templateUrl: './task-details.component.html',
   styleUrls: ['./task-details.component.scss'],
-  imports: [RouterLink, IonIcon, RichTextComponent],
+  imports: [NgTemplateOutlet, RouterLink, IonIcon, RichTextComponent],
 })
 export class TaskDetailsComponent {
   readonly task = input.required<Task>();
@@ -37,6 +42,12 @@ export class TaskDetailsComponent {
   readonly subtasks = input<Task[]>();
   /** The URL that task detail paths sit under, for parent and subtask links. */
   readonly detailBase = input.required<string>();
+  /** Whether the caller may edit the task (EDITOR+, not archived). */
+  readonly editable = input(false);
+
+  readonly editDue = output();
+  readonly editLabels = output();
+  readonly editDescription = output();
 
   protected readonly descriptionLines = DESCRIPTION_LINES;
 
@@ -59,6 +70,10 @@ export class TaskDetailsComponent {
         )
       : undefined;
   });
+
+  protected readonly descriptionEditable = computed(() =>
+    canEditDescription(this.task())
+  );
 
   protected readonly due = computed(() => detailDue(this.task(), this.today()));
   protected readonly release = computed(() => {

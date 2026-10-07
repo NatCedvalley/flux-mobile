@@ -50,11 +50,11 @@
           aria-hidden="true"
         ></ion-icon>
       </ion-button>
-      <!-- The overflow sheet (3n) comes with field editing (FM-33). -->
       <ion-button
         class="icon-button more"
-        disabled="true"
         aria-label="More actions"
+        [disabled]="!loadedTask()"
+        (click)="openOverflow()"
       >
         <ion-icon
           slot="icon-only"
@@ -67,7 +67,20 @@
 
   <div class="head">
     @if (header(); as header) {
-      <h1 class="title">{{ header.title }}</h1>
+      @if (canEdit()) {
+        <h1 class="title">
+          <button
+            type="button"
+            class="edit-title"
+            [attr.aria-label]="header.title + '. Edit the title'"
+            (click)="openEditor('title')"
+          >
+            {{ header.title }}
+          </button>
+        </h1>
+      } @else {
+        <h1 class="title">{{ header.title }}</h1>
+      }
       <div class="chips">
         @if (status(); as status) {
           @if (canMove()) {
@@ -103,19 +116,46 @@
           }
         }
         @if (priority(); as priority) {
-          <span
-            class="chip priority"
-            [attr.data-level]="priority.level"
-          >
-            <ion-icon
-              [name]="priority.icon"
-              aria-hidden="true"
-            ></ion-icon>
-            {{ priority.label }}
-          </span>
+          @if (canEdit()) {
+            <button
+              type="button"
+              class="chip priority"
+              [attr.data-level]="priority.level"
+              [attr.aria-label]="'Priority: ' + priority.label + '. Change it'"
+              (click)="openEditor('priority')"
+            >
+              <ion-icon
+                [name]="priority.icon"
+                aria-hidden="true"
+              ></ion-icon>
+              {{ priority.label }}
+            </button>
+          } @else {
+            <span
+              class="chip priority"
+              [attr.data-level]="priority.level"
+            >
+              <ion-icon
+                [name]="priority.icon"
+                aria-hidden="true"
+              ></ion-icon>
+              {{ priority.label }}
+            </span>
+          }
         }
         @if (typeLabel()) {
-          <span class="chip">{{ typeLabel() }}</span>
+          @if (canEdit()) {
+            <button
+              type="button"
+              class="chip type"
+              [attr.aria-label]="'Type: ' + typeLabel() + '. Change it'"
+              (click)="openEditor('type')"
+            >
+              {{ typeLabel() }}
+            </button>
+          } @else {
+            <span class="chip type">{{ typeLabel() }}</span>
+          }
         }
       </div>
     } @else if (!task.error()) {
@@ -180,6 +220,10 @@
           [today]="today()"
           [subtasks]="subtasks.hasValue() ? subtasks.value() : undefined"
           [detailBase]="detailBase()"
+          [editable]="canEdit()"
+          (editDue)="openEditor('due')"
+          (editLabels)="openEditor('labels')"
+          (editDescription)="openEditor('description')"
         />
       } @else if (task.error() && !task.isLoading()) {
         <app-error-state
@@ -285,3 +329,195 @@
     }
   </ng-template>
 </ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="overflowOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="overflowClosed()"
+>
+  <ng-template>
+    @if (loadedTask(); as task) {
+      <app-task-overflow-sheet
+        [taskKey]="task.taskKey"
+        [title]="task.title"
+        [assignee]="assigneeLabel()"
+        [watching]="watching()"
+        [commentCount]="commentTotal()"
+        [canReassign]="canReassign()"
+        [canEdit]="canEdit()"
+        [canArchive]="canArchive()"
+        [canDelete]="canDelete()"
+        (action)="chooseOverflow($event)"
+        (done)="overflowOpen.set(false)"
+      />
+    }
+  </ng-template>
+</ion-modal>
+
+@if (loadedTask(); as task) {
+  <ion-modal
+    class="flux-sheet flux-sheet-auto"
+    [isOpen]="editor() === 'title'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didPresent)="focusText()"
+    (didDismiss)="editorClosed('title')"
+  >
+    <ng-template>
+      <app-text-edit-sheet
+        heading="Title"
+        [value]="task.title ?? ''"
+        [maxLength]="titleMax"
+        [required]="true"
+        [singleLine]="true"
+        (saved)="save({ title: $event })"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet"
+    [isOpen]="editor() === 'description'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didPresent)="focusText()"
+    (didDismiss)="editorClosed('description')"
+  >
+    <ng-template>
+      <app-text-edit-sheet
+        heading="Description"
+        placeholder="Add a description"
+        hint="Written in Markdown."
+        [value]="task.description ?? ''"
+        (saved)="save({ description: $event, descriptionFormat: 'MARKDOWN' })"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet flux-sheet-auto"
+    [isOpen]="editor() === 'due'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('due')"
+  >
+    <ng-template>
+      <app-date-sheet
+        heading="Due date"
+        [value]="task.dueDate"
+        (saved)="save({ dueDate: $event })"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet flux-sheet-auto"
+    [isOpen]="editor() === 'priority'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('priority')"
+  >
+    <ng-template>
+      <app-picker-sheet
+        heading="Priority"
+        [items]="priorityItems"
+        [searchable]="false"
+        [selected]="task.priority ? [task.priority] : []"
+        (picked)="pickPriority($event)"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet flux-sheet-auto"
+    [isOpen]="editor() === 'type'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('type')"
+  >
+    <ng-template>
+      <app-picker-sheet
+        heading="Type"
+        [items]="typeItems"
+        [searchable]="false"
+        [selected]="task.type ? [task.type] : []"
+        (picked)="pickType($event)"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet"
+    [isOpen]="editor() === 'labels'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('labels')"
+  >
+    <ng-template>
+      <app-picker-sheet
+        heading="Labels"
+        placeholder="Search labels"
+        emptyText="No labels match"
+        [items]="labelItems()"
+        [failed]="!!projectLabels.error()"
+        [multiple]="true"
+        [(selected)]="labelDraft"
+        (retry)="projectLabels.reload()"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet"
+    [isOpen]="editor() === 'parent'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('parent')"
+  >
+    <ng-template>
+      <app-picker-sheet
+        heading="Parent"
+        placeholder="Search masters and epics"
+        emptyText="No matching parent tasks"
+        [items]="parentItems()"
+        [failed]="!!parentResults.error()"
+        [remoteSearch]="true"
+        [selected]="[task.parentTaskId ?? '']"
+        (searched)="parentQuery.set($event)"
+        (picked)="pickParent($event)"
+        (retry)="parentResults.reload()"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet"
+    [isOpen]="editor() === 'assignees'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('assignees')"
+  >
+    <ng-template>
+      <app-picker-sheet
+        heading="Assignees"
+        placeholder="Search people"
+        emptyText="No one matches"
+        [items]="memberItems()"
+        [failed]="!!members.error()"
+        [multiple]="true"
+        [(selected)]="assigneeDraft"
+        (retry)="members.reload()"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+}

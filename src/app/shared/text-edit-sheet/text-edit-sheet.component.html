@@ -1,0 +1,40 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="cancel"
+        (click)="done.emit()"
+        >Cancel</ion-button
+      >
+    </ion-buttons>
+    <ion-title>{{ heading() }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="save"
+        [disabled]="!canSave()"
+        (click)="save()"
+        >Save</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<div class="body">
+  <section>
+    <ion-textarea
+      [attr.aria-label]="heading()"
+      [value]="draft()"
+      [placeholder]="placeholder()"
+      [maxlength]="maxLength()"
+      [counter]="!!maxLength()"
+      [autoGrow]="true"
+      [rows]="singleLine() ? 1 : 8"
+      [enterkeyhint]="singleLine() ? 'done' : 'enter'"
+      (ionInput)="onInput($event)"
+      (keydown.enter)="onEnter($event)"
+    ></ion-textarea>
+    @if (hint()) {
+      <p class="note hint">{{ hint() }}</p>
+    }
+  </section>
+</div>

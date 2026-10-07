@@ -8,4 +8,5 @@ export const environment = {
   apiBaseUrl: 'https://staging-api.flux.example.com/api/v1',
   iamBaseUrl: 'https://staging-iam.flux.example.com/api/v1',
   notificationWsUrl: 'https://staging-notification.flux.example.com/ws',
+  webBaseUrl: 'https://staging.flux.example.com',
 } satisfies AppEnvironment;

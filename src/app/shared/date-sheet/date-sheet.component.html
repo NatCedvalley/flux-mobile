@@ -1,0 +1,28 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="clear"
+        (click)="clear()"
+        >Clear</ion-button
+      >
+    </ion-buttons>
+    <ion-title>{{ heading() }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="save()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<div class="body">
+  <ion-datetime
+    presentation="date"
+    [attr.aria-label]="heading()"
+    [value]="draft()"
+    (ionChange)="onChange($event)"
+  ></ion-datetime>
+</div>

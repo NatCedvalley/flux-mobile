@@ -1,6 +1,7 @@
 import type {
   AppNotification,
   FluxApi,
+  Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -12,11 +13,14 @@ import type {
   ProjectTasksQuery,
   Task,
   TaskActivity,
+  TaskAssign,
   TaskComment,
+  TaskParentChange,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
   TaskUnarchive,
+  TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -110,6 +114,16 @@ const MEMBERS: ProjectMember[] = [
   },
 ];
 
+/** Each project's labels; CHK-142 carries the first three. */
+const LABELS: Label[] = [
+  { id: 'l1', projectId: 'p1', name: 'safari' },
+  { id: 'l2', projectId: 'p1', name: 'payments' },
+  { id: 'l3', projectId: 'p1', name: '3ds' },
+  { id: 'l4', projectId: 'p1', name: 'ios' },
+  { id: 'l5', projectId: 'p1', name: 'android' },
+  { id: 'l6', projectId: 'p2', name: 'invoices' },
+];
+
 const STATUS_FIELDS = {
   backlog: {
     status: 'backlog',
@@ -159,6 +173,11 @@ function fixtureTasks(today: string): FixtureTask[] {
       reporterFirstName: BEN.firstName,
       reporterLastName: BEN.lastName,
       labels: ['safari', 'payments', '3ds'],
+      // Not shown on detail: an edit must still send them back.
+      environment: 'Production',
+      affectedVersion: 'v2.3.0',
+      bugOccurredAt: '2026-09-28T08:15:00Z',
+      affectedUser: 'shopper@example.com',
       linkedReleases: [
         { id: 'r1', versionTag: 'v2.4.0', title: 'Payments', status: 'NEW' },
       ],
@@ -462,6 +481,10 @@ function badRequest(code: string, message: string): ApiError {
   return new ApiError(400, { code, message });
 }
 
+function isContainer(type: Task['type']): boolean {
+  return type === 'MASTER' || type === 'EPIC';
+}
+
 /**
  * Static in-memory `FluxApi` for tests. It applies the my-tasks filters
  * (scope, openOnly, the due window, project, status, priority, search) and
@@ -469,7 +492,9 @@ function badRequest(code: string, message: string): ApiError {
  * list's filters (comma lists for status, priority, type and assignee,
  * labels, search) and sort, so pages can be tested against it. Tasks
  * without a sort value (fixtures have no createdAt) keep their order.
- * Status changes and archiving follow the backend's rules and errors.
+ * Status changes, archiving and edits follow the backend's rules and
+ * errors: in particular a PUT clears every field it leaves out except the
+ * title, description, type and priority, so page specs catch lost data.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
@@ -643,6 +668,178 @@ export class InMemoryFluxApi implements FluxApi {
     });
   }
 
+  updateTask(
+    projectId: string,
+    taskId: string,
+    update: TaskUpdate
+  ): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    if (task.isArchived) {
+      return Promise.reject(
+        badRequest('TASK_ARCHIVED_READ_ONLY', 'Archived tasks can’t be edited')
+      );
+    }
+    const type = update.type ?? task.type;
+    if (
+      isContainer(task.type) &&
+      !isContainer(type) &&
+      this.tasks.some((t) => t.parentTaskId === task.id && !t.isArchived)
+    ) {
+      return Promise.reject(
+        badRequest(
+          'CANNOT_CHANGE_TYPE_WITH_CHILDREN',
+          'A task with subtasks must stay a master or an epic'
+        )
+      );
+    }
+    const parent = task.parentTaskId
+      ? this.find(projectId, task.parentTaskId)
+      : undefined;
+    if (type === 'MASTER' && parent?.type === 'EPIC') {
+      return Promise.reject(
+        badRequest('INVALID_TYPE_UNDER_EPIC', 'An epic can’t hold a master')
+      );
+    }
+    // A type that can't use the status moves to its first one, as the
+    // server does.
+    const allowed = allowedStatusCategories(type);
+    const status =
+      task.statusCategory && !allowed.includes(task.statusCategory)
+        ? STATUSES.find((s) => !!s.category && allowed.includes(s.category))
+        : undefined;
+    const updated = this.replace({
+      ...task,
+      title: update.title ?? task.title,
+      description: update.description ?? task.description,
+      descriptionFormat: update.descriptionFormat ?? task.descriptionFormat,
+      type,
+      priority: update.priority ?? task.priority,
+      // Everything else is replaced: a missing field is cleared.
+      dueDate: update.dueDate,
+      plannedStartDate: update.plannedStartDate,
+      plannedEndDate: update.plannedEndDate,
+      labels: update.labels,
+      environment: update.environment,
+      affectedVersion: update.affectedVersion,
+      fixVersion: update.fixVersion,
+      bugOccurredAt: update.bugOccurredAt,
+      affectedUser: update.affectedUser,
+      ...(status && {
+        status: status.slug,
+        statusName: status.name,
+        statusCategory: status.category,
+        isClosedStatus: !!status.isClosed,
+        resolution: undefined,
+        resolutionName: undefined,
+      }),
+    });
+    // Like the server's response, without the assignees.
+    return Promise.resolve({ ...updated, assignees: [] });
+  }
+
+  changeTaskParent(
+    projectId: string,
+    taskId: string,
+    change: TaskParentChange
+  ): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    if (change.parentTaskId === null) {
+      return Promise.resolve(
+        this.replace({
+          ...task,
+          parentTaskId: undefined,
+          parentTask: undefined,
+        })
+      );
+    }
+    const parent = this.find(projectId, change.parentTaskId);
+    if (!parent) {
+      return Promise.reject(notFound(projectId, change.parentTaskId));
+    }
+    if (!isContainer(parent.type)) {
+      return Promise.reject(
+        badRequest('INVALID_PARENT_TYPE', 'Only masters and epics hold tasks')
+      );
+    }
+    if (task.type === 'MASTER' && parent.type === 'EPIC') {
+      return Promise.reject(
+        badRequest('INVALID_CHILD_TYPE', 'An epic can’t hold a master')
+      );
+    }
+    if (
+      parent.id === task.id ||
+      this.descendants(task).some((d) => d.id === parent.id)
+    ) {
+      return Promise.reject(
+        badRequest(
+          'INVALID_PARENT_CYCLE',
+          'A task can’t go under one of its own subtasks'
+        )
+      );
+    }
+    return Promise.resolve(
+      this.replace({
+        ...task,
+        parentTaskId: parent.id,
+        parentTask: {
+          id: parent.id,
+          taskKey: parent.taskKey,
+          title: parent.title,
+          status: parent.status,
+        },
+      })
+    );
+  }
+
+  assignTask(
+    projectId: string,
+    taskId: string,
+    assign: TaskAssign
+  ): Promise<Task> {
+    const task = this.find(projectId, taskId);
+    if (!task) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    const ids = assign.assigneeIds ?? [];
+    const members = ids.map((id) => MEMBERS.find((m) => m.accountId === id));
+    if (members.some((m) => !m)) {
+      return Promise.reject(
+        badRequest(
+          'ASSIGNEE_NOT_PROJECT_MEMBER',
+          'Assignees must be members of the project'
+        )
+      );
+    }
+    return Promise.resolve(
+      this.replace({
+        ...task,
+        assigneeId: ids[0],
+        assignees: members.map((m) => ({
+          accountId: m?.accountId,
+          firstName: m?.firstName,
+          lastName: m?.lastName,
+        })),
+      })
+    );
+  }
+
+  deleteTask(projectId: string, taskId: string): Promise<void> {
+    const i = this.tasks.findIndex(
+      (t) => t.projectId === projectId && t.id === taskId
+    );
+    if (i < 0) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    this.tasks.splice(i, 1);
+    return Promise.resolve();
+  }
+
   archiveTask(projectId: string, taskId: string): Promise<Task> {
     const task = this.find(projectId, taskId);
     if (!task) {
@@ -770,6 +967,34 @@ export class InMemoryFluxApi implements FluxApi {
     return Promise.resolve(settings);
   }
 
+  listLabels(projectId: string): Promise<Label[]> {
+    return Promise.resolve(
+      LABELS.filter((l) => l.projectId === projectId).sort((a, b) =>
+        (a.name ?? '').localeCompare(b.name ?? '')
+      )
+    );
+  }
+
+  addTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void> {
+    return this.withLabel(projectId, labelId, taskId, (task, name) =>
+      task.labels?.includes(name) ? task.labels : [...(task.labels ?? []), name]
+    );
+  }
+
+  removeTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void> {
+    return this.withLabel(projectId, labelId, taskId, (task, name) =>
+      (task.labels ?? []).filter((l) => l !== name)
+    );
+  }
+
   listAssignableMembers(projectId: string): Promise<ProjectMember[]> {
     return Promise.resolve(MEMBERS.map((m) => ({ ...m, projectId })));
   }
@@ -797,6 +1022,24 @@ export class InMemoryFluxApi implements FluxApi {
   private descendants(task: FixtureTask): FixtureTask[] {
     const children = this.tasks.filter((t) => t.parentTaskId === task.id);
     return children.flatMap((c) => [c, ...this.descendants(c)]);
+  }
+
+  /** Rewrites the task's label names, as the label endpoints do. */
+  private withLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string,
+    labels: (task: FixtureTask, name: string) => string[]
+  ): Promise<void> {
+    const task = this.find(projectId, taskId);
+    const label = LABELS.find(
+      (l) => l.id === labelId && l.projectId === projectId
+    );
+    if (!task || !label?.name) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    this.replace({ ...task, labels: labels(task, label.name) });
+    return Promise.resolve();
   }
 
   /** `result()` for an existing task, else the not-found rejection. */

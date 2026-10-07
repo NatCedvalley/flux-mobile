@@ -5,4 +5,6 @@ export type AppEnvironment = {
   apiBaseUrl: string;
   iamBaseUrl: string;
   notificationWsUrl: string;
+  /** flux-web's origin, for links to a task (Copy link). */
+  webBaseUrl: string;
 };

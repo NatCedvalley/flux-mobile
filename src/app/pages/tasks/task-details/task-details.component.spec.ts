@@ -139,4 +139,50 @@ describe('TaskDetailsComponent', () => {
     fixture.detectChanges();
     expect(text('.subtasks > .none')).toBe('Loading subtasks…');
   });
+
+  describe('editing', () => {
+    function edit(task: Task, editable = true) {
+      create(task);
+      fixture.componentRef.setInput('editable', editable);
+      fixture.detectChanges();
+    }
+
+    it('shows nothing to edit unless editable', () => {
+      edit(TASK, false);
+      expect(element().querySelector('button.field')).toBeNull();
+      expect(element().querySelector('.edit-description')).toBeNull();
+      expect(element().querySelector('.web-note')).toBeNull();
+    });
+
+    it('asks for the due date, labels and description editors', () => {
+      edit(TASK);
+      const asked: string[] = [];
+      const component = fixture.componentInstance;
+      component.editDue.subscribe(() => asked.push('due'));
+      component.editLabels.subscribe(() => asked.push('labels'));
+      component.editDescription.subscribe(() => asked.push('description'));
+
+      for (const selector of [
+        '.edit-due',
+        '.edit-labels',
+        '.edit-description',
+      ]) {
+        element().querySelector<HTMLButtonElement>(selector)!.click();
+      }
+
+      expect(asked).toEqual(['due', 'labels', 'description']);
+      expect(text('.edit-due .value')).toBe('12 Sep · overdue');
+    });
+
+    it('keeps the parent row a link', () => {
+      edit(TASK);
+      expect(element().querySelector('a.parent')).not.toBeNull();
+    });
+
+    it('sends a description written on the web to the web', () => {
+      edit({ ...TASK, description: '<p>Hi</p>', descriptionFormat: 'HTML' });
+      expect(element().querySelector('.edit-description')).toBeNull();
+      expect(text('.web-note')).toBe('Formatted on the web — edit it there.');
+    });
+  });
 });

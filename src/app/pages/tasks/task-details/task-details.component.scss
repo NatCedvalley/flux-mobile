@@ -114,6 +114,19 @@
     font-size: 16px;
     color: var(--flux-na10);
   }
+
+  > .chevron {
+    color: var(--flux-na8);
+  }
+}
+
+// An editable row is a button that looks like the others (its parts set
+// their own type).
+button.field {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: start;
 }
 
 .field-label {
@@ -199,6 +212,21 @@
 
   .label {
     margin-bottom: var(--flux-space-8);
+  }
+
+  // The pencil (15px, `--na10`) sits after the label, with a 44px target.
+  .edit-description {
+    display: flex;
+    margin: -14px -14px -14px auto;
+    padding: 14px;
+    border: 0;
+    background: none;
+    font-size: 15px;
+    color: var(--flux-na10);
+  }
+
+  .web-note {
+    margin-top: var(--flux-space-8);
   }
 
   app-rich-text {

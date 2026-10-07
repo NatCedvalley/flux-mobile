@@ -1,11 +1,19 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { ToastController } from '@ionic/angular';
+import {
+  AlertController,
+  NavController,
+  ToastController,
+} from '@ionic/angular';
+import type { MyProject, Task } from '@core/api';
+import type { TaskChange } from '@core/task-edit';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import type { OverflowAction } from './task-overflow-sheet/task-overflow-sheet.component';
 import { AuthService } from '../../auth/auth.service';
 import { FLUX_API } from '../../providers/flux-api.token';
+import { TaskChangesService } from '../../task-status/task-changes.service';
 import { TaskDetailPage, type TaskPreview } from './task-detail.page';
 
 const clipboard = vi.hoisted(() => ({ write: vi.fn() }));
@@ -15,6 +23,11 @@ describe('TaskDetailPage', () => {
   let fixture: ComponentFixture<TaskDetailPage>;
   let api: InMemoryFluxApi;
   let toast: { create: ReturnType<typeof vi.fn> };
+  let alert: { create: ReturnType<typeof vi.fn>; role: string };
+  let nav: {
+    pop: ReturnType<typeof vi.fn>;
+    navigateBack: ReturnType<typeof vi.fn>;
+  };
 
   async function create(
     options: { taskId?: string; row?: TaskPreview; api?: InMemoryFluxApi } = {}
@@ -24,12 +37,24 @@ describe('TaskDetailPage', () => {
     toast = {
       create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
     };
+    alert = {
+      role: 'destructive',
+      create: vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          present: vi.fn(),
+          onDidDismiss: () => Promise.resolve({ role: alert.role }),
+        })
+      ),
+    };
+    nav = { pop: vi.fn().mockResolvedValue(true), navigateBack: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [TaskDetailPage],
       providers: [
         provideRouter([]),
         { provide: FLUX_API, useValue: api },
         { provide: ToastController, useValue: toast },
+        { provide: AlertController, useValue: alert },
+        { provide: NavController, useValue: nav },
         { provide: AuthService, useValue: { account: signal({ id: 'a1' }) } },
       ],
     }).compileComponents();
@@ -222,24 +247,393 @@ describe('TaskDetailPage', () => {
     );
   });
 
-  it('keeps the overflow button disabled for now', async () => {
-    await create();
-    await settle();
-    expect(
-      element().querySelector<HTMLIonButtonElement>('.more')?.disabled
-    ).toBe(true);
+  /** An API where the caller has `role` in p1. */
+  function withRole(role: NonNullable<MyProject['role']>) {
+    const withRoleApi = new InMemoryFluxApi();
+    vi.spyOn(withRoleApi, 'listMyProjects').mockResolvedValue({
+      content: [{ project: { id: 'p1', name: 'Checkout' }, role }],
+    });
+    return withRoleApi;
+  }
+
+  /** The page's protected members the editing tests drive. */
+  type Page = {
+    loadedTask(): Task | undefined;
+    canEdit(): boolean;
+    canReassign(): boolean;
+    canArchive(): boolean;
+    canDelete(): boolean;
+    editor(): string | undefined;
+    openEditor(editor: string): void;
+    editorClosed(editor: string): void;
+    save(change: TaskChange): void;
+    pickPriority(priority: string): void;
+    pickType(type: string): void;
+    pickParent(id: string): void;
+    parentItems(): { id: string; label: string }[] | undefined;
+    labelDraft: { set(names: string[]): void };
+    assigneeDraft: { (): readonly string[]; set(ids: string[]): void };
+    chooseOverflow(action: OverflowAction): void;
+    overflowClosed(): void;
+  };
+  const page = () => fixture.componentInstance as unknown as Page;
+  /** The message of the last toast. */
+  const lastToast = () => toast.create.mock.calls.at(-1)?.[0].message;
+
+  describe('editing', () => {
+    it('lets an EDITOR edit the title, priority and type from the header', async () => {
+      await create();
+      await settle();
+      expect(element().querySelector('button.edit-title')).not.toBeNull();
+      expect(element().querySelector('button.chip.priority')).not.toBeNull();
+      expect(element().querySelector('button.chip.type')).not.toBeNull();
+
+      await create({ api: withRole('VIEWER') });
+      await settle();
+      expect(element().querySelector('button.edit-title')).toBeNull();
+      expect(element().querySelector('button.chip')).toBeNull();
+      expect(element().querySelector('.edit-due')).toBeNull();
+    });
+
+    it('saves a title at once, keeping every field it doesn’t show', async () => {
+      await create();
+      await settle();
+      const before = await api.getTask('p1', '1');
+
+      page().save({ title: 'Safari drops the 3DS return URL' });
+      fixture.detectChanges();
+      expect(text('.title')).toBe('Safari drops the 3DS return URL');
+      await settle();
+
+      const after = await api.getTask('p1', '1');
+      expect(after.title).toBe('Safari drops the 3DS return URL');
+      for (const field of [
+        'dueDate',
+        'labels',
+        'environment',
+        'affectedVersion',
+        'bugOccurredAt',
+        'affectedUser',
+        'description',
+      ] as const) {
+        expect(after[field], field).toEqual(before[field]);
+      }
+      // The response has no assignees; the task was fetched again.
+      expect(page().loadedTask()?.assignees).toHaveLength(1);
+    });
+
+    it('changes the priority, and clears the due date', async () => {
+      await create();
+      await settle();
+
+      page().pickPriority('LOW');
+      await settle();
+      page().save({ dueDate: undefined });
+      await settle();
+
+      const task = await api.getTask('p1', '1');
+      expect(task.priority).toBe('LOW');
+      expect(task.dueDate).toBeUndefined();
+      expect(task.labels).toEqual(['safari', 'payments', '3ds']);
+      expect(text('.edit-due .value')).toBe('No due date');
+    });
+
+    it('reports an edit, so the list further back shows it', async () => {
+      await create();
+      await settle();
+      page().pickPriority('LOW');
+      await settle();
+      expect(TestBed.inject(TaskChangesService).changed()?.task.priority).toBe(
+        'LOW'
+      );
+    });
+
+    it('puts a refused type change back and shows the server’s message', async () => {
+      await create({ taskId: '6' });
+      await settle();
+
+      page().pickType('TASK');
+      await settle();
+
+      expect(lastToast()).toBe(
+        'A task with subtasks must stay a master or an epic'
+      );
+      expect(text('.chip.type')).toBe('Epic');
+    });
+
+    it('saves a description as Markdown', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      page().save({
+        description: 'Check **both** browsers',
+        descriptionFormat: 'MARKDOWN',
+      });
+      await settle();
+      expect(await api.getTask('p1', '2')).toMatchObject({
+        description: 'Check **both** browsers',
+        descriptionFormat: 'MARKDOWN',
+      });
+    });
+
+    it('adds and removes labels through the label endpoints when the picker closes', async () => {
+      await create();
+      await settle();
+      const update = vi.spyOn(api, 'updateTask');
+      const add = vi.spyOn(api, 'addTaskLabel');
+      const remove = vi.spyOn(api, 'removeTaskLabel');
+
+      page().openEditor('labels');
+      await settle();
+      page().labelDraft.set(['payments', '3ds', 'ios']);
+      page().editorClosed('labels');
+      await settle();
+
+      expect(add).toHaveBeenCalledWith('p1', 'l4', '1');
+      expect(remove).toHaveBeenCalledWith('p1', 'l1', '1');
+      expect(update).not.toHaveBeenCalled();
+      expect((await api.getTask('p1', '1')).labels).toEqual([
+        'payments',
+        '3ds',
+        'ios',
+      ]);
+    });
+
+    it('sends nothing when the labels didn’t change', async () => {
+      await create();
+      await settle();
+      const add = vi.spyOn(api, 'addTaskLabel');
+      page().openEditor('labels');
+      await settle();
+      page().editorClosed('labels');
+      await settle();
+      expect(add).not.toHaveBeenCalled();
+    });
+
+    it('moves a task under an epic from the parent picker', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      page().openEditor('parent');
+      await settle();
+      expect(
+        page()
+          .parentItems()
+          ?.map((i) => i.label)
+      ).toEqual(['Migrate saved cards']);
+
+      page().pickParent('6');
+      await settle();
+      expect((await api.getTask('p1', '2')).parentTaskId).toBe('6');
+      expect(text('.parent .key')).toBe('CHK-120');
+    });
+
+    it('moves a task to the root from the parent picker', async () => {
+      await create();
+      await settle();
+      page().openEditor('parent');
+      await settle();
+      expect(page().parentItems()?.[0]).toMatchObject({
+        id: '',
+        label: 'No parent',
+      });
+
+      page().pickParent('');
+      await settle();
+      expect((await api.getTask('p1', '1')).parentTaskId).toBeUndefined();
+      expect(text('.parent')).toBeUndefined();
+    });
+
+    it('shows the server’s message when the parent is refused', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      vi.spyOn(api, 'changeTaskParent').mockRejectedValue(
+        new ApiError(400, {
+          code: 'MAX_HIERARCHY_DEPTH_EXCEEDED',
+          message: 'Too deep',
+        })
+      );
+      page().openEditor('parent');
+      await settle();
+      page().pickParent('6');
+      await settle();
+      expect(lastToast()).toBe('Too deep');
+      expect(page().loadedTask()?.parentTaskId).toBeUndefined();
+    });
+
+    it('reassigns with every chosen person, keeping co-assignees', async () => {
+      await create({ api: withRole('LEAD') });
+      await settle();
+
+      page().openEditor('assignees');
+      await settle();
+      expect(page().assigneeDraft()).toEqual(['a1']);
+      page().assigneeDraft.set(['a1', 'a2']);
+      page().editorClosed('assignees');
+      await settle();
+
+      expect(
+        (await api.getTask('p1', '1')).assignees?.map((a) => a.firstName)
+      ).toEqual(['Ada', 'Ben']);
+    });
+
+    it('offers no edits on an archived task', async () => {
+      const archived = new InMemoryFluxApi();
+      await archived.changeTaskStatus('p1', '2', {
+        status: 'done',
+        resolution: 'done',
+      });
+      await archived.archiveTask('p1', '2');
+      await create({ taskId: '2', api: archived });
+      await settle();
+
+      expect(page().canEdit()).toBe(false);
+      expect(page().canArchive()).toBe(false);
+      expect(element().querySelector('button.edit-title')).toBeNull();
+      expect(element().querySelector('button.status')).toBeNull();
+    });
+  });
+
+  describe('overflow sheet', () => {
+    const run = async (action: OverflowAction) => {
+      page().chooseOverflow(action);
+      page().overflowClosed();
+      await settle();
+    };
+
+    it('opens once the task has loaded', async () => {
+      await create();
+      expect(
+        element().querySelector<HTMLIonButtonElement>('.more')?.disabled
+      ).toBe(true);
+      await settle();
+      expect(
+        element().querySelector<HTMLIonButtonElement>('.more')?.disabled
+      ).toBe(false);
+    });
+
+    it('offers each action only to the roles that may use it', async () => {
+      const flags = () => ({
+        edit: page().canEdit(),
+        reassign: page().canReassign(),
+        delete: page().canDelete(),
+      });
+
+      await create({ api: withRole('VIEWER') });
+      await settle();
+      expect(flags()).toEqual({ edit: false, reassign: false, delete: false });
+
+      await create({ api: withRole('EDITOR') });
+      await settle();
+      expect(flags()).toEqual({ edit: true, reassign: false, delete: false });
+
+      await create({ api: withRole('LEAD') });
+      await settle();
+      expect(flags()).toEqual({ edit: true, reassign: true, delete: true });
+    });
+
+    it('offers Archive for a done task only', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      expect(page().canArchive()).toBe(false);
+
+      await create({ taskId: '6' });
+      await settle();
+      expect(page().canArchive()).toBe(true);
+    });
+
+    it('opens the parent picker and Reassign once the sheet has closed', async () => {
+      await create({ api: withRole('LEAD') });
+      await settle();
+
+      page().chooseOverflow('parent');
+      expect(page().editor()).toBeUndefined();
+      page().overflowClosed();
+      expect(page().editor()).toBe('parent');
+
+      await run('reassign');
+      expect(page().editor()).toBe('assignees');
+    });
+
+    it('copies the task’s web link', async () => {
+      await create();
+      await settle();
+      await run('link');
+      expect(clipboard.write).toHaveBeenCalledWith({
+        string: 'http://localhost:4200/projects/p1/tasks/1',
+      });
+      expect(lastToast()).toBe('Copied link');
+    });
+
+    it('archives a done task with Undo, and the list drops its row', async () => {
+      const done = new InMemoryFluxApi();
+      for (const id of ['1', '4']) {
+        await done.changeTaskStatus('p1', id, {
+          status: 'done',
+          resolution: 'done',
+        });
+      }
+      await create({ taskId: '6', api: done });
+      await settle();
+      await run('archive');
+
+      expect((await api.getTask('p1', '6')).isArchived).toBe(true);
+      expect(TestBed.inject(TaskChangesService).changed()?.task).toMatchObject({
+        id: '6',
+        isArchived: true,
+      });
+      expect(page().canEdit()).toBe(false);
+
+      const undo = toast.create.mock.calls
+        .map(([options]) => options)
+        .find((o) => o.buttons?.[0]?.text === 'Undo');
+      expect(undo.message).toBe('Archived CHK-120');
+      undo.buttons[0].handler();
+      await settle();
+      expect((await api.getTask('p1', '6')).isArchived).toBe(false);
+      expect(page().canEdit()).toBe(true);
+    });
+
+    it('deletes after an alert naming the key, then goes back', async () => {
+      await create({ api: withRole('LEAD') });
+      await settle();
+      await run('delete');
+
+      expect(alert.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          header: 'Delete task?',
+          message:
+            'This will permanently delete CHK-142. This action cannot be undone.',
+        })
+      );
+      await expect(api.getTask('p1', '1')).rejects.toThrow();
+      expect(TestBed.inject(TaskChangesService).changed()).toMatchObject({
+        task: { id: '1' },
+        removed: true,
+      });
+      expect(lastToast()).toBe('Deleted CHK-142');
+      expect(nav.pop).toHaveBeenCalled();
+    });
+
+    it('goes to the tab’s root after deleting a deep-linked task', async () => {
+      await create({ api: withRole('LEAD') });
+      await settle();
+      nav.pop.mockResolvedValue(false);
+      await run('delete');
+      await vi.waitFor(() =>
+        expect(nav.navigateBack).toHaveBeenCalledWith('/tabs/projects')
+      );
+    });
+
+    it('keeps the task when the alert is cancelled', async () => {
+      await create({ api: withRole('LEAD') });
+      await settle();
+      alert.role = 'cancel';
+      await run('delete');
+      await expect(api.getTask('p1', '1')).resolves.toBeDefined();
+      expect(nav.pop).not.toHaveBeenCalled();
+    });
   });
 
   describe('status changes', () => {
-    /** An API where the caller has `role` in p1. */
-    function withRole(role: 'COMMENTER' | 'EDITOR' | 'VIEWER') {
-      const withRoleApi = new InMemoryFluxApi();
-      vi.spyOn(withRoleApi, 'listMyProjects').mockResolvedValue({
-        content: [{ project: { id: 'p1', name: 'Checkout' }, role }],
-      });
-      return withRoleApi;
-    }
-
     const move = () => element().querySelector<HTMLElement>('ion-footer .move');
     const pill = () => text('.status');
     const loaded = () =>

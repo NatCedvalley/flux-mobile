@@ -86,3 +86,18 @@ ion-skeleton-text.loading {
   height: 52px;
   border-radius: var(--flux-radius-card);
 }
+
+// The scrolling body of a sheet that may be as tall as its content
+// (`flux-sheet-auto`), where an ion-content would collapse to nothing: it
+// fills a full-height sheet, and stops short of the top of the screen in an
+// auto-height one, as the status sheet's does.
+.body {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: var(--ion-safe-area-bottom, 0px);
+  overflow-y: auto;
+}
+
+:host-context(.flux-sheet-auto) .body {
+  max-height: calc(100vh - 260px);
+}

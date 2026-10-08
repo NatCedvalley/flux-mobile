@@ -14,6 +14,7 @@ export const environment = {
   apiBaseUrl: 'http://localhost:9003/api/v1',
   iamBaseUrl: 'http://localhost:9001/api/v1',
   notificationWsUrl: 'http://localhost:9005/ws',
+  webBaseUrl: 'http://localhost:4200',
 } satisfies AppEnvironment;
 
 /*

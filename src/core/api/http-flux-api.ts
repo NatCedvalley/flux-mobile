@@ -1,6 +1,7 @@
 import type { FluxApi } from './flux-api';
 import type {
   AppNotification,
+  Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -12,11 +13,14 @@ import type {
   ProjectTasksQuery,
   Task,
   TaskActivity,
+  TaskAssign,
   TaskComment,
+  TaskParentChange,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
   TaskUnarchive,
+  TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
   WorkflowStatus,
@@ -61,6 +65,34 @@ export class HttpFluxApi implements FluxApi {
 
   getTask(projectId: string, taskId: string): Promise<Task> {
     return this.get(taskPath(projectId, taskId));
+  }
+
+  updateTask(
+    projectId: string,
+    taskId: string,
+    update: TaskUpdate
+  ): Promise<Task> {
+    return this.send('PUT', taskPath(projectId, taskId), update);
+  }
+
+  changeTaskParent(
+    projectId: string,
+    taskId: string,
+    change: TaskParentChange
+  ): Promise<Task> {
+    return this.send('PATCH', `${taskPath(projectId, taskId)}/parent`, change);
+  }
+
+  assignTask(
+    projectId: string,
+    taskId: string,
+    assign: TaskAssign
+  ): Promise<Task> {
+    return this.send('PATCH', `${taskPath(projectId, taskId)}/assign`, assign);
+  }
+
+  async deleteTask(projectId: string, taskId: string): Promise<void> {
+    await this.send('DELETE', taskPath(projectId, taskId));
   }
 
   changeTaskStatus(
@@ -159,6 +191,26 @@ export class HttpFluxApi implements FluxApi {
     );
   }
 
+  listLabels(projectId: string): Promise<Label[]> {
+    return this.get(`/projects/${encodeURIComponent(projectId)}/labels`);
+  }
+
+  async addTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void> {
+    await this.send('POST', taskLabelPath(projectId, labelId, taskId));
+  }
+
+  async removeTaskLabel(
+    projectId: string,
+    labelId: string,
+    taskId: string
+  ): Promise<void> {
+    await this.send('DELETE', taskLabelPath(projectId, labelId, taskId));
+  }
+
   listAssignableMembers(projectId: string): Promise<ProjectMember[]> {
     return this.get(
       `/projects/${encodeURIComponent(projectId)}/members/assignable`
@@ -190,4 +242,12 @@ export class HttpFluxApi implements FluxApi {
 
 function taskPath(projectId: string, taskId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`;
+}
+
+function taskLabelPath(
+  projectId: string,
+  labelId: string,
+  taskId: string
+): string {
+  return `/projects/${encodeURIComponent(projectId)}/labels/${encodeURIComponent(labelId)}/tasks/${encodeURIComponent(taskId)}`;
 }

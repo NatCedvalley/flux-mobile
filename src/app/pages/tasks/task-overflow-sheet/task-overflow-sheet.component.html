@@ -1,0 +1,123 @@
+<header>
+  <h1>{{ taskKey() }}</h1>
+  <p class="subtitle">{{ title() }}</p>
+</header>
+
+<ion-list lines="full">
+  @if (canReassign()) {
+    <ion-item
+      button="true"
+      detail="false"
+      class="reassign"
+      (click)="action.emit('reassign')"
+    >
+      <ion-icon
+        slot="start"
+        name="user"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Reassign</ion-label>
+      <span
+        slot="end"
+        class="aside"
+        >{{ assignee() || 'Unassigned' }}</span
+      >
+    </ion-item>
+  }
+  @if (canEdit()) {
+    <ion-item
+      button="true"
+      detail="false"
+      class="parent"
+      (click)="action.emit('parent')"
+    >
+      <ion-icon
+        slot="start"
+        name="layers"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Change parent</ion-label>
+    </ion-item>
+  }
+  <ion-item
+    button="true"
+    detail="false"
+    class="link"
+    (click)="action.emit('link')"
+  >
+    <ion-icon
+      slot="start"
+      name="link"
+      aria-hidden="true"
+    ></ion-icon>
+    <ion-label>Copy link</ion-label>
+  </ion-item>
+  <ion-item
+    button="true"
+    detail="false"
+    class="watch"
+    [disabled]="watching() === undefined"
+    (click)="action.emit('watch')"
+  >
+    <ion-icon
+      slot="start"
+      [name]="watching() ? 'bell-off' : 'bell'"
+      aria-hidden="true"
+    ></ion-icon>
+    <ion-label>{{ watching() ? 'Stop watching' : 'Watch' }}</ion-label>
+  </ion-item>
+  @if (canArchive()) {
+    <ion-item
+      button="true"
+      detail="false"
+      class="archive"
+      (click)="action.emit('archive')"
+    >
+      <ion-icon
+        slot="start"
+        name="archive"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Archive</ion-label>
+    </ion-item>
+  }
+</ion-list>
+
+@if (canDelete()) {
+  <div
+    class="band"
+    aria-hidden="true"
+  ></div>
+  <ion-list lines="none">
+    <ion-item
+      button="true"
+      detail="false"
+      class="delete"
+      (click)="action.emit('delete')"
+    >
+      <ion-icon
+        slot="start"
+        name="trash-2"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Delete task</ion-label>
+      @if (commentCount()) {
+        <span
+          slot="end"
+          class="aside"
+          >and {{ commentCount() }}
+          {{ commentCount() === 1 ? 'comment' : 'comments' }}</span
+        >
+      }
+    </ion-item>
+  </ion-list>
+}
+
+<footer>
+  <ion-button
+    class="cancel"
+    expand="block"
+    (click)="done.emit()"
+    >Cancel</ion-button
+  >
+</footer>

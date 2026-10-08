@@ -836,5 +836,19 @@ describe('ProjectTasksPage', () => {
 
       expect(headers()).toEqual(['Backlog 1', 'In Progress 2', 'Done 1']);
     });
+
+    it('drops a row archived or deleted on task detail', async () => {
+      await create();
+      await settle();
+      const changes = TestBed.inject(TaskChangesService);
+
+      changes.report({ ...(await api.getTask('p1', '2')), isArchived: true });
+      await settle();
+      expect(texts('app-project-task-row .key')).not.toContain('CHK-150');
+
+      changes.report(await api.getTask('p1', '1'), true);
+      await settle();
+      expect(texts('app-project-task-row .key')).not.toContain('CHK-142');
+    });
   });
 });

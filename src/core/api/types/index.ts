@@ -9,9 +9,11 @@ import type {
   RefreshTokenRequest as IamRefreshTokenRequest,
 } from '../generated/iam';
 import type {
+  AssignTaskRequest,
   ChangeTaskStatusRequest,
   CommentReactionResponse,
   GetMyTasksData,
+  LabelResponse,
   List2Data,
   ListCommentsData,
   ListMyProjectsData,
@@ -26,6 +28,7 @@ import type {
   TaskResponse,
   TaskViewSettingsResponse,
   UnarchiveTaskRequest,
+  UpdateTaskRequest,
   UpdateTaskViewSettingsRequest,
   WorkflowStatusResponse,
 } from '../generated/operations';
@@ -59,6 +62,21 @@ export type TaskResolution = TaskResolutionResponse;
 export type TaskStatusChange = ChangeTaskStatusRequest;
 /** Restoring an archived task: `reason` is required. */
 export type TaskUnarchive = UnarchiveTaskRequest;
+/**
+ * The body of PUT /tasks/{id}, which replaces the task: a missing title,
+ * description, type, priority or format keeps its value, but every other
+ * missing field is cleared. Build it with `taskUpdateBody` (`@core/task-edit`).
+ */
+export type TaskUpdate = UpdateTaskRequest;
+/** A project's label. Tasks carry label names; the label endpoints take ids. */
+export type Label = LabelResponse;
+/** Assigning a task: the whole list of assignees, replacing the old one. */
+export type TaskAssign = AssignTaskRequest;
+/**
+ * Moving a task under another one, or to the root with null. Hand-written:
+ * the spec's type doesn't allow the null.
+ */
+export type TaskParentChange = { parentTaskId: string | null };
 /**
  * Whether the caller gets the task's activity notifications. Hand-written:
  * the spec types the body as a map of booleans without naming the key.

@@ -1,0 +1,94 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>{{ heading() }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+  @if (searchable()) {
+    <ion-toolbar class="search-bar">
+      <ion-searchbar
+        [placeholder]="placeholder()"
+        [value]="query()"
+        (ionInput)="onSearch($event)"
+      ></ion-searchbar>
+    </ion-toolbar>
+  }
+</ion-header>
+
+<div class="body">
+  @if (failed()) {
+    <p class="note">
+      Couldn't load these.
+      <ion-button
+        fill="clear"
+        size="small"
+        (click)="retry.emit()"
+        >Retry</ion-button
+      >
+    </p>
+  } @else if (shown(); as items) {
+    @if (items.length) {
+      <ion-list
+        lines="full"
+        [attr.role]="multiple() ? 'group' : 'radiogroup'"
+        [attr.aria-label]="heading()"
+      >
+        @for (item of items; track item.id) {
+          <ion-item
+            button="true"
+            detail="false"
+            [attr.role]="multiple() ? 'checkbox' : 'radio'"
+            [attr.aria-checked]="isSelected(item.id)"
+            [class.current]="isSelected(item.id)"
+            (click)="choose(item.id)"
+          >
+            @if (item.avatar; as avatar) {
+              <span
+                slot="start"
+                class="avatar"
+                aria-hidden="true"
+                [style.background]="avatar.fill"
+                >{{ avatar.initials }}</span
+              >
+            } @else if (item.icon) {
+              <ion-icon
+                slot="start"
+                class="icon"
+                aria-hidden="true"
+                [name]="item.icon"
+              ></ion-icon>
+            }
+            <ion-label>
+              @if (item.key) {
+                <span class="key">{{ item.key }}</span>
+              }
+              <span class="label">{{ item.label }}</span>
+            </ion-label>
+            @if (isSelected(item.id)) {
+              <ion-icon
+                slot="end"
+                class="current-mark"
+                name="circle-check"
+                aria-hidden="true"
+              ></ion-icon>
+            }
+          </ion-item>
+        }
+      </ion-list>
+    } @else {
+      <p class="note empty">{{ emptyText() }}</p>
+    }
+  } @else {
+    <section>
+      <ion-skeleton-text
+        animated="true"
+        class="loading"
+      ></ion-skeleton-text>
+    </section>
+  }
+</div>

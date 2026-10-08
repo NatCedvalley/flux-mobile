@@ -1,0 +1,22 @@
+// A field on `--n3`, radius 11, like the searchbars.
+ion-textarea {
+  --background: var(--flux-n3);
+  --border-radius: var(--flux-radius-field);
+  --padding-start: var(--flux-space-12);
+  --padding-end: var(--flux-space-12);
+  --padding-top: var(--flux-space-10);
+  --padding-bottom: var(--flux-space-10);
+  --color: var(--flux-n12);
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  --highlight-color: transparent;
+  font: var(--flux-font-detail-body);
+}
+
+.hint {
+  margin-top: var(--flux-space-10);
+}
+
+ion-button.save[disabled] {
+  --color: var(--flux-na8);
+}

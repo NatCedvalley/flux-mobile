@@ -1,0 +1,86 @@
+// Handoff 3n on top of the shared sheet anatomy (sheet.scss): the key and
+// title, 54px rows with 19px icons, an 8px band, Delete in red, and a
+// filled Cancel. The sheet is as tall as its content.
+:host {
+  background: var(--flux-surface);
+}
+
+header {
+  padding: var(--flux-space-16) var(--flux-space-16) var(--flux-space-10);
+}
+
+h1 {
+  margin: 0;
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.subtitle {
+  margin: var(--flux-space-2) 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-sheet-subtitle);
+  color: var(--flux-na11);
+}
+
+ion-list {
+  margin: 0;
+}
+
+ion-item {
+  --min-height: 54px;
+  --background: var(--flux-surface);
+  --border-color: var(--flux-na4);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-14);
+    font-size: 19px;
+    color: var(--flux-na11);
+  }
+}
+
+.aside {
+  max-width: 50%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-field-value);
+  color: var(--flux-na10);
+}
+
+.band {
+  height: 8px;
+  border-block: 1px solid var(--flux-na4);
+  background: var(--flux-panel);
+}
+
+ion-item.delete {
+  font: var(--flux-font-sheet-item-current);
+
+  ion-label,
+  ion-icon {
+    color: var(--flux-red11);
+  }
+
+  .aside {
+    font: var(--flux-font-meta);
+  }
+}
+
+footer {
+  padding: var(--flux-space-14) var(--flux-space-16)
+    calc(var(--flux-space-8) + var(--ion-safe-area-bottom, 0px));
+}
+
+.cancel {
+  --background: var(--flux-n4);
+  --background-activated: var(--flux-n5);
+  --box-shadow: none;
+  --border-radius: var(--flux-radius-docked);
+  --color: var(--flux-n12);
+  height: 48px;
+  margin: 0;
+  font: var(--flux-font-sheet-button);
+}

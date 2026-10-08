@@ -47,7 +47,7 @@
 </div>
 
 <div class="card fields">
-  <div class="field">
+  <ng-template #dueRow>
     <ion-icon
       name="calendar"
       aria-hidden="true"
@@ -59,7 +59,25 @@
       [class.none]="!task().dueDate"
       >{{ due().label }}</span
     >
-  </div>
+  </ng-template>
+  @if (editable()) {
+    <button
+      type="button"
+      class="field edit-due"
+      (click)="editDue.emit()"
+    >
+      <ng-container *ngTemplateOutlet="dueRow" />
+      <ion-icon
+        class="chevron"
+        name="chevron-right"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+  } @else {
+    <div class="field">
+      <ng-container *ngTemplateOutlet="dueRow" />
+    </div>
+  }
   <div class="field">
     <ion-icon
       name="package"
@@ -96,7 +114,7 @@
       <span class="value none">None</span>
     }
   </div>
-  <div class="field">
+  <ng-template #labelsRow>
     <ion-icon
       name="tag"
       aria-hidden="true"
@@ -114,11 +132,44 @@
     } @else {
       <span class="value none">None</span>
     }
-  </div>
+  </ng-template>
+  @if (editable()) {
+    <button
+      type="button"
+      class="field edit-labels"
+      (click)="editLabels.emit()"
+    >
+      <ng-container *ngTemplateOutlet="labelsRow" />
+      <ion-icon
+        class="chevron"
+        name="chevron-right"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+  } @else {
+    <div class="field">
+      <ng-container *ngTemplateOutlet="labelsRow" />
+    </div>
+  }
 </div>
 
 <div class="card description">
-  <span class="label">Description</span>
+  <span class="label">
+    Description
+    @if (editable() && descriptionEditable()) {
+      <button
+        type="button"
+        class="edit-description"
+        aria-label="Edit the description"
+        (click)="editDescription.emit()"
+      >
+        <ion-icon
+          name="pencil"
+          aria-hidden="true"
+        ></ion-icon>
+      </button>
+    }
+  </span>
   @if (task().description?.trim()) {
     <app-rich-text
       [body]="task().description"
@@ -127,6 +178,9 @@
     />
   } @else {
     <p class="none">No description</p>
+  }
+  @if (editable() && !descriptionEditable()) {
+    <p class="none web-note">Formatted on the web — edit it there.</p>
   }
 </div>
 

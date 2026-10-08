@@ -1,0 +1,60 @@
+// The searchbar is the switcher's (3j): a 40px field on `--n3`.
+.search-bar {
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-16);
+  --padding-bottom: var(--flux-space-12);
+  --min-height: 0;
+}
+
+ion-searchbar {
+  --background: var(--flux-n3);
+  --border-radius: var(--flux-radius-field);
+  --box-shadow: none;
+  --icon-color: var(--flux-na10);
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  padding: 0;
+  min-height: 40px;
+}
+
+// The list runs edge to edge, with no section label above it.
+ion-list {
+  margin: 0;
+}
+
+.note {
+  margin: var(--flux-space-16);
+}
+
+// A person's 28px avatar, as on the filter sheet's assignee rows.
+.avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 var(--flux-space-12) 0 0;
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-row-avatar);
+  letter-spacing: var(--flux-tracking-row-avatar);
+  color: var(--flux-avatar-text);
+}
+
+.icon {
+  margin: 0 var(--flux-space-12) 0 0;
+  font-size: 19px;
+  color: var(--flux-na11);
+}
+
+ion-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.key {
+  margin-inline-end: var(--flux-space-8);
+  font: var(--flux-font-key);
+  color: var(--flux-na10);
+}

@@ -1,0 +1,13 @@
+.body {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--flux-space-8)
+    calc(var(--flux-space-16) + var(--ion-safe-area-bottom, 0px));
+}
+
+ion-datetime {
+  --background: var(--flux-bg);
+  --background-rgb: var(--ion-background-color-rgb);
+  width: 100%;
+  max-width: 360px;
+}

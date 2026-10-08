@@ -357,16 +357,22 @@ export class ProjectTasksPage {
       }
     });
 
-    // A task changed elsewhere (task detail) moves here too.
+    // A task changed elsewhere (task detail) moves here too, and leaves
+    // when it was archived or deleted.
     effect(() => {
-      const task = this.taskChanges.changed();
+      const change = this.taskChanges.changed();
       untracked(() => {
+        const task = change?.task;
         if (
           task?.id &&
           task.projectId === this.currentId() &&
           this.pager.has(task.id)
         ) {
-          this.place(task);
+          if (change?.removed || task.isArchived) {
+            this.pager.placeTask(task, undefined);
+          } else {
+            this.place(task);
+          }
         }
       });
     });

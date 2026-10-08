@@ -193,15 +193,16 @@ The page wraps each row, so project search rows don't swipe.
 - A change moves the row with `GroupedTaskPager.placeTask()` rather than a
   refetch. Taking a row out of a group still paging can make the next page
   skip a row until the list reloads.
-- A status change made on task detail moves the row too
-  (`TaskChangesService`), if it's loaded.
+- A change made on task detail moves the row too (`TaskChangesService`),
+  if it's loaded. A task archived or deleted there drops its row; one
+  restored by Undo there comes back only when the list reloads.
 
 ### Task detail
 
 Task detail (handoff 3e–3g, `src/app/pages/tasks/`) has a header block
-(back, type icon, key with a copy button, the watch bell, a disabled ⋯
-until FM-33's overflow sheet, the title up to 3 lines, then status,
-priority and type chips) over Details, Comments and Activity tabs. The bell
+(back, type icon, key with a copy button, the watch bell, ⋯ for the
+overflow sheet, the title up to 3 lines, then status, priority and type
+chips) over Details, Comments and Activity tabs. The bell
 subscribes with `POST .../subscribe` and unsubscribes with `DELETE`,
 showing the change at once and putting it back with a toast if the server
 refuses. The key is copied with `@capacitor/clipboard`.
@@ -218,11 +219,12 @@ from `MyProjectsService`.
   too.
 - A task only carries its status slug, so the status pill's name and hue
   come from the project's workflow statuses (`status-pill.ts`).
-- **Details** (`task-details/`) is display-only: the first assignee plus
-  `+n`, the reporter, due date (`12 Sep · overdue` in red), release (the
-  first linked release), parent, labels (two, then `+n`), the description
-  clamped to 6 lines with Show more, and subtasks for MASTER and EPIC only
-  (`GET .../children`). Parent and subtask links push onto the same stack.
+- **Details** (`task-details/`) shows the first assignee plus `+n`, the
+  reporter, due date (`12 Sep · overdue` in red), release (the first
+  linked release, display-only), parent, labels (two, then `+n`), the
+  description clamped to 6 lines with Show more, and subtasks for MASTER
+  and EPIC only (`GET .../children`). Parent and subtask links push onto
+  the same stack. See Editing below for what it edits.
 - **Comments** (`task-comments/`) loads with the page, so the tab shows a
   count: the server pages top-level comments (100 a page, oldest first)
   with their replies nested, and its total counts threads only, so
@@ -266,6 +268,59 @@ EDITOR+), the docked bar and the list's swipe actions.
   drops the subtasks it shows too) also offers Undo. That calls
   `POST .../unarchive` with a fixed reason.
 
+**Editing.** An EDITOR+ edits a task that isn't archived (the server
+refuses those with `TASK_ARCHIVED_READ_ONLY`). Every choice is a bottom
+sheet (an inline `flux-sheet` `ion-modal`):
+
+- Tapping the title opens a text sheet (required, at most `TITLE_MAX`, 120
+  characters; Enter saves). The priority and type chips become buttons that
+  open single-choice pickers. A type change can move the status; the server
+  does that.
+- In Details, the Due date and Labels rows get a chevron. Due date opens
+  `ion-datetime presentation="date"` (with Clear). The description's pencil
+  opens a Markdown textarea and saves `descriptionFormat: 'MARKDOWN'`.
+  Descriptions stored as HTML or Editor.js (`canEditDescription()`) show
+  "Formatted on the web — edit it there." instead. The Parent row keeps
+  opening the parent.
+- The ⋯ overflow sheet (3n, `task-overflow-sheet/`) has Reassign (LEAD+),
+  Change parent (EDITOR+), Copy link, Watch/Stop watching, Archive (EDITOR+,
+  DONE category only), and Delete (LEAD+) in red after a band. Each row
+  shows only for roles that may use it, and the chosen action runs once the
+  sheet has closed.
+  - Copy link copies `<webBaseUrl>/projects/{projectId}/tasks/{taskId}`,
+    flux-web's task route.
+  - Archive uses `TaskStatusService.archive()` with Undo; detail stays open
+    on the archived task.
+  - Delete asks first with an `ion-alert` naming the key (flux-web's
+    wording), then `DELETE .../tasks/{id}` and goes back.
+- The shared sheets are in `src/app/shared/`:
+  - `picker-sheet/` is the one searchable picker (`ion-searchbar` over a
+    list, single or multiple choice). Labels, parent, assignees, priority and
+    type use it, and FM-35's create sheet should too. A multiple choice edits
+    a draft that the page applies when the sheet closes. With
+    `remoteSearch`, it emits `searched` 300 ms after typing pauses.
+  - `text-edit-sheet/` (title, description) and `date-sheet/` (due date).
+- `TaskEditService` (`src/app/task-edit/`) does the writes like
+  `TaskStatusService`: show the change, write, fetch the task again (the
+  responses have `assignees: []`) and report it, or put it back and show
+  the server's message.
+  - `update()` sends `PUT .../tasks/{id}` with `taskUpdateBody()`
+    (`src/core/task-edit/`). The PUT replaces the task: a missing title,
+    description, type, priority or format is kept, but every other missing
+    field is cleared. So the body always sends back `dueDate`, the planned
+    dates, `labels`, `environment`, both versions, `bugOccurredAt` and
+    `affectedUser`, and its spec fails if one is dropped. flux-web's
+    calendar and detail page lose data this way; don't copy them.
+  - `setLabels()` uses `POST`/`DELETE /projects/{p}/labels/{labelId}/tasks/{t}`
+    (labels from `GET /projects/{p}/labels`, matched to the task's label
+    names by name), never `labels` on the PUT, which doesn't keep the
+    server's label links in step.
+  - `setParent()` is `PATCH .../parent` (`parentTaskId: null` moves to the
+    root). The picker searches MASTER and EPIC tasks (`parentTypes()`: a
+    MASTER only under a MASTER). The server checks cycles, types and depth.
+  - `assign()` is `PATCH .../assign`, which replaces every assignee, so the
+    picker is multi-select and starts from the current ones.
+
 **Rich text.** Descriptions and comments are stored as MARKDOWN, HTML or
 EDITORJS, and older rows hold Editor.js JSON under MARKDOWN, so the format
 is detected by content too. `renderRichText()` (`src/core/rich-text/`)
@@ -292,10 +347,12 @@ are fresh.
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
-tasks, a project's tasks, one task, a status change, archive and
-unarchive, its children, activities, comments and subscription (read,
-subscribe, unsubscribe), my projects, workflow statuses, resolutions, task
-view settings (read and update), assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+tasks, a project's tasks, one task, its update (PUT), parent,
+assignees and delete, a status change, archive and unarchive, its
+children, activities, comments and subscription (read, subscribe,
+unsubscribe), my projects, workflow statuses, resolutions, task view
+settings (read and update), labels (list, add to and remove from a task),
+assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -310,11 +367,13 @@ test double: its fixtures are dated relative to today and it applies the
 my-tasks filters (including status, priority and search) and the project
 list's filters (comma lists, assignee, labels, search) and sort, so page
 specs use it (`addProjectTasks()` adds rows to page through). Its status
-changes and archiving follow the backend's rules and error codes, and
-`done` is the closed status. CHK-142
+changes, archiving and edits follow the backend's rules and error codes
+(a PUT clears what it leaves out, as above), and `done` is the closed
+status. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
 comment thread with a reply, reactions and an Editor.js body, a day-split
-activity timeline), and the EPIC CHK-120 has two subtasks.
+activity timeline, and bug fields detail doesn't show), and the EPIC
+CHK-120 has two subtasks.
 
 ### Authentication
 
@@ -365,6 +424,12 @@ through the native HTTP stack. The WebView's origins (`https://localhost`
 on Android, `capacitor://localhost` on iOS) are therefore never subject to
 the backend's CORS list, but these requests don't appear in the WebView
 devtools Network tab.
+
+It also configures `@capacitor/keyboard` with `resize: 'body'`, so the
+body shrinks to the space above the keyboard and text fields (the edit
+sheets) stay visible. `resizeOnFullScreen` is needed too, because the
+Android WebView runs edge to edge. The settings reach the native projects
+through `cap sync` (which `npm run android`/`ios` run).
 
 ### Biometric unlock
 
@@ -487,6 +552,7 @@ shipped in a mobile bundle can be extracted, only put client-side keys here
 (e.g. a Sentry DSN) — never a real server secret.
 
 The Settings page shows the active environment name and the build version.
+`webBaseUrl` is flux-web's origin, used by task detail's Copy link.
 
 ## 7. Theme
 
@@ -769,6 +835,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-task edits and create (FM-6), push notifications
+task create (FM-35), push notifications
 (FM-7 also unregisters the device token in `AuthSession.logout()`), offline
 caching, app store assets, and Play Store upload.

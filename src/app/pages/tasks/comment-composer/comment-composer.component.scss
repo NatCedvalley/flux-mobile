@@ -1,7 +1,8 @@
 // Handoff 3f's composer: a min-44px field (radius 14, `--n2`, 1px `--na5`)
 // with the @ button inside it, and a 44px Send that turns solid indigo once
 // there is text. Detail sits in a tab, so the tab bar below keeps clear of
-// the safe area, as for the action bar.
+// the safe area, as for the action bar. The field's height cap is in
+// global.scss.
 :host {
   display: block;
 }
@@ -34,8 +35,6 @@ ion-footer {
 ion-textarea {
   flex: auto;
   min-height: 44px;
-  max-height: 140px;
-  overflow-y: auto;
   --padding-top: var(--flux-space-12);
   --padding-bottom: var(--flux-space-12);
   --padding-start: 0;

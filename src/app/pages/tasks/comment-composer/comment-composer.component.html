@@ -1,0 +1,40 @@
+<ion-footer class="ion-no-border">
+  <div class="row">
+    <div class="field">
+      <ion-textarea
+        aria-label="Comment"
+        placeholder="Write a comment…"
+        [value]="text()"
+        [autoGrow]="true"
+        [rows]="1"
+        autocapitalize="sentences"
+        (ionInput)="onInput($event)"
+      ></ion-textarea>
+      <ion-button
+        class="at"
+        fill="clear"
+        aria-label="Mention someone"
+        (click)="atTapped()"
+      >
+        <ion-icon
+          slot="icon-only"
+          name="at-sign"
+          aria-hidden="true"
+        ></ion-icon>
+      </ion-button>
+    </div>
+    <ion-button
+      class="send"
+      aria-label="Send"
+      [class.ready]="!!text().trim()"
+      [disabled]="!canSend()"
+      (click)="submit()"
+    >
+      <ion-icon
+        slot="icon-only"
+        name="send"
+        aria-hidden="true"
+      ></ion-icon>
+    </ion-button>
+  </div>
+</ion-footer>

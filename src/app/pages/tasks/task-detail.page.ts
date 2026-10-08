@@ -1,6 +1,8 @@
 import {
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -42,6 +44,12 @@ import type {
   TaskComment,
 } from '@core/api';
 import { ApiError } from '@core/auth';
+import {
+  canEditComment,
+  mentionOptions,
+  withComment,
+  withoutComment,
+} from '@core/comments';
 import { localIsoDate } from '@core/my-work';
 import { avatarFillIndex, initials } from '@core/people';
 import { can } from '@core/permissions';
@@ -57,6 +65,10 @@ import {
 import { nextStatus, workflowOrder } from '@core/task-status';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../auth/auth.service';
+import {
+  type CommentTarget,
+  CommentService,
+} from '../../comments/comment.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
@@ -76,10 +88,22 @@ import {
 } from '../../task-status/status-sheet/status-sheet.component';
 import { TaskChangesService } from '../../task-status/task-changes.service';
 import { TaskStatusService } from '../../task-status/task-status.service';
+import {
+  type CommentDraft,
+  CommentComposerComponent,
+} from './comment-composer/comment-composer.component';
+import {
+  type CommentSheetChoice,
+  type CommentSheetMode,
+  CommentSheetComponent,
+} from './comment-sheet/comment-sheet.component';
 import { statusPill } from './status-pill';
 import { TaskActionBarComponent } from './task-action-bar/task-action-bar.component';
 import { TaskActivityComponent } from './task-activity/task-activity.component';
-import { TaskCommentsComponent } from './task-comments/task-comments.component';
+import {
+  type CommentReact,
+  TaskCommentsComponent,
+} from './task-comments/task-comments.component';
 import { TaskDetailsSkeletonComponent } from './task-details/task-details-skeleton.component';
 import { TaskDetailsComponent } from './task-details/task-details.component';
 import {
@@ -89,12 +113,14 @@ import {
 
 export type DetailTab = 'activity' | 'comments' | 'details';
 
-/** The field editors, each a sheet. */
+/** The field editors, each a sheet, and the comment ones. */
 type Editor =
   | 'assignees'
+  | 'comment'
   | 'description'
   | 'due'
   | 'labels'
+  | 'mention'
   | 'parent'
   | 'priority'
   | 'title'
@@ -130,6 +156,9 @@ export type TaskPreview = Pick<
 const COMMENTS_PAGE_SIZE = 100;
 const ACTIVITY_PAGE_SIZE = 50;
 
+/** The comment sheet open, and the comment it was opened on. */
+type CommentSheet = { mode: CommentSheetMode; comment: TaskComment };
+
 /** A list not loaded yet (`state` undefined), or that failed. */
 type ListView<T> = {
   state: PagedListState<T> | undefined;
@@ -138,7 +167,8 @@ type ListView<T> = {
 
 /**
  * Task detail (handoff 3e–3g): a header with the key, watch bell, title and
- * chips, then Details, Comments and Activity tabs, over a docked action bar.
+ * chips, then Details, Comments and Activity tabs, over a docked action bar
+ * (the comment composer on the Comments tab).
  * An EDITOR+ edits the title, priority and type from the header, the due
  * date, labels and description from Details, and the rest from the overflow
  * sheet (3n), each in its own sheet; the role and archived state decide
@@ -173,6 +203,8 @@ type ListView<T> = {
     StatusSheetComponent,
     TaskActionBarComponent,
     TaskOverflowSheetComponent,
+    CommentComposerComponent,
+    CommentSheetComponent,
     PickerSheetComponent,
     TextEditSheetComponent,
     DateSheetComponent,
@@ -185,6 +217,8 @@ export class TaskDetailPage {
   private readonly nav = inject(NavController);
   private readonly statusChanges = inject(TaskStatusService);
   private readonly edits = inject(TaskEditService);
+  private readonly commentWrites = inject(CommentService);
+  private readonly injector = inject(Injector);
   private readonly taskChanges = inject(TaskChangesService);
   private readonly myProjects = inject(MyProjectsService);
   private readonly route = inject(ActivatedRoute);
@@ -249,6 +283,12 @@ export class TaskDetailPage {
   private readonly archived = computed(() => !!this.loadedTask()?.isArchived);
   /** A VIEWER gets no docked bar, a COMMENTER only its comment button. */
   protected readonly canComment = computed(() => can(this.role(), 'comment'));
+  /** Every role reacts. */
+  protected readonly canReact = computed(() => can(this.role(), 'read'));
+  /** The Comments tab docks the composer in place of the action bar. */
+  protected readonly showComposer = computed(
+    () => this.canComment() && this.tab() === 'comments'
+  );
   protected readonly canMove = computed(
     () => can(this.role(), 'changeStatus') && !this.archived()
   );
@@ -327,10 +367,15 @@ export class TaskDetailPage {
   protected readonly sheetOpen = signal(false);
   /** A closed status to open the sheet at, with its resolutions showing. */
   protected readonly sheetExpand = signal<string | undefined>(undefined);
-  /** The docked bar, which toasts sit above. */
+  /** The docked bar or the composer, which toasts sit above. */
   private readonly actionBar = viewChild(TaskActionBarComponent, {
     read: ElementRef,
   });
+  private readonly composerElement = viewChild(CommentComposerComponent, {
+    read: ElementRef,
+  });
+  private readonly composer = viewChild(CommentComposerComponent);
+  private readonly content = viewChild(IonContent);
 
   /** The bell: set as soon as it's tapped, put back if the server refuses. */
   protected readonly watching = linkedSignal(() =>
@@ -398,6 +443,24 @@ export class TaskDetailPage {
       : undefined
   );
   protected readonly assigneeDraft = signal<readonly string[]>([]);
+  /** Who a comment can mention: the members but the caller, by name. */
+  private readonly mentionChoices = computed(() =>
+    this.members.hasValue()
+      ? mentionOptions(this.members.value(), this.myId())
+      : undefined
+  );
+  protected readonly mentionItems = computed(() =>
+    this.mentionChoices()?.map((option): PickerItem => ({
+      id: option.accountId,
+      label: option.name,
+      avatar: {
+        initials: initials(option.member),
+        fill: `var(--flux-avatar-${avatarFillIndex(option.accountId) + 1})`,
+      },
+    }))
+  );
+  /** The member picked for a mention, put in once the picker has closed. */
+  private mentionPicked: { id: string; name: string } | undefined;
   /** Reassign's summary: `Ada Rahman +1`. */
   protected readonly assigneeLabel = computed(() => {
     const { first, more } = assigneeSummary(this.loadedTask()?.assignees);
@@ -463,6 +526,17 @@ export class TaskDetailPage {
     const state = this.comments().state;
     return state ? commentCount(state.items, state.total) : undefined;
   });
+  /** A comment is posting: Send waits. */
+  protected readonly sending = signal(false);
+  protected readonly commentSheet = signal<CommentSheet | undefined>(undefined);
+  protected readonly commentSheetOpen = signal(false);
+  /** The comment sheet's row chosen, run once the sheet has closed. */
+  private commentChoice: CommentSheetChoice | undefined;
+  /** The comment being edited in the text sheet. */
+  protected readonly editingComment = signal<TaskComment | undefined>(
+    undefined
+  );
+  protected readonly canEditComment = canEditComment;
 
   private readonly activityList = new PagedList<TaskActivity>(
     ACTIVITY_PAGE_SIZE
@@ -524,6 +598,157 @@ export class TaskDetailPage {
     if (tab === 'activity' && !this.activityStarted) {
       void this.startActivity();
     }
+  }
+
+  /** The docked comment button: the Comments tab, ready to type. */
+  protected openComposer(): void {
+    this.select('comments');
+    afterNextRender(() => void this.composer()?.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  /** The composer asked for the member picker. */
+  protected openMentions(): void {
+    this.mentionPicked = undefined;
+    this.membersWanted.set(true);
+    this.editor.set('mention');
+  }
+
+  protected pickMention(id: string): void {
+    const option = this.mentionChoices()?.find((o) => o.accountId === id);
+    this.mentionPicked = option && { id, name: option.name };
+    this.editor.set(undefined);
+  }
+
+  protected async postComment(draft: CommentDraft): Promise<void> {
+    if (this.sending()) {
+      return;
+    }
+    this.sending.set(true);
+    try {
+      const posted = await this.commentWrites.post(
+        this.commentTarget(),
+        draft.body,
+        draft.mentionedAccountIds
+      );
+      if (!posted) {
+        return;
+      }
+      this.composer()?.clear();
+      this.commentList.edit((items) => [...items, posted], 1);
+      afterNextRender(() => void this.content()?.scrollToBottom(300), {
+        injector: this.injector,
+      });
+    } finally {
+      this.sending.set(false);
+    }
+  }
+
+  protected async react({ comment, emoji }: CommentReact): Promise<void> {
+    const reactions = await this.commentWrites.react(
+      this.commentTarget(),
+      comment,
+      emoji
+    );
+    if (reactions && comment.id) {
+      this.commentList.edit((items) =>
+        withComment(items, comment.id ?? '', (c) => ({ ...c, reactions }))
+      );
+    }
+  }
+
+  protected openCommentSheet(
+    mode: CommentSheetMode,
+    comment: TaskComment
+  ): void {
+    this.commentChoice = undefined;
+    this.commentSheet.set({ mode, comment });
+    this.commentSheetOpen.set(true);
+  }
+
+  protected chooseInCommentSheet(choice: CommentSheetChoice): void {
+    this.commentChoice = choice;
+    this.commentSheetOpen.set(false);
+  }
+
+  /** Runs the comment sheet's row chosen, now that the sheet is gone. */
+  protected commentSheetClosed(): void {
+    this.commentSheetOpen.set(false);
+    const comment = this.commentSheet()?.comment;
+    const choice = this.commentChoice;
+    this.commentChoice = undefined;
+    if (!comment || !choice) {
+      return;
+    }
+    switch (choice.kind) {
+      case 'react':
+        void this.react({ comment, emoji: choice.emoji });
+        break;
+      case 'edit':
+        this.editingComment.set(comment);
+        this.editor.set('comment');
+        break;
+      case 'delete':
+        void this.confirmDeleteComment(comment);
+        break;
+    }
+  }
+
+  protected async saveComment(body: string): Promise<void> {
+    const comment = this.editingComment();
+    this.editor.set(undefined);
+    if (!comment?.id) {
+      return;
+    }
+    const saved = await this.commentWrites.update(
+      this.commentTarget(),
+      comment,
+      body
+    );
+    if (saved) {
+      // The response has no reactions or replies: keep the shown ones.
+      this.commentList.edit((items) =>
+        withComment(items, comment.id ?? '', (c) => ({
+          ...c,
+          body: saved.body,
+          bodyFormat: saved.bodyFormat,
+          edited: saved.edited,
+          editedAt: saved.editedAt,
+          updatedAt: saved.updatedAt,
+        }))
+      );
+    }
+  }
+
+  /** Deletes the caller's comment once confirmed. */
+  private async confirmDeleteComment(comment: TaskComment): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'Delete comment?',
+      message: 'This comment will be deleted. This action cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Delete', role: 'destructive' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    if (
+      role !== 'destructive' ||
+      !(await this.commentWrites.remove(this.commentTarget(), comment))
+    ) {
+      return;
+    }
+    // A reply isn't in the server's total, which counts threads only.
+    this.commentList.edit(
+      (items) => withoutComment(items, comment.id ?? ''),
+      comment.parentCommentId ? 0 : -1
+    );
+  }
+
+  /** The task comments are written on, and where their toasts sit. */
+  private commentTarget(): CommentTarget {
+    return { ...this.ids(), anchor: this.anchor() };
   }
 
   protected async copyKey(): Promise<void> {
@@ -636,6 +861,11 @@ export class TaskDetailPage {
       void this.saveLabels();
     } else if (editor === 'assignees') {
       void this.saveAssignees();
+    } else if (editor === 'mention' && this.mentionPicked) {
+      void this.composer()?.insertMention(this.mentionPicked);
+      this.mentionPicked = undefined;
+    } else if (editor === 'comment') {
+      this.editingComment.set(undefined);
     }
   }
 
@@ -731,8 +961,13 @@ export class TaskDetailPage {
   private view() {
     return {
       apply: (t: Task) => this.task.set(t),
-      anchor: this.actionBar()?.nativeElement,
+      anchor: this.anchor(),
     };
+  }
+
+  /** The docked footer showing, which toasts sit above (none for a VIEWER). */
+  private anchor(): HTMLElement | undefined {
+    return (this.actionBar() ?? this.composerElement())?.nativeElement;
   }
 
   /** The timeline has a new entry once an edit lands. */
@@ -766,7 +1001,7 @@ export class TaskDetailPage {
     const archived = await this.statusChanges.archive(task, {
       removed: () => this.task.set({ ...task, isArchived: true }),
       restored: (t) => this.task.set(t),
-      anchor: this.actionBar()?.nativeElement,
+      anchor: this.anchor(),
     });
     if (archived) {
       this.taskChanges.report({ ...task, isArchived: true });
@@ -792,7 +1027,7 @@ export class TaskDetailPage {
     const { role } = await alert.onDidDismiss();
     if (
       role !== 'destructive' ||
-      !(await this.edits.delete(task, this.actionBar()?.nativeElement))
+      !(await this.edits.delete(task, this.anchor()))
     ) {
       return;
     }
@@ -836,7 +1071,7 @@ export class TaskDetailPage {
         choice.resolution,
         {
           apply: (t) => this.task.set(t),
-          anchor: this.actionBar()?.nativeElement,
+          anchor: this.anchor(),
         }
       );
       // The timeline has a new entry.

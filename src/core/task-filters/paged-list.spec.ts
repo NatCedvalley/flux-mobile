@@ -92,4 +92,20 @@ describe('PagedList', () => {
     expect(fetch).toHaveBeenLastCalledWith(1, 2);
     expect(ids(list)).toHaveLength(4);
   });
+
+  it('edits the loaded rows and moves the total, notifying', async () => {
+    const list = new PagedList<Row>(2);
+    const listener = vi.fn();
+    list.onChange(listener);
+    await list.start(fetcher(3));
+
+    list.edit((rows) => [...rows, { id: 'new' }], 1);
+    expect(ids(list)).toEqual(['r-0', 'r-1', 'new']);
+    expect(list.state.total).toBe(4);
+
+    list.edit((rows) => rows.filter((r) => r.id !== 'r-0'), -1);
+    expect(ids(list)).toEqual(['r-1', 'new']);
+    expect(list.state.total).toBe(3);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
 });

@@ -1,10 +1,12 @@
 import type {
   AppNotification,
+  CommentReaction,
   Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTaskComment,
   NotificationsQuery,
   Page,
   PageQuery,
@@ -14,6 +16,7 @@ import type {
   TaskActivity,
   TaskAssign,
   TaskComment,
+  TaskCommentUpdate,
   TaskParentChange,
   TaskResolution,
   TaskStatusChange,
@@ -123,6 +126,49 @@ export type FluxApi = {
     taskId: string,
     query?: PageQuery
   ): Promise<Page<TaskComment>>;
+
+  /**
+   * POST /projects/{projectId}/tasks/{taskId}/comments (COMMENTER+). The
+   * response has no reactions or replies.
+   */
+  addTaskComment(
+    projectId: string,
+    taskId: string,
+    comment: NewTaskComment
+  ): Promise<TaskComment>;
+
+  /**
+   * PUT /projects/{projectId}/tasks/{taskId}/comments/{commentId}: the
+   * author only. The response has no reactions or replies.
+   */
+  updateTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    update: TaskCommentUpdate
+  ): Promise<TaskComment>;
+
+  /**
+   * DELETE /projects/{projectId}/tasks/{taskId}/comments/{commentId}: the
+   * author only, and refused while the comment has replies.
+   */
+  deleteTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string
+  ): Promise<void>;
+
+  /**
+   * POST /projects/{projectId}/tasks/{taskId}/comments/{commentId}/reactions:
+   * adds the caller's `emoji` reaction, or removes it if they have it.
+   * Returns the comment's reactions.
+   */
+  toggleCommentReaction(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    emoji: string
+  ): Promise<CommentReaction[]>;
 
   /** GET /projects/{projectId}/tasks/{taskId}/subscription */
   getTaskSubscription(

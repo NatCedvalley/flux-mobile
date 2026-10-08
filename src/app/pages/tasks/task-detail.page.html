@@ -242,6 +242,11 @@
             [comments]="state.items"
             [myId]="myId()"
             [now]="now()"
+            [canReact]="canReact()"
+            [canWrite]="canComment()"
+            (react)="react($event)"
+            (addReaction)="openCommentSheet('react', $event)"
+            (actions)="openCommentSheet('actions', $event)"
           />
         } @else {
           <app-empty-state
@@ -299,15 +304,82 @@
   </ion-infinite-scroll>
 </ion-content>
 
-@if (canComment()) {
+@if (showComposer()) {
+  <app-comment-composer
+    [sending]="sending()"
+    (send)="postComment($event)"
+    (mention)="openMentions()"
+  />
+} @else if (canComment()) {
   <app-task-action-bar
     [next]="next()"
     [canMove]="canMove()"
     [moveDisabled]="!statusReady()"
-    (comment)="select('comments')"
+    (comment)="openComposer()"
     (move)="moveNext()"
   />
 }
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="commentSheetOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="commentSheetClosed()"
+>
+  <ng-template>
+    @if (commentSheet(); as sheet) {
+      <app-comment-sheet
+        [mode]="sheet.mode"
+        [reactions]="sheet.comment.reactions"
+        [editable]="canEditComment(sheet.comment)"
+        (choice)="chooseInCommentSheet($event)"
+        (done)="commentSheetOpen.set(false)"
+      />
+    }
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="editor() === 'mention'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="editorClosed('mention')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Mention"
+      placeholder="Search people"
+      emptyText="No one matches"
+      [items]="mentionItems()"
+      [failed]="!!members.error()"
+      (picked)="pickMention($event)"
+      (retry)="members.reload()"
+      (done)="editor.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="editor() === 'comment'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didPresent)="focusText()"
+  (didDismiss)="editorClosed('comment')"
+>
+  <ng-template>
+    <app-text-edit-sheet
+      heading="Edit comment"
+      hint="Written in Markdown."
+      [value]="editingComment()?.body ?? ''"
+      [required]="true"
+      (saved)="saveComment($event)"
+      (done)="editor.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"

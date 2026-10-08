@@ -45,6 +45,19 @@
             · edited
           }
         </span>
+        @if (canWrite() && isMine(comment)) {
+          <button
+            type="button"
+            class="more"
+            aria-label="Comment actions"
+            (click)="actions.emit(comment)"
+          >
+            <ion-icon
+              name="ellipsis"
+              aria-hidden="true"
+            ></ion-icon>
+          </button>
+        }
       </div>
       <div
         class="bubble"
@@ -55,24 +68,40 @@
           [format]="comment.bodyFormat"
         />
       </div>
-      @if (comment.reactions?.length) {
+      @if (comment.reactions?.length || canReact()) {
         <ul
           class="reactions"
           aria-label="Reactions"
         >
           @for (reaction of comment.reactions; track reaction.emoji) {
-            <li
-              class="reaction"
-              [class.mine]="reaction.reactedByMe"
-              [attr.aria-label]="
-                reaction.emoji +
-                ' ' +
-                reaction.count +
-                (reaction.reactedByMe ? ', including you' : '')
-              "
-            >
-              <span aria-hidden="true">{{ reaction.emoji }}</span>
-              <span aria-hidden="true">{{ reaction.count }}</span>
+            <li>
+              <button
+                type="button"
+                class="reaction"
+                [class.mine]="reaction.reactedByMe"
+                [disabled]="!canReact()"
+                [attr.aria-pressed]="!!reaction.reactedByMe"
+                [attr.aria-label]="reactionLabel(reaction)"
+                (click)="react.emit({ comment, emoji: reaction.emoji ?? '' })"
+              >
+                <span aria-hidden="true">{{ glyph(reaction.emoji) }}</span>
+                <span aria-hidden="true">{{ reaction.count }}</span>
+              </button>
+            </li>
+          }
+          @if (canReact()) {
+            <li>
+              <button
+                type="button"
+                class="add-reaction"
+                aria-label="Add reaction"
+                (click)="addReaction.emit(comment)"
+              >
+                <ion-icon
+                  name="smile-plus"
+                  aria-hidden="true"
+                ></ion-icon>
+              </button>
             </li>
           }
         </ul>

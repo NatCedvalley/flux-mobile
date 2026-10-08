@@ -208,7 +208,7 @@ showing the change at once and putting it back with a toast if the server
 refuses. The key is copied with `@capacitor/clipboard`.
 
 The docked action bar (`task-action-bar/`) has a comment button (it opens
-the Comments tab until FM-34's composer). For an EDITOR+ it also has "Move
+the Comments tab and focuses the composer). For an EDITOR+ it also has "Move
 to <next status>", or "Change status" when there is no next one. A VIEWER
 gets no bar. The caller's role and the project's `categoryPositions` come
 from `MyProjectsService`.
@@ -228,8 +228,8 @@ from `MyProjectsService`.
 - **Comments** (`task-comments/`) loads with the page, so the tab shows a
   count: the server pages top-level comments (100 a page, oldest first)
   with their replies nested, and its total counts threads only, so
-  `commentCount()` adds the replies. Read-only, with reactions; the
-  caller's own comments are tinted.
+  `commentCount()` adds the replies. The caller's own comments are
+  tinted. See Comment writing below.
 - **Activity** (`task-activity/`) loads the first time its tab opens,
   newest first, grouped by day (`activityDays()`), with `activityView()`
   (`src/core/task-detail/`) deciding each entry's icon, tint and wording.
@@ -321,6 +321,45 @@ sheet (an inline `flux-sheet` `ion-modal`):
   - `assign()` is `PATCH .../assign`, which replaces every assignee, so the
     picker is multi-select and starts from the current ones.
 
+**Comment writing.** `CommentService` (`src/app/comments/`) does the
+writes. Each one waits for the server, then changes the loaded thread in
+place with `PagedList.edit()` and `withComment()`/`withoutComment()`
+(`src/core/comments/`), or shows the server's message in a toast. No write
+refetches the thread.
+
+- On the Comments tab a COMMENTER+ gets the composer
+  (`comment-composer/`, 3f) in place of the action bar: an
+  `ion-textarea autoGrow` with an @ button, and Send.
+  - Comments are posted as MARKDOWN and appended to the loaded thread. If
+    the thread still has pages to load, the new comment sits above them
+    until it reloads.
+  - The POST and PUT responses have no reactions or replies, so an edit
+    merges the body and `edited` into the shown comment.
+  - The paperclip waits for FM-36.
+- **Mentions:** an @ that starts a word, or the @ button, opens the member
+  picker (`/members/assignable`, without the caller).
+  - A mention is plain `@First Last` text. Its id goes in
+    `mentionedAccountIds` while that text stays in the comment.
+    `mentionedAccountIds` only drives the server's notifications.
+  - Unlike the web's Editor.js mention spans, these carry no account id, so
+    on the web they render as styled names (two capitalised words) and
+    can't be clicked.
+- **Reactions:** the server stores keys (`thumbs_up`, …), and
+  `reactionGlyph()` maps them to flux-web's eight glyphs (`REACTIONS`).
+  - Any role reacts. A pill toggles that reaction, and the smile-plus
+    button opens the comment sheet (`comment-sheet/`) with all eight.
+  - Like the web, each person keeps one reaction per comment.
+    `reactionToggles()` takes the caller's old one off first, though the
+    server would allow several.
+- **Edit and delete:** the caller's own comments get a ⋯ that opens the
+  same sheet with Edit and Delete (both author-only, COMMENT_NOT_AUTHOR).
+  - Edit uses the text sheet in Markdown. A comment stored as HTML or
+    Editor.js (`canEditComment()`) can't be edited here.
+  - Delete asks first with an `ion-alert`. COMMENT_HAS_REPLIES shows the
+    server's message.
+- The composer relies on Capacitor's `resize: 'body'` to stay above the
+  keyboard, and on Ionic hiding the tab bar while the keyboard is open.
+
 **Rich text.** Descriptions and comments are stored as MARKDOWN, HTML or
 EDITORJS, and older rows hold Editor.js JSON under MARKDOWN, so the format
 is detected by content too. `renderRichText()` (`src/core/rich-text/`)
@@ -349,8 +388,8 @@ are fresh.
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
 tasks, a project's tasks, one task, its update (PUT), parent,
 assignees and delete, a status change, archive and unarchive, its
-children, activities, comments and subscription (read, subscribe,
-unsubscribe), my projects, workflow statuses, resolutions, task view
+children, activities, comments (list, post, edit, delete and toggle a
+reaction) and subscription (read, subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
 assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
@@ -369,7 +408,9 @@ list's filters (comma lists, assignee, labels, search) and sort, so page
 specs use it (`addProjectTasks()` adds rows to page through). Its status
 changes, archiving and edits follow the backend's rules and error codes
 (a PUT clears what it leaves out, as above), and `done` is the closed
-status. Project p1 has five labels. CHK-142
+status. Comments are written as Ada (`a1`, the page specs' account): only
+she edits or deletes hers, a comment with replies can't be deleted, and
+reactions toggle hers. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
 comment thread with a reply, reactions and an Editor.js body, a day-split
 activity timeline, and bug fields detail doesn't show), and the EPIC

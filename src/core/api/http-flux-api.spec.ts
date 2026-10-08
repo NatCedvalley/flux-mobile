@@ -129,6 +129,65 @@ describe('HttpFluxApi', () => {
     expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/comments?size=100`);
   });
 
+  it('posts a comment', async () => {
+    const { api, url, init } = setup({ id: 'c9' });
+    await expect(
+      api.addTaskComment('p1', 't1', {
+        body: 'Hi @Ben Tan',
+        bodyFormat: 'MARKDOWN',
+        mentionedAccountIds: ['a2'],
+      })
+    ).resolves.toEqual({ id: 'c9' });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/comments`);
+    expect(init().method).toBe('POST');
+    expect(JSON.parse(init().body)).toEqual({
+      body: 'Hi @Ben Tan',
+      bodyFormat: 'MARKDOWN',
+      mentionedAccountIds: ['a2'],
+    });
+  });
+
+  it('edits a comment', async () => {
+    const { api, url, init } = setup({ id: 'c 1' });
+    await api.updateTaskComment('p1', 't1', 'c 1', {
+      body: 'Fixed',
+      bodyFormat: 'MARKDOWN',
+    });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/comments/c%201`);
+    expect(init().method).toBe('PUT');
+    expect(JSON.parse(init().body)).toEqual({
+      body: 'Fixed',
+      bodyFormat: 'MARKDOWN',
+    });
+  });
+
+  it('deletes a comment, taking the empty 204', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new HttpFluxApi(BASE_URL, withToken, fetchFn);
+    await expect(
+      api.deleteTaskComment('p1', 't1', 'c1')
+    ).resolves.toBeUndefined();
+    expect(fetchFn.mock.calls[0][0]).toBe(
+      `${BASE_URL}/projects/p1/tasks/t1/comments/c1`
+    );
+    expect(fetchFn.mock.calls[0][1].method).toBe('DELETE');
+  });
+
+  it('toggles a reaction, returning the comment’s reactions', async () => {
+    const reactions = [{ emoji: 'heart', count: 1, reactedByMe: true }];
+    const { api, url, init } = setup(reactions);
+    await expect(
+      api.toggleCommentReaction('p1', 't1', 'c1', 'heart')
+    ).resolves.toEqual(reactions);
+    expect(url()).toBe(
+      `${BASE_URL}/projects/p1/tasks/t1/comments/c1/reactions`
+    );
+    expect(init().method).toBe('POST');
+    expect(JSON.parse(init().body)).toEqual({ emoji: 'heart' });
+  });
+
   it('gets the caller’s subscription to a task', async () => {
     const { api, url, init } = setup({ subscribed: true });
     await expect(api.getTaskSubscription('p1', 't1')).resolves.toEqual({

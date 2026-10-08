@@ -614,6 +614,17 @@ $flux-type: (
     size: 15px,
     weight: 650,
   ),
+  // Comment writing (FM-34): the composer's text and placeholder, and a
+  // glyph in the reaction sheet.
+  composer: (
+      size: 14px,
+      line: 20px,
+      weight: 450,
+    ),
+  reaction-choice: (
+    size: 24px,
+    weight: 450,
+  ),
 ) !default;
 
 // Ionic's named colours, built from the scales above. Each needs only a

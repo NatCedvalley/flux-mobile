@@ -1,0 +1,27 @@
+// The reaction choices: eight 44px glyph buttons in a row, the caller's
+// own on the indigo tint, as their pill in the thread.
+.reaction-choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--flux-space-8);
+  padding: var(--flux-space-4) var(--flux-space-16) 0;
+}
+
+.reaction-choice {
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--flux-radius-card);
+  background: var(--flux-na2);
+  font: var(--flux-font-reaction-choice);
+
+  &.mine {
+    background: var(--flux-pa3);
+    box-shadow: 0 0 0 1px var(--flux-pa6);
+  }
+}
+
+.note.web-only {
+  margin: 0;
+  padding: 0 var(--flux-space-16) var(--flux-space-10);
+}

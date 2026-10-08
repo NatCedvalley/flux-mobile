@@ -64,6 +64,18 @@ export class PagedList<T extends { id?: string }> {
     return this.loadingMore;
   }
 
+  /**
+   * Changes the loaded rows in place (a row written on the device) and moves
+   * the total by `totalDelta`. Removing a row while pages remain shifts the
+   * server's later pages up, so the next page can skip a row until the list
+   * starts again.
+   */
+  edit(change: (items: T[]) => T[], totalDelta = 0): void {
+    this.items = change(this.items);
+    this.total = Math.max(0, this.total + totalDelta);
+    this.listener(this.state);
+  }
+
   private async fetchNext(): Promise<void> {
     if (this.complete || !this.fetchPage) {
       return;

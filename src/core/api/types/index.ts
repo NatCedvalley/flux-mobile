@@ -12,6 +12,7 @@ import type {
   AssignTaskRequest,
   ChangeTaskStatusRequest,
   CommentReactionResponse,
+  CreateTaskCommentRequest,
   GetMyTasksData,
   LabelResponse,
   List2Data,
@@ -28,6 +29,7 @@ import type {
   TaskResponse,
   TaskViewSettingsResponse,
   UnarchiveTaskRequest,
+  UpdateTaskCommentRequest,
   UpdateTaskRequest,
   UpdateTaskViewSettingsRequest,
   WorkflowStatusResponse,
@@ -53,7 +55,18 @@ export type AppNotification = NotificationResponse;
 export type TaskActivity = TaskActivityResponse;
 /** A top-level comment carries its replies in `replies`. */
 export type TaskComment = TaskCommentResponse;
+/**
+ * One emoji's reactions on a comment. `emoji` is a key the web maps to a
+ * glyph (`thumbs_up`, …; see `@core/comments`), not the glyph itself.
+ */
 export type CommentReaction = CommentReactionResponse;
+/**
+ * A new comment. `mentionedAccountIds` only drives the mention
+ * notifications: the server doesn't read mentions from the body.
+ */
+export type NewTaskComment = CreateTaskCommentRequest;
+/** An edited comment. The server ignores `mentionedAccountIds` here. */
+export type TaskCommentUpdate = UpdateTaskCommentRequest;
 export type TaskResolution = TaskResolutionResponse;
 /**
  * A status change: the status's slug, and a resolution's slug when (and

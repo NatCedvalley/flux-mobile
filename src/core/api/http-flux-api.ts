@@ -1,11 +1,13 @@
 import type { FluxApi } from './flux-api';
 import type {
   AppNotification,
+  CommentReaction,
   Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTaskComment,
   NotificationsQuery,
   Page,
   PageQuery,
@@ -15,6 +17,7 @@ import type {
   TaskActivity,
   TaskAssign,
   TaskComment,
+  TaskCommentUpdate,
   TaskParentChange,
   TaskResolution,
   TaskStatusChange,
@@ -139,6 +142,48 @@ export class HttpFluxApi implements FluxApi {
     return this.get(`${taskPath(projectId, taskId)}/comments`, query);
   }
 
+  addTaskComment(
+    projectId: string,
+    taskId: string,
+    comment: NewTaskComment
+  ): Promise<TaskComment> {
+    return this.send(
+      'POST',
+      `${taskPath(projectId, taskId)}/comments`,
+      comment
+    );
+  }
+
+  updateTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    update: TaskCommentUpdate
+  ): Promise<TaskComment> {
+    return this.send('PUT', commentPath(projectId, taskId, commentId), update);
+  }
+
+  async deleteTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string
+  ): Promise<void> {
+    await this.send('DELETE', commentPath(projectId, taskId, commentId));
+  }
+
+  toggleCommentReaction(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    emoji: string
+  ): Promise<CommentReaction[]> {
+    return this.send(
+      'POST',
+      `${commentPath(projectId, taskId, commentId)}/reactions`,
+      { emoji }
+    );
+  }
+
   getTaskSubscription(
     projectId: string,
     taskId: string
@@ -242,6 +287,14 @@ export class HttpFluxApi implements FluxApi {
 
 function taskPath(projectId: string, taskId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`;
+}
+
+function commentPath(
+  projectId: string,
+  taskId: string,
+  commentId: string
+): string {
+  return `${taskPath(projectId, taskId)}/comments/${encodeURIComponent(commentId)}`;
 }
 
 function taskLabelPath(

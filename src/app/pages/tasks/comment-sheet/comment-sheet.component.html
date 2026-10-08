@@ -1,0 +1,74 @@
+@if (mode() === 'react') {
+  <header>
+    <h1>Add reaction</h1>
+  </header>
+  <div
+    class="reaction-choices"
+    role="group"
+    aria-label="Reactions"
+  >
+    @for (reaction of choices; track reaction.key) {
+      <button
+        type="button"
+        class="reaction-choice"
+        [class.mine]="reaction.key === mine()"
+        [attr.aria-pressed]="reaction.key === mine()"
+        [attr.aria-label]="reaction.key.replace('_', ' ')"
+        (click)="choice.emit({ kind: 'react', emoji: reaction.key })"
+      >
+        {{ reaction.glyph }}
+      </button>
+    }
+  </div>
+} @else {
+  <header>
+    <h1>Comment</h1>
+  </header>
+  <ion-list lines="none">
+    <ion-item
+      button="true"
+      detail="false"
+      class="edit"
+      [disabled]="!editable()"
+      (click)="choice.emit({ kind: 'edit' })"
+    >
+      <ion-icon
+        slot="start"
+        name="pencil"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Edit</ion-label>
+    </ion-item>
+  </ion-list>
+  @if (!editable()) {
+    <p class="note web-only">Formatted on the web — edit it there.</p>
+  }
+  <div
+    class="band"
+    aria-hidden="true"
+  ></div>
+  <ion-list lines="none">
+    <ion-item
+      button="true"
+      detail="false"
+      class="delete"
+      (click)="choice.emit({ kind: 'delete' })"
+    >
+      <ion-icon
+        slot="start"
+        name="trash-2"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>Delete comment</ion-label>
+    </ion-item>
+  </ion-list>
+}
+
+<footer>
+  <ion-button
+    class="cancel"
+    expand="block"
+    (click)="done.emit()"
+    >Cancel</ion-button
+  >
+</footer>

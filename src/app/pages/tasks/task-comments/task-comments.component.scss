@@ -93,6 +93,28 @@ ol {
   list-style: none;
 }
 
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--flux-na10);
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
 .reaction {
   display: inline-flex;
   align-items: center;
@@ -101,12 +123,37 @@ ol {
   padding: 0 var(--flux-space-8);
   border-radius: var(--flux-radius-pill);
   box-shadow: 0 0 0 1px var(--flux-na4);
+  border: 0;
+  background: none;
   font: var(--flux-font-reaction);
   color: var(--flux-na11);
+
+  &:disabled {
+    opacity: 1;
+  }
 
   &.mine {
     background: var(--flux-pa3);
     box-shadow: none;
     color: var(--flux-pa11);
+  }
+}
+
+// Handoff 3f: a 26px outline circle with a 14px smile-plus.
+.add-reaction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--flux-radius-pill);
+  background: none;
+  box-shadow: 0 0 0 1px var(--flux-na5);
+  color: var(--flux-na10);
+
+  ion-icon {
+    font-size: 14px;
   }
 }

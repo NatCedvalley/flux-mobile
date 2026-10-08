@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { TaskComment } from '@core/api';
-import { TaskCommentsComponent } from './task-comments.component';
+import {
+  type CommentReact,
+  TaskCommentsComponent,
+} from './task-comments.component';
 
 const NOW = new Date(2026, 9, 1, 12, 0);
 const hoursAgo = (hours: number) =>
@@ -16,8 +19,8 @@ const COMMENTS: TaskComment[] = [
     bodyFormat: 'MARKDOWN',
     createdAt: hoursAgo(48),
     reactions: [
-      { emoji: '👍', count: 2, reactedByMe: true },
-      { emoji: '👀', count: 1, reactedByMe: false },
+      { emoji: 'thumbs_up', count: 2, reactedByMe: true },
+      { emoji: 'eyes', count: 1, reactedByMe: false },
     ],
     replies: [
       {
@@ -37,13 +40,19 @@ const COMMENTS: TaskComment[] = [
 describe('TaskCommentsComponent', () => {
   let fixture: ComponentFixture<TaskCommentsComponent>;
 
-  beforeEach(() => {
+  function create(inputs: Record<string, unknown> = {}) {
+    TestBed.resetTestingModule();
     fixture = TestBed.createComponent(TaskCommentsComponent);
     fixture.componentRef.setInput('comments', COMMENTS);
     fixture.componentRef.setInput('myId', 'a1');
     fixture.componentRef.setInput('now', NOW);
+    for (const [name, value] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(name, value);
+    }
     fixture.detectChanges();
-  });
+  }
+
+  beforeEach(() => create());
 
   const element = () => fixture.nativeElement as HTMLElement;
   const texts = (selector: string) =>
@@ -70,10 +79,45 @@ describe('TaskCommentsComponent', () => {
     ).toEqual([false, true]);
   });
 
-  it('shows reactions, marking the caller’s', () => {
+  it('shows reactions by their glyph, marking the caller’s', () => {
     expect(texts('.reaction')).toEqual(['👍2', '👀1']);
     expect(
       element().querySelector('.reaction.mine')?.getAttribute('aria-label')
-    ).toBe('👍 2, including you');
+    ).toBe('thumbs up 2, including you');
+  });
+
+  it('only shows reactions until the role is known', () => {
+    expect(
+      element().querySelector<HTMLButtonElement>('.reaction')?.disabled
+    ).toBe(true);
+    expect(element().querySelector('.add-reaction')).toBeNull();
+    expect(element().querySelector('.more')).toBeNull();
+  });
+
+  it('toggles a reaction and asks for the reaction sheet', () => {
+    create({ canReact: true });
+    const reacted: CommentReact[] = [];
+    const added: TaskComment[] = [];
+    fixture.componentInstance.react.subscribe((r) => reacted.push(r));
+    fixture.componentInstance.addReaction.subscribe((c) => added.push(c));
+
+    element().querySelectorAll<HTMLElement>('.reaction')[1].click();
+    element().querySelector<HTMLElement>('.add-reaction')!.click();
+
+    expect(reacted).toEqual([{ comment: COMMENTS[0], emoji: 'eyes' }]);
+    expect(added).toEqual([COMMENTS[0]]);
+    // The reply has no reactions yet, but can still get one.
+    expect(element().querySelectorAll('.add-reaction')).toHaveLength(2);
+  });
+
+  it('offers Edit and Delete on the caller’s own comments only', () => {
+    create({ canWrite: true });
+    const asked: TaskComment[] = [];
+    fixture.componentInstance.actions.subscribe((c) => asked.push(c));
+
+    const more = element().querySelectorAll<HTMLElement>('.more');
+    expect(more).toHaveLength(1);
+    more[0].click();
+    expect(asked.map((c) => c.id)).toEqual(['c2']);
   });
 });

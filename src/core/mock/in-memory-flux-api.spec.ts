@@ -210,6 +210,92 @@ describe('InMemoryFluxApi', () => {
     expect((await api.listTaskComments('p1', '2')).content).toEqual([]);
   });
 
+  describe('comment writes', () => {
+    const thread = async () =>
+      (await api.listTaskComments('p1', '1')).content ?? [];
+    const code = (promise: Promise<unknown>) =>
+      promise.then(
+        () => undefined,
+        (e: ApiError) => e.body.code
+      );
+
+    it('posts a comment as Ada at the end, or a reply under its parent', async () => {
+      const posted = await api.addTaskComment('p1', '1', { body: ' Hi ' });
+      expect(posted).toMatchObject({
+        body: 'Hi',
+        bodyFormat: 'MARKDOWN',
+        authorId: 'a1',
+        authorFirstName: 'Ada',
+        reactions: [],
+      });
+      expect((await thread()).map((c) => c.id)).toEqual([
+        'c1',
+        'c3',
+        posted.id,
+      ]);
+
+      const reply = await api.addTaskComment('p1', '1', {
+        body: 'Reply',
+        parentCommentId: 'c3',
+      });
+      expect((await thread())[1].replies?.map((c) => c.id)).toEqual([reply.id]);
+      expect(await code(api.addTaskComment('p1', '1', { body: '  ' }))).toBe(
+        'VALIDATION_ERROR'
+      );
+    });
+
+    it('edits only the caller’s own comment, answering without reactions', async () => {
+      const edited = await api.updateTaskComment('p1', '1', 'c2', {
+        body: 'Fixed',
+        bodyFormat: 'MARKDOWN',
+      });
+      expect(edited).toMatchObject({ body: 'Fixed', edited: true });
+      expect(edited.replies).toEqual([]);
+      expect((await thread())[0].replies?.[0].body).toBe('Fixed');
+      expect(
+        await code(api.updateTaskComment('p1', '1', 'c1', { body: 'Mine' }))
+      ).toBe('COMMENT_NOT_AUTHOR');
+    });
+
+    it('deletes the caller’s own comment unless it has replies', async () => {
+      await api.addTaskComment('p1', '1', {
+        body: 'Reply',
+        parentCommentId: 'c3',
+      });
+      expect(await code(api.deleteTaskComment('p1', '1', 'c3'))).toBe(
+        'COMMENT_HAS_REPLIES'
+      );
+      expect(await code(api.deleteTaskComment('p1', '1', 'c1'))).toBe(
+        'COMMENT_NOT_AUTHOR'
+      );
+
+      await api.deleteTaskComment('p1', '1', 'c2');
+      expect((await thread())[0].replies).toEqual([]);
+    });
+
+    it('toggles the caller’s reaction', async () => {
+      const othersUp = { emoji: 'thumbs_up', count: 1, reactedByMe: false };
+      expect(
+        await api.toggleCommentReaction('p1', '1', 'c1', 'thumbs_up')
+      ).toEqual([othersUp, { emoji: 'eyes', count: 1, reactedByMe: false }]);
+      expect(await api.toggleCommentReaction('p1', '1', 'c1', 'eyes')).toEqual([
+        othersUp,
+        { emoji: 'eyes', count: 2, reactedByMe: true },
+      ]);
+      expect(await api.toggleCommentReaction('p1', '1', 'c2', 'heart')).toEqual(
+        [{ emoji: 'heart', count: 1, reactedByMe: true }]
+      );
+      await api.toggleCommentReaction('p1', '1', 'c2', 'heart');
+      const [c1] = await thread();
+      expect(c1.reactions?.[1]).toEqual({
+        emoji: 'eyes',
+        count: 2,
+        reactedByMe: true,
+      });
+      expect(c1.replies?.[0].reactions).toEqual([]);
+    });
+  });
+
   it("lists a task's activities newest first", async () => {
     const page = await api.listTaskActivities('p1', '1');
     expect(page.content?.map((e) => e.action)).toEqual([

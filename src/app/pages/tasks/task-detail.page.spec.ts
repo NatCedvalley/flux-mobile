@@ -3,17 +3,20 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import {
   AlertController,
+  IonContent,
   NavController,
   ToastController,
 } from '@ionic/angular';
-import type { MyProject, Task } from '@core/api';
+import type { MyProject, Task, TaskComment } from '@core/api';
 import type { TaskChange } from '@core/task-edit';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import type { CommentSheetChoice } from './comment-sheet/comment-sheet.component';
 import type { OverflowAction } from './task-overflow-sheet/task-overflow-sheet.component';
 import { AuthService } from '../../auth/auth.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskChangesService } from '../../task-status/task-changes.service';
+import { CommentComposerComponent } from './comment-composer/comment-composer.component';
 import { TaskDetailPage, type TaskPreview } from './task-detail.page';
 
 const clipboard = vi.hoisted(() => ({ write: vi.fn() }));
@@ -671,14 +674,18 @@ describe('TaskDetailPage', () => {
       expect(element().querySelector('ion-footer')).toBeNull();
     });
 
-    it('opens the Comments tab from the comment button', async () => {
+    it('opens the Comments tab from the comment button, ready to type', async () => {
+      const focus = vi.spyOn(CommentComposerComponent.prototype, 'focus');
       await create({ taskId: '2' });
       await settle();
 
       element().querySelector<HTMLElement>('ion-footer .comment')!.click();
-      fixture.detectChanges();
+      await settle();
 
       expect(tab('Comments').getAttribute('aria-selected')).toBe('true');
+      expect(element().querySelector('app-task-action-bar')).toBeNull();
+      expect(element().querySelector('app-comment-composer')).not.toBeNull();
+      expect(focus).toHaveBeenCalled();
     });
 
     it('moves at once, then fetches the task again instead of using the response', async () => {
@@ -818,5 +825,205 @@ describe('TaskDetailPage', () => {
     expect(task).toHaveBeenCalled();
     expect(comments).toHaveBeenCalled();
     expect(complete).toHaveBeenCalled();
+  });
+
+  describe('comment writing', () => {
+    /** The page's protected members the comment tests drive. */
+    type CommentPage = {
+      editor(): string | undefined;
+      editorClosed(editor: string): void;
+      openMentions(): void;
+      pickMention(id: string): void;
+      mentionItems(): { id: string; label: string }[] | undefined;
+      openCommentSheet(mode: 'actions' | 'react', comment: TaskComment): void;
+      chooseInCommentSheet(choice: CommentSheetChoice): void;
+      commentSheetClosed(): void;
+      saveComment(body: string): Promise<void>;
+    };
+    const commentPage = () =>
+      fixture.componentInstance as unknown as CommentPage;
+    const thread = async () =>
+      (await api.listTaskComments('p1', '1')).content ?? [];
+    const texts = (selector: string) =>
+      Array.from(element().querySelectorAll(selector)).map((e) =>
+        e.textContent?.replace(/\s+/g, ' ').trim()
+      );
+
+    async function openComments(options: { api?: InMemoryFluxApi } = {}) {
+      await create(options);
+      await settle();
+      tab('Comments').click();
+      await settle();
+    }
+
+    /** Runs the comment sheet's `choice` on `comment`, as a tap would. */
+    function choose(comment: TaskComment, choice: CommentSheetChoice) {
+      commentPage().openCommentSheet(
+        choice.kind === 'react' ? 'react' : 'actions',
+        comment
+      );
+      commentPage().chooseInCommentSheet(choice);
+      commentPage().commentSheetClosed();
+    }
+
+    beforeEach(() => {
+      // Ionic's elements aren't hydrated in tests.
+      vi.spyOn(IonContent.prototype, 'scrollToBottom').mockResolvedValue();
+    });
+
+    it('docks the composer on Comments for a COMMENTER, and nothing for a VIEWER', async () => {
+      await openComments({ api: withRole('COMMENTER') });
+      expect(element().querySelector('app-comment-composer')).not.toBeNull();
+      expect(element().querySelector('app-task-action-bar')).toBeNull();
+
+      await openComments({ api: withRole('VIEWER') });
+      expect(element().querySelector('ion-footer')).toBeNull();
+      // A VIEWER still reacts, but edits nothing.
+      expect(element().querySelector('.add-reaction')).not.toBeNull();
+      expect(element().querySelector('app-task-comments .more')).toBeNull();
+    });
+
+    it('posts a comment to the end of the thread', async () => {
+      await openComments();
+      const field = element().querySelector(
+        'app-comment-composer ion-textarea'
+      )!;
+      field.dispatchEvent(
+        new CustomEvent('ionInput', { detail: { value: ' Shipped ' } })
+      );
+      await settle();
+      element()
+        .querySelector<HTMLElement>('app-comment-composer .send')!
+        .click();
+      await settle();
+
+      expect((await thread()).at(-1)?.body).toBe('Shipped');
+      expect(texts('.thread > li > .comment .bubble').at(-1)).toBe('Shipped');
+      expect(text('[role=tab] .count')).toBe('4');
+      expect(IonContent.prototype.scrollToBottom).toHaveBeenCalled();
+      expect(
+        element().querySelector<HTMLIonButtonElement>(
+          'app-comment-composer .send'
+        )?.disabled
+      ).toBe(true);
+    });
+
+    it('keeps the text when the post is refused', async () => {
+      await openComments();
+      vi.spyOn(api, 'addTaskComment').mockRejectedValue(
+        new ApiError(403, { message: 'Insufficient project role' })
+      );
+      const field = element().querySelector(
+        'app-comment-composer ion-textarea'
+      )!;
+      field.dispatchEvent(
+        new CustomEvent('ionInput', { detail: { value: 'Hi' } })
+      );
+      await settle();
+      element()
+        .querySelector<HTMLElement>('app-comment-composer .send')!
+        .click();
+      await settle();
+
+      expect(lastToast()).toBe('Insufficient project role');
+      expect(text('[role=tab] .count')).toBe('3');
+      expect(
+        element().querySelector<HTMLIonButtonElement>(
+          'app-comment-composer .send'
+        )?.disabled
+      ).toBe(false);
+    });
+
+    it('mentions a member from the picker, leaving out the caller', async () => {
+      const insert = vi
+        .spyOn(CommentComposerComponent.prototype, 'insertMention')
+        .mockResolvedValue();
+      await openComments();
+
+      commentPage().openMentions();
+      await settle();
+      expect(commentPage().editor()).toBe('mention');
+      expect(
+        commentPage()
+          .mentionItems()
+          ?.map((i) => i.label)
+      ).toEqual(['Ben Tan', 'Chen Wei']);
+
+      commentPage().pickMention('a2');
+      expect(insert).not.toHaveBeenCalled();
+      commentPage().editorClosed('mention');
+      expect(insert).toHaveBeenCalledWith({ id: 'a2', name: 'Ben Tan' });
+    });
+
+    it('toggles a reaction, swapping the caller’s own', async () => {
+      await openComments();
+      element().querySelectorAll<HTMLElement>('.reaction')[1].click();
+      await settle();
+
+      expect(texts('.reaction')).toEqual(['👍1', '👀2']);
+    });
+
+    it('adds a reaction from the sheet', async () => {
+      await openComments();
+      const [, c3] = await thread();
+      choose(c3, { kind: 'react', emoji: 'rocket' });
+      await settle();
+
+      expect(texts('.reaction').at(-1)).toBe('🚀1');
+    });
+
+    it('edits the caller’s own comment, keeping its reactions', async () => {
+      const reacted = new InMemoryFluxApi();
+      await reacted.toggleCommentReaction('p1', '1', 'c2', 'heart');
+      await openComments({ api: reacted });
+      const [c1] = await thread();
+
+      choose(c1.replies![0], { kind: 'edit' });
+      expect(commentPage().editor()).toBe('comment');
+      await commentPage().saveComment('Fixed it');
+      await settle();
+
+      expect(text('.replies .bubble')).toBe('Fixed it');
+      expect(text('.replies .age')).toContain('edited');
+      expect(texts('.replies .reaction')).toEqual(['❤️1']);
+    });
+
+    it('deletes the caller’s comment once confirmed', async () => {
+      await openComments();
+      const [c1] = await thread();
+
+      alert.role = 'cancel';
+      choose(c1.replies![0], { kind: 'delete' });
+      await settle();
+      expect(element().querySelector('.replies')).not.toBeNull();
+
+      alert.role = 'destructive';
+      choose(c1.replies![0], { kind: 'delete' });
+      await settle();
+      expect(alert.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ header: 'Delete comment?' })
+      );
+      expect(element().querySelector('.replies')).toBeNull();
+      expect(text('[role=tab] .count')).toBe('2');
+      expect(lastToast()).toBe('Comment deleted');
+    });
+
+    it('shows the server’s message when the comment has replies', async () => {
+      const withReply = new InMemoryFluxApi();
+      await withReply.addTaskComment('p1', '1', {
+        body: 'A reply',
+        parentCommentId: 'c3',
+      });
+      await openComments({ api: withReply });
+      const [, c3] = await thread();
+
+      choose(c3, { kind: 'delete' });
+      await settle();
+
+      expect(lastToast()).toBe(
+        'This comment has replies. Delete its replies first.'
+      );
+      expect(texts('.thread > li > .comment .author')).toHaveLength(2);
+    });
   });
 });

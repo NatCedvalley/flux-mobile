@@ -1,0 +1,88 @@
+// Handoff 3f's composer: a min-44px field (radius 14, `--n2`, 1px `--na5`)
+// with the @ button inside it, and a 44px Send that turns solid indigo once
+// there is text. Detail sits in a tab, so the tab bar below keeps clear of
+// the safe area, as for the action bar.
+:host {
+  display: block;
+}
+
+ion-footer {
+  background: var(--flux-bg);
+  border-top: 1px solid var(--flux-na4);
+  box-shadow: var(--flux-shadow-docked);
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--flux-space-8);
+  padding: var(--flux-space-10) var(--flux-space-12);
+}
+
+.field {
+  display: flex;
+  flex: auto;
+  align-items: flex-end;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline-start: var(--flux-space-12);
+  border-radius: var(--flux-radius-card-lg);
+  background: var(--flux-n2);
+  box-shadow: 0 0 0 1px var(--flux-na5);
+}
+
+ion-textarea {
+  flex: auto;
+  min-height: 44px;
+  max-height: 140px;
+  overflow-y: auto;
+  --padding-top: var(--flux-space-12);
+  --padding-bottom: var(--flux-space-12);
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-n12);
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  font: var(--flux-font-composer);
+}
+
+.at {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: 0 var(--flux-space-6) var(--flux-space-6) 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-na10);
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
+.send {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-radius: var(--flux-radius-card-lg);
+  --box-shadow: none;
+  --background: var(--flux-pa4);
+  --color: var(--flux-pa11);
+
+  &.ready {
+    --background: var(--flux-p9);
+    --color: var(--ion-color-primary-contrast);
+  }
+
+  // Ionic fades a disabled button; the empty state is already muted.
+  &.button-disabled:not(.ready) {
+    opacity: 1;
+  }
+
+  ion-icon {
+    font-size: 19px;
+  }
+}

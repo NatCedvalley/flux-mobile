@@ -1,11 +1,13 @@
 import type {
   AppNotification,
+  CommentReaction,
   FluxApi,
   Label,
   MyProject,
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTaskComment,
   NotificationsQuery,
   Page,
   ProjectMember,
@@ -15,6 +17,7 @@ import type {
   TaskActivity,
   TaskAssign,
   TaskComment,
+  TaskCommentUpdate,
   TaskParentChange,
   TaskResolution,
   TaskStatusChange,
@@ -26,6 +29,7 @@ import type {
   WorkflowStatus,
 } from '../api';
 import { ApiError } from '../auth/api-error';
+import { withComment, withoutComment } from '../comments';
 import { addDays, localIsoDate } from '../my-work';
 import { allowedStatusCategories } from '../task-status';
 
@@ -289,8 +293,8 @@ function fixtureComments(now: Date): Record<string, TaskComment[]> {
         bodyFormat: 'MARKDOWN',
         createdAt: at(now, 2, 10, 4),
         reactions: [
-          { emoji: '👍', count: 2, reactedByMe: true },
-          { emoji: '👀', count: 1, reactedByMe: false },
+          { emoji: 'thumbs_up', count: 2, reactedByMe: true },
+          { emoji: 'eyes', count: 1, reactedByMe: false },
         ],
         replies: [
           {
@@ -481,6 +485,10 @@ function badRequest(code: string, message: string): ApiError {
   return new ApiError(400, { code, message });
 }
 
+function commentNotFound(commentId: string): Error {
+  return new Error(`Comment not found: ${commentId}`);
+}
+
 function isContainer(type: Task['type']): boolean {
   return type === 'MASTER' || type === 'EPIC';
 }
@@ -495,12 +503,16 @@ function isContainer(type: Task['type']): boolean {
  * Status changes, archiving and edits follow the backend's rules and
  * errors: in particular a PUT clears every field it leaves out except the
  * title, description, type and priority, so page specs catch lost data.
+ * Comments are written as Ada (`a1`, the page specs' account): only the
+ * author edits or deletes one, a comment with replies can't be deleted,
+ * and a reaction toggles the caller's own.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
   private readonly viewSettings = new Map<string, TaskViewSettings>();
   private readonly comments: Record<string, TaskComment[]>;
   private readonly activities: Record<string, TaskActivity[]>;
+  private commentsAdded = 0;
   /** Task ids the caller is subscribed to: the watched ones to start with. */
   private readonly subscribed: Set<string>;
 
@@ -906,6 +918,127 @@ export class InMemoryFluxApi implements FluxApi {
     );
   }
 
+  addTaskComment(
+    projectId: string,
+    taskId: string,
+    comment: NewTaskComment
+  ): Promise<TaskComment> {
+    const body = comment.body?.trim();
+    if (!this.find(projectId, taskId)) {
+      return Promise.reject(notFound(projectId, taskId));
+    }
+    if (!body) {
+      return Promise.reject(badRequest('VALIDATION_ERROR', 'Body is required'));
+    }
+    const added: TaskComment = {
+      id: `new-${++this.commentsAdded}`,
+      taskId,
+      authorId: ADA.accountId,
+      authorFirstName: ADA.firstName,
+      authorLastName: ADA.lastName,
+      body,
+      bodyFormat: comment.bodyFormat ?? 'MARKDOWN',
+      edited: false,
+      createdAt: new Date().toISOString(),
+      parentCommentId: comment.parentCommentId,
+      reactions: [],
+      replies: [],
+    };
+    const thread = this.comments[taskId] ?? [];
+    const parent = comment.parentCommentId;
+    if (parent && !thread.some((c) => c.id === parent)) {
+      return Promise.reject(commentNotFound(parent));
+    }
+    this.comments[taskId] = parent
+      ? withComment(thread, parent, (c) => ({
+          ...c,
+          replies: [...(c.replies ?? []), added],
+        }))
+      : [...thread, added];
+    return Promise.resolve(added);
+  }
+
+  updateTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    update: TaskCommentUpdate
+  ): Promise<TaskComment> {
+    return this.withOwnComment(projectId, taskId, commentId, (comment) => {
+      const body = update.body?.trim();
+      if (!body) {
+        throw badRequest('VALIDATION_ERROR', 'Body is required');
+      }
+      const edited: TaskComment = {
+        ...comment,
+        body,
+        bodyFormat: update.bodyFormat ?? comment.bodyFormat,
+        edited: true,
+        editedAt: new Date().toISOString(),
+      };
+      this.comments[taskId] = withComment(
+        this.comments[taskId],
+        commentId,
+        () => edited
+      );
+      // Like the server, the response has no reactions or replies.
+      return { ...edited, reactions: [], replies: [] };
+    });
+  }
+
+  deleteTaskComment(
+    projectId: string,
+    taskId: string,
+    commentId: string
+  ): Promise<void> {
+    return this.withOwnComment(projectId, taskId, commentId, (comment) => {
+      if (comment.replies?.length) {
+        throw badRequest(
+          'COMMENT_HAS_REPLIES',
+          'This comment has replies. Delete its replies first.'
+        );
+      }
+      this.comments[taskId] = withoutComment(this.comments[taskId], commentId);
+    });
+  }
+
+  toggleCommentReaction(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    emoji: string
+  ): Promise<CommentReaction[]> {
+    const comment = this.findComment(projectId, taskId, commentId);
+    if (!comment) {
+      return Promise.reject(commentNotFound(commentId));
+    }
+    const reactions = [...(comment.reactions ?? [])];
+    const i = reactions.findIndex((r) => r.emoji === emoji);
+    const found = reactions[i];
+    if (!found) {
+      reactions.push({ emoji, count: 1, reactedByMe: true });
+    } else if (found.reactedByMe) {
+      const count = (found.count ?? 1) - 1;
+      reactions.splice(
+        i,
+        1,
+        ...(count ? [{ emoji, count, reactedByMe: false }] : [])
+      );
+    } else {
+      reactions[i] = {
+        emoji,
+        count: (found.count ?? 0) + 1,
+        reactedByMe: true,
+      };
+    }
+    this.comments[taskId] = withComment(
+      this.comments[taskId],
+      commentId,
+      (c) => ({ ...c, reactions })
+    );
+    return Promise.resolve(reactions);
+  }
+
   getTaskSubscription(
     projectId: string,
     taskId: string
@@ -1040,6 +1173,48 @@ export class InMemoryFluxApi implements FluxApi {
     }
     this.replace({ ...task, labels: labels(task, label.name) });
     return Promise.resolve();
+  }
+
+  private findComment(
+    projectId: string,
+    taskId: string,
+    commentId: string
+  ): TaskComment | undefined {
+    if (!this.find(projectId, taskId)) {
+      return undefined;
+    }
+    return (this.comments[taskId] ?? [])
+      .flatMap((c) => [c, ...(c.replies ?? [])])
+      .find((c) => c.id === commentId);
+  }
+
+  /**
+   * `result(comment)` for the caller's own comment. Someone else's is
+   * refused with the server's COMMENT_NOT_AUTHOR, and `result` may throw.
+   */
+  private withOwnComment<T>(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    result: (comment: TaskComment) => T
+  ): Promise<T> {
+    const comment = this.findComment(projectId, taskId, commentId);
+    if (!comment) {
+      return Promise.reject(commentNotFound(commentId));
+    }
+    if (comment.authorId !== ADA.accountId) {
+      return Promise.reject(
+        badRequest(
+          'COMMENT_NOT_AUTHOR',
+          'Only the comment author can edit or delete this comment.'
+        )
+      );
+    }
+    try {
+      return Promise.resolve(result(comment));
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   /** `result()` for an existing task, else the not-found rejection. */

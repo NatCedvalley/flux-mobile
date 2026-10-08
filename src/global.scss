@@ -75,6 +75,28 @@ ion-modal.flux-sheet.flux-sheet-auto {
 }
 
 /*
+ * The comment composer's field grows with its text up to about seven lines,
+ * then scrolls. Ionic's autoGrow sizes the native textarea to all of its
+ * text, held back only by its wrapper (`max-height: 100%`), and hides the
+ * textarea's overflow. So the cap goes on the wrapper, and the textarea
+ * scrolls itself, which keeps the line being typed in view; a cap on
+ * ion-textarea scrolled the host instead, leaving that line hidden below.
+ * Global because Stencil renders the textarea, out of reach of the
+ * component's encapsulated styles.
+ */
+app-comment-composer ion-textarea[auto-grow] {
+  .native-wrapper {
+    max-height: 120px;
+  }
+
+  // The doubled class outranks Ionic's
+  // `[auto-grow] .native-textarea { overflow: hidden }`.
+  .native-wrapper .native-textarea.native-textarea {
+    overflow-y: auto;
+  }
+}
+
+/*
  * Android draws the app under the navigation bar, and some phones (MIUI on
  * Android 10, with full-screen gestures) report a 0 bottom inset while the
  * gesture pill still covers the bottom of the screen. Keep at least the

@@ -5,7 +5,12 @@ import type { FluxApi } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
+import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
+import {
+  type CreateTaskOptions,
+  CreateTaskLauncherService,
+} from '../../task-create/create-task-launcher.service';
 import { MyWorkPage } from './my-work.page';
 
 /** An ion-icon's `name`, which Angular sets as a property, not an attribute. */
@@ -16,14 +21,28 @@ function iconName(icon: Element | null | undefined): string | undefined {
 describe('MyWorkPage', () => {
   let fixture: ComponentFixture<MyWorkPage>;
   let api: FluxApi;
+  let launcher: { open: ReturnType<typeof vi.fn> };
 
-  async function create(withApi: FluxApi = new InMemoryFluxApi()) {
+  async function create(
+    withApi: FluxApi = new InMemoryFluxApi(),
+    lastProjectId: string | null = null
+  ) {
     api = withApi;
+    launcher = { open: vi.fn().mockResolvedValue(undefined) };
     await TestBed.configureTestingModule({
       imports: [MyWorkPage],
       providers: [
         provideRouter([]),
         { provide: FLUX_API, useValue: api },
+        { provide: CreateTaskLauncherService, useValue: launcher },
+        {
+          provide: ProjectPrefsService,
+          useValue: {
+            pinned: signal<string[]>([]).asReadonly(),
+            load: vi.fn().mockResolvedValue(undefined),
+            lastProjectId: vi.fn().mockResolvedValue(lastProjectId),
+          },
+        },
         {
           provide: AuthService,
           useValue: {
@@ -219,5 +238,68 @@ describe('MyWorkPage', () => {
     expect(texts('ion-item-divider')[0]).toBe('Overdue · 1');
     // The subtitle's count failed too, so Retry reloads it as well.
     expect(texts('.subtitle')[0]).toMatch(/· 5 assigned$/);
+  });
+
+  describe('create', () => {
+    /** Taps the create button; resolves with what it opened the sheet with. */
+    async function openCreate(): Promise<CreateTaskOptions> {
+      element()
+        .querySelector<HTMLElement>('app-create-task-fab ion-fab-button')!
+        .click();
+      await settle();
+      return launcher.open.mock.calls[0][0] as CreateTaskOptions;
+    }
+
+    it('opens the create sheet on the project opened last', async () => {
+      await create(new InMemoryFluxApi(), 'p2');
+      await settle();
+
+      const options = await openCreate();
+
+      expect(options.projectId).toBe('p2');
+      expect(options.projects.map((p) => p.project?.id)).toEqual(['p1', 'p2']);
+    });
+
+    it('starts in the first project the user may create in', async () => {
+      const mixed = new InMemoryFluxApi();
+      vi.spyOn(mixed, 'listMyProjects').mockResolvedValue({
+        content: [
+          { project: { id: 'p3', name: 'Ops' }, role: 'VIEWER' },
+          { project: { id: 'p1', name: 'Checkout' }, role: 'EDITOR' },
+        ],
+      });
+      await create(mixed, 'p3');
+      await settle();
+
+      const options = await openCreate();
+
+      expect(options.projectId).toBe('p1');
+      expect(options.projects.map((p) => p.project?.id)).toEqual(['p1']);
+    });
+
+    it('has no create button without a project to create in', async () => {
+      const viewer = new InMemoryFluxApi();
+      vi.spyOn(viewer, 'listMyProjects').mockResolvedValue({
+        content: [{ project: { id: 'p1', name: 'Checkout' }, role: 'VIEWER' }],
+      });
+      await create(viewer);
+      await settle();
+
+      expect(element().querySelector('app-create-task-fab')).toBeNull();
+    });
+
+    it('reloads its lists after a create', async () => {
+      await create();
+      await settle();
+      expect(texts('.subtitle')[0]).toMatch(/· 5 assigned$/);
+      const options = await openCreate();
+
+      options.created(
+        await api.createTask('p1', { title: 'Mine', assigneeId: 'a1' })
+      );
+      await settle();
+
+      expect(texts('.subtitle')[0]).toMatch(/· 6 assigned$/);
+    });
   });
 });

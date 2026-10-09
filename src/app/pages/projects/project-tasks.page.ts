@@ -9,7 +9,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   IonButton,
   IonButtons,
@@ -28,6 +28,7 @@ import {
   IonRefresher,
   IonRefresherContent,
   IonToolbar,
+  NavController,
   type InfiniteScrollCustomEvent,
   type ItemSlidingCustomEvent,
   type RefresherCustomEvent,
@@ -72,6 +73,8 @@ import { ErrorStateComponent } from '../../shared/error-state/error-state.compon
 import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
+import { CreateTaskFabComponent } from '../../task-create/create-task-fab/create-task-fab.component';
+import { CreateTaskLauncherService } from '../../task-create/create-task-launcher.service';
 import { impact } from '../../task-status/haptics';
 import {
   type StatusChoice,
@@ -133,6 +136,7 @@ const TAB_BAR = 'tab-bar';
     IonModal,
     IonRefresher,
     IonRefresherContent,
+    CreateTaskFabComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     FilterButtonComponent,
@@ -151,6 +155,9 @@ export class ProjectTasksPage {
   private readonly statusChanges = inject(TaskStatusService);
   private readonly taskChanges = inject(TaskChangesService);
   protected readonly prefs = inject(ProjectPrefsService);
+  private readonly creates = inject(CreateTaskLauncherService);
+  private readonly nav = inject(NavController);
+  private readonly route = inject(ActivatedRoute);
   private readonly content = viewChild.required(IonContent);
 
   /** The local day. Read again on refresh, so due dates roll over. */
@@ -304,6 +311,10 @@ export class ProjectTasksPage {
   protected readonly canArchive = computed(() =>
     can(this.current()?.role, 'archive')
   );
+  /** The create button shows for an EDITOR+ in the open project. */
+  protected readonly canCreate = computed(() =>
+    can(this.current()?.role, 'create')
+  );
   protected readonly empty = computed(() => this.pages().groups.length === 0);
   /**
    * The next page failed to load. Infinite scroll stops until Retry, so the
@@ -393,6 +404,24 @@ export class ProjectTasksPage {
       this.currentId.set(id);
       void this.content().scrollToTop(0);
     }
+  }
+
+  /** Opens the create sheet (3i) on the open project. */
+  protected openCreate(): void {
+    const projectId = this.currentId();
+    if (!projectId) {
+      return;
+    }
+    void this.creates.open({
+      projects: this.projectList().filter((p) => can(p.role, 'create')),
+      projectId,
+      created: (task) => this.created(task),
+      openTask: (task) =>
+        void this.nav.navigateForward(['tasks', task.projectId, task.id], {
+          relativeTo: this.route,
+          state: { task },
+        }),
+    });
   }
 
   protected togglePin(projectId: string): void {
@@ -599,6 +628,25 @@ export class ProjectTasksPage {
       task,
       matches ? taskGroupKey(this.groupBy(), task) : undefined
     );
+  }
+
+  /**
+   * Shows a task just created in this project at the top of its group, if
+   * the filters let it in. (The default sort is newest first; under another
+   * one it sits at the top until the list reloads.)
+   */
+  private created(task: Task): void {
+    if (task.projectId !== this.currentId() || !this.list.hasValue()) {
+      return;
+    }
+    const { priorities, assigneeIds } = this.filters();
+    const assignees = (task.assignees ?? []).map((a) => a.accountId);
+    if (
+      (!priorities.length || priorities.includes(task.priority ?? 'MEDIUM')) &&
+      (!assigneeIds.length || assigneeIds.some((id) => assignees.includes(id)))
+    ) {
+      this.place(task);
+    }
   }
 
   /** Loads the next page; a failure shows the Retry row. Never rejects. */

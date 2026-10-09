@@ -422,6 +422,77 @@ describe('InMemoryFluxApi', () => {
     expect(await ids()).toEqual(['1', '2', '4', '6', '8']);
   });
 
+  describe('create', () => {
+    const code = (promise: Promise<unknown>) =>
+      promise.catch((e: ApiError) => e.body.code);
+
+    it('numbers a task after the project’s highest key, in its starting status', async () => {
+      const task = await api.createTask('p1', {
+        title: '  New  ',
+        type: 'BUG',
+      });
+      expect(task).toMatchObject({
+        taskKey: 'CHK-161',
+        title: 'New',
+        type: 'BUG',
+        priority: 'MEDIUM',
+        status: 'todo',
+        reporterId: 'a1',
+        assignees: [],
+      });
+      expect(await api.getTask('p1', task.id ?? '')).toBe(task);
+      expect(await api.getTaskSubscription('p1', task.id ?? '')).toEqual({
+        subscribed: true,
+      });
+    });
+
+    it('starts a container in planning', async () => {
+      const task = await api.createTask('p1', { title: 'Epic', type: 'EPIC' });
+      expect(task.status).toBe('backlog');
+    });
+
+    it('lists the task on My Work only when it is assigned to the caller', async () => {
+      const mine = await api.createTask('p1', {
+        title: 'Mine',
+        assigneeId: 'a1',
+      });
+      await api.createTask('p1', { title: 'Ben’s', assigneeId: 'a2' });
+      const titles = (await api.listMyTasks()).content?.map((t) => t.title);
+      expect(titles).toContain('Mine');
+      expect(titles).not.toContain('Ben’s');
+      expect(mine.assignees?.[0]?.firstName).toBe('Ada');
+    });
+
+    it('puts the task under a parent', async () => {
+      const task = await api.createTask('p1', {
+        title: 'Child',
+        parentTaskId: '6',
+      });
+      expect(task.parentTask?.taskKey).toBe('CHK-120');
+    });
+
+    it('rejects what the backend rejects, with its codes', async () => {
+      expect(await code(api.createTask('p1', { title: ' ' }))).toBe(
+        'VALIDATION_ERROR'
+      );
+      expect(
+        await code(api.createTask('p1', { title: 'x', assigneeId: 'zz' }))
+      ).toBe('ASSIGNEE_NOT_PROJECT_MEMBER');
+      expect(
+        await code(api.createTask('p1', { title: 'x', parentTaskId: '1' }))
+      ).toBe('INVALID_PARENT_TYPE');
+      expect(
+        await code(
+          api.createTask('p1', {
+            title: 'x',
+            type: 'MASTER',
+            parentTaskId: '6',
+          })
+        )
+      ).toBe('INVALID_CHILD_TYPE');
+    });
+  });
+
   describe('edits', () => {
     const code = (promise: Promise<unknown>) =>
       promise.catch((e: ApiError) => e.body.code);

@@ -7,6 +7,7 @@ import type {
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTask,
   NewTaskComment,
   NotificationsQuery,
   Page,
@@ -68,6 +69,14 @@ export class HttpFluxApi implements FluxApi {
 
   getTask(projectId: string, taskId: string): Promise<Task> {
     return this.get(taskPath(projectId, taskId));
+  }
+
+  createTask(projectId: string, task: NewTask): Promise<Task> {
+    return this.send(
+      'POST',
+      `/projects/${encodeURIComponent(projectId)}/tasks`,
+      task
+    );
   }
 
   updateTask(

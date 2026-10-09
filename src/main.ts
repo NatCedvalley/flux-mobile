@@ -30,7 +30,9 @@ bootstrapApplication(AppComponent, {
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     // iOS geometry for sheets, segments and items on both platforms, as the
     // design handoff requires. It also enables swipe-back on every stack.
-    provideIonicAngular({ mode: 'ios' }),
+    // `useSetInputAPI` hands a controller-made modal's `componentProps` to
+    // its signal inputs (the create sheet's).
+    provideIonicAngular({ mode: 'ios', useSetInputAPI: true }),
     provideRouter(
       routes,
       withPreloading(PreloadAllModules),

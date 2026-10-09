@@ -1,0 +1,13 @@
+<button
+  type="button"
+  [class.set]="set()"
+  [attr.data-tone]="tone()"
+>
+  @if (icon(); as name) {
+    <ion-icon
+      aria-hidden="true"
+      [name]="name"
+    ></ion-icon>
+  }
+  <ng-content />
+</button>

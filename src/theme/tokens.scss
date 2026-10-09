@@ -298,6 +298,8 @@ $flux-radius: (
   // The switcher's search field and project swatches.
   field: 11px,
   sheet: 22px,
+  // The 56px create button on My Work and the project list.
+  fab: 18px,
 ) !default;
 
 // Vertical rhythm is 8 / 10 / 12 / 14 / 16; the screen and sheet gutter is 16.
@@ -624,6 +626,37 @@ $flux-type: (
   reaction-choice: (
     size: 24px,
     weight: 450,
+  ),
+  // Create task (FM-35, 3i): the Create pill, the project's name, the
+  // title and description fields, the defaults callout and the keep-open
+  // toggle's label.
+  create-action: (
+      size: 14px,
+      weight: 650,
+    ),
+  create-project: (
+    size: 14.5px,
+    weight: 600,
+  ),
+  create-title: (
+    size: 17px,
+    line: 24px,
+    weight: 600,
+    tracking: -0.01em,
+  ),
+  create-description: (
+    size: 14px,
+    line: 21px,
+    weight: 450,
+  ),
+  callout: (
+    size: 12.5px,
+    line: 17px,
+    weight: 450,
+  ),
+  toggle-label: (
+    size: 13.5px,
+    weight: 550,
   ),
 ) !default;
 

@@ -11,19 +11,31 @@ import { StatusBar, Style } from '@capacitor/status-bar';
  */
 @Injectable({ providedIn: 'root' })
 export class StatusBarService {
+  private apply?: () => void;
+  private forced = false;
+
   init(): void {
     if (!Capacitor.isNativePlatform()) {
       return;
     }
     const dark = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () =>
+    this.apply = () =>
       // Style.Dark means light text, for dark backgrounds.
-      StatusBar.setStyle({
-        style: dark.matches ? Style.Dark : Style.Light,
+      void StatusBar.setStyle({
+        style: this.forced || dark.matches ? Style.Dark : Style.Light,
       }).catch((error: unknown) =>
         console.error('Setting the status bar style failed', error)
       );
-    void apply();
-    dark.addEventListener('change', () => void apply());
+    this.apply();
+    dark.addEventListener('change', () => this.apply?.());
+  }
+
+  /**
+   * Light text whatever the theme, while `on`: a card sheet (the create
+   * sheet) pushes the page back over black. Off follows the theme again.
+   */
+  forceDark(on: boolean): void {
+    this.forced = on;
+    this.apply?.();
   }
 }

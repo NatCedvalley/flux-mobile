@@ -6,6 +6,7 @@ import type {
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTask,
   NewTaskComment,
   NotificationsQuery,
   Page,
@@ -48,6 +49,13 @@ export type FluxApi = {
 
   /** GET /projects/{projectId}/tasks/{taskId}: tasks are project-scoped. */
   getTask(projectId: string, taskId: string): Promise<Task>;
+
+  /**
+   * POST /projects/{projectId}/tasks (EDITOR+): the server picks the
+   * starting status. Labels in `task` only reach the task's own column, so
+   * attach them with `addTaskLabel` afterwards.
+   */
+  createTask(projectId: string, task: NewTask): Promise<Task>;
 
   /**
    * PUT /projects/{projectId}/tasks/{taskId}: replaces the task, clearing

@@ -73,6 +73,41 @@ describe('TaskCreateService', () => {
     );
   });
 
+  it('uploads the files to the new task, one at a time', async () => {
+    const upload = vi.spyOn(api, 'uploadTaskAttachment');
+    const files = [
+      { name: 'a.png', blob: new Blob(['a'], { type: 'image/png' }) },
+      { name: 'b.pdf', blob: new Blob(['b']) },
+    ];
+
+    const created = await service.create(draft(), [], files);
+
+    expect(upload.mock.calls.map(([p, t, , name]) => [p, t, name])).toEqual([
+      ['p1', created?.task.id, 'a.png'],
+      ['p1', created?.task.id, 'b.pdf'],
+    ]);
+    expect(created?.attachmentsFailed).toBe(false);
+    expect(
+      (await api.listTaskAttachments('p1', created?.task.id ?? '')).length
+    ).toBe(2);
+  });
+
+  it('keeps the task when a file is refused, and says so', async () => {
+    const created = await service.create(
+      draft(),
+      [],
+      [{ name: 'photo.heic', blob: new Blob(['x']) }]
+    );
+
+    expect(created?.attachmentsFailed).toBe(true);
+    await service.announce(created!, false, vi.fn());
+    expect(toast.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'CHK-161 created, but some files couldn’t be added.',
+      })
+    );
+  });
+
   it('shows the server’s message when the create fails', async () => {
     vi.spyOn(api, 'createTask').mockRejectedValue(
       new ApiError(422, { message: 'Task quota exceeded' })

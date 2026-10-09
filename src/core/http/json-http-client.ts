@@ -14,7 +14,8 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 /**
  * JSON over `fetch` for one backend, shared by `AuthClient` (flux-iam) and
  * `HttpFluxApi` (flux-operations). `baseUrl` ends in `/api/v1`, and paths are
- * relative to it.
+ * relative to it. A `FormData` body is sent as it is (multipart), with no
+ * `Content-Type`: `fetch` sets it with the boundary.
  *
  * Any fetch failure or timeout is an `ApiError` with status 0, and a non-OK
  * response is an `ApiError` carrying the status and the backend's
@@ -32,10 +33,17 @@ export class JsonHttpClient {
   async request<T>(
     method: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT',
     path: string,
-    options: { accessToken?: string; body?: unknown; query?: QueryParams } = {}
+    options: {
+      accessToken?: string;
+      body?: unknown;
+      query?: QueryParams;
+      /** Overrides the client's timeout, e.g. for an upload. */
+      timeoutMs?: number;
+    } = {}
   ): Promise<T> {
+    const multipart = options.body instanceof FormData;
     const headers: Record<string, string> = { Accept: 'application/json' };
-    if (options.body !== undefined) {
+    if (options.body !== undefined && !multipart) {
       headers['Content-Type'] = 'application/json';
     }
     if (options.accessToken) {
@@ -48,11 +56,13 @@ export class JsonHttpClient {
         this.fetchFn(`${this.baseUrl}${path}${queryString(options.query)}`, {
           method,
           headers,
-          body:
-            options.body === undefined
+          body: multipart
+            ? (options.body as FormData)
+            : options.body === undefined
               ? undefined
               : JSON.stringify(options.body),
-        })
+        }),
+        options.timeoutMs ?? this.timeoutMs
       );
     } catch {
       throw new ApiError(0);
@@ -69,12 +79,12 @@ export class JsonHttpClient {
     return payload as T;
   }
 
-  private withTimeout<T>(promise: Promise<T>): Promise<T> {
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(
         () => reject(new Error('Request timed out')),
-        this.timeoutMs
+        timeoutMs
       );
     });
     return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));

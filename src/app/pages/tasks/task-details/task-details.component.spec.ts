@@ -140,6 +140,19 @@ describe('TaskDetailsComponent', () => {
     expect(text('.subtasks > .none')).toBe('Loading subtasks…');
   });
 
+  it('shows the attachment count, and asks to open them', () => {
+    create(TASK);
+    fixture.componentRef.setInput('attachmentCount', '2');
+    fixture.detectChanges();
+    let opened = 0;
+    fixture.componentInstance.openAttachments.subscribe(() => opened++);
+
+    expect(text('.attachments .field-label')).toBe('Attachments');
+    expect(text('.attachments .count')).toBe('2');
+    element().querySelector<HTMLButtonElement>('button.attachments')!.click();
+    expect(opened).toBe(1);
+  });
+
   describe('editing', () => {
     function edit(task: Task, editable = true) {
       create(task);
@@ -149,7 +162,10 @@ describe('TaskDetailsComponent', () => {
 
     it('shows nothing to edit unless editable', () => {
       edit(TASK, false);
-      expect(element().querySelector('button.field')).toBeNull();
+      // The Attachments row opens the list for every role.
+      expect(
+        element().querySelector('button.field:not(.attachments)')
+      ).toBeNull();
       expect(element().querySelector('.edit-description')).toBeNull();
       expect(element().querySelector('.web-note')).toBeNull();
     });

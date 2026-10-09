@@ -1,0 +1,18 @@
+<ion-list lines="full">
+  @for (source of sources(); track source) {
+    <ion-item
+      button="true"
+      detail="false"
+      [attr.data-source]="source"
+      [disabled]="disabled()"
+      (click)="picked.emit(source)"
+    >
+      <ion-icon
+        slot="start"
+        [name]="labels[source].icon"
+        aria-hidden="true"
+      ></ion-icon>
+      <ion-label>{{ labels[source].label }}</ion-label>
+    </ion-item>
+  }
+</ion-list>

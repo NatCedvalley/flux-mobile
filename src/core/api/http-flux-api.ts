@@ -1,6 +1,7 @@
 import type { FluxApi } from './flux-api';
 import type {
   AppNotification,
+  Attachment,
   CommentReaction,
   Label,
   MyProject,
@@ -30,6 +31,9 @@ import type {
   WorkflowStatus,
 } from './types';
 import { type FetchFn, JsonHttpClient, type QueryParams } from '../http';
+
+/** An upload can take minutes on a slow connection. */
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 /**
  * Runs `call` with a live access token: `AuthSession.withAccessToken`, which
@@ -190,6 +194,32 @@ export class HttpFluxApi implements FluxApi {
       'POST',
       `${commentPath(projectId, taskId, commentId)}/reactions`,
       { emoji }
+    );
+  }
+
+  listTaskAttachments(
+    projectId: string,
+    taskId: string
+  ): Promise<Attachment[]> {
+    return this.get(`${taskPath(projectId, taskId)}/attachments`);
+  }
+
+  uploadTaskAttachment(
+    projectId: string,
+    taskId: string,
+    file: Blob,
+    fileName: string
+  ): Promise<Attachment> {
+    // Appended with a name, so the entry is a File: CapacitorHttp sends a
+    // plain Blob entry as a string.
+    const body = new FormData();
+    body.append('file', file, fileName);
+    return this.withAccessToken((accessToken) =>
+      this.http.request<Attachment>(
+        'POST',
+        `${taskPath(projectId, taskId)}/attachments`,
+        { accessToken, body, timeoutMs: UPLOAD_TIMEOUT_MS }
+      )
     );
   }
 

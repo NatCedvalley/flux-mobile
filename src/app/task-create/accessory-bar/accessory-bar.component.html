@@ -1,0 +1,39 @@
+<ion-footer class="keyboard-bar">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="attach"
+        aria-label="Attach a file"
+        (click)="attach.emit()"
+      >
+        <ion-icon
+          slot="icon-only"
+          name="paperclip"
+          aria-hidden="true"
+        ></ion-icon>
+      </ion-button>
+      @if (canTakePhoto()) {
+        <ion-button
+          class="camera"
+          aria-label="Take a photo"
+          (click)="camera.emit()"
+        >
+          <ion-icon
+            slot="icon-only"
+            name="camera"
+            aria-hidden="true"
+          ></ion-icon>
+        </ion-button>
+      }
+    </ion-buttons>
+    @if (keyboardOpen()) {
+      <ion-buttons slot="end">
+        <ion-button
+          class="done"
+          (click)="done.emit()"
+          >Done</ion-button
+        >
+      </ion-buttons>
+    }
+  </ion-toolbar>
+</ion-footer>

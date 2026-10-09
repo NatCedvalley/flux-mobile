@@ -37,6 +37,7 @@ import {
   type RefresherCustomEvent,
 } from '@ionic/angular';
 import type {
+  Attachment,
   MyTask,
   ProjectMember,
   Task,
@@ -65,6 +66,16 @@ import {
 } from '@core/task-filters';
 import { nextStatus, workflowOrder } from '@core/task-status';
 import { environment } from '../../../environments/environment';
+import { AttachSourceSheetComponent } from '../../attachments/attach-source-sheet/attach-source-sheet.component';
+import {
+  type AttachmentTarget,
+  AttachmentService,
+} from '../../attachments/attachment.service';
+import { AttachmentsSheetComponent } from '../../attachments/attachments-sheet/attachments-sheet.component';
+import {
+  type FileSource,
+  FileSourceService,
+} from '../../attachments/file-source.service';
 import { AuthService } from '../../auth/auth.service';
 import {
   type CommentTarget,
@@ -114,9 +125,11 @@ import {
 
 export type DetailTab = 'activity' | 'comments' | 'details';
 
-/** The field editors, each a sheet, and the comment ones. */
+/** The field editors, each a sheet, the comment ones and the attachment ones. */
 type Editor =
   | 'assignees'
+  | 'attachSource'
+  | 'attachments'
   | 'comment'
   | 'description'
   | 'due'
@@ -126,6 +139,9 @@ type Editor =
   | 'priority'
   | 'title'
   | 'type';
+
+/** How long a loaded list's file URLs are trusted (the server signs 15 min). */
+const ATTACHMENT_URLS_FRESH_MS = 10 * 60_000;
 
 /** Parent candidates fetched per search. */
 const PARENT_PAGE_SIZE = 20;
@@ -199,6 +215,8 @@ type ListView<T> = {
     PickerSheetComponent,
     TextEditSheetComponent,
     DateSheetComponent,
+    AttachmentsSheetComponent,
+    AttachSourceSheetComponent,
   ],
 })
 export class TaskDetailPage {
@@ -209,6 +227,8 @@ export class TaskDetailPage {
   private readonly statusChanges = inject(TaskStatusService);
   private readonly edits = inject(TaskEditService);
   private readonly commentWrites = inject(CommentService);
+  private readonly attachmentWrites = inject(AttachmentService);
+  private readonly files = inject(FileSourceService);
   private readonly injector = inject(Injector);
   private readonly taskChanges = inject(TaskChangesService);
   private readonly myProjects = inject(MyProjectsService);
@@ -375,6 +395,36 @@ export class TaskDetailPage {
       : undefined
   );
   private readonly bellBusy = signal(false);
+
+  /**
+   * The task's attachments, loaded with it (the task has no count of them).
+   * Their URLs expire 15 minutes after this load (see `openAttachment`).
+   */
+  protected readonly attachments = resource({
+    params: this.ids,
+    loader: async ({ params }) => {
+      const list = await this.api.listTaskAttachments(
+        params.projectId,
+        params.taskId
+      );
+      this.attachmentsLoadedAt = Date.now();
+      return list;
+    },
+  });
+  private attachmentsLoadedAt = 0;
+  /** The Details row's count: blank while loading, `—` if it failed. */
+  protected readonly attachmentCount = computed(() =>
+    this.attachments.hasValue()
+      ? String(this.attachments.value().length)
+      : this.attachments.error()
+        ? '—'
+        : ''
+  );
+  /** The name of the file being uploaded, if one is. */
+  protected readonly uploading = signal<string | undefined>(undefined);
+  protected readonly fileSources = this.files.sources;
+  /** The source chosen in the source sheet, run once it has closed. */
+  private sourceChoice: FileSource | undefined;
 
   protected readonly titleMax = TITLE_MAX;
   protected readonly overflowOpen = signal(false);
@@ -737,6 +787,85 @@ export class TaskDetailPage {
     );
   }
 
+  protected openAttachments(): void {
+    this.membersWanted.set(true);
+    this.editor.set('attachments');
+  }
+
+  /**
+   * The composer's paperclip: where to attach from, or straight to the file
+   * picker when that's the only source (web).
+   */
+  protected openAttachSource(): void {
+    if (this.fileSources.length === 1) {
+      void this.attach(this.fileSources[0]);
+      return;
+    }
+    this.sourceChoice = undefined;
+    this.editor.set('attachSource');
+  }
+
+  protected chooseSource(source: FileSource): void {
+    this.sourceChoice = source;
+    this.editor.set(undefined);
+  }
+
+  /** Picks a file from `source` and uploads it, showing it at the top. */
+  protected async attach(source: FileSource): Promise<void> {
+    if (this.uploading()) {
+      return;
+    }
+    const file = await this.files.pick(source);
+    if (!file) {
+      return;
+    }
+    this.uploading.set(file.name);
+    try {
+      const added = await this.attachmentWrites.upload(
+        this.attachmentTarget(),
+        file
+      );
+      if (added && this.attachments.hasValue()) {
+        this.attachments.set([added, ...this.attachments.value()]);
+      } else if (added) {
+        this.attachments.reload();
+      }
+    } finally {
+      this.uploading.set(undefined);
+    }
+  }
+
+  /**
+   * Opens the file. Its URLs expire 15 minutes after they were signed, so a
+   * list older than 10 minutes is fetched again first.
+   */
+  protected async openAttachment(attachment: Attachment): Promise<void> {
+    let current: Attachment | undefined = attachment;
+    if (Date.now() - this.attachmentsLoadedAt > ATTACHMENT_URLS_FRESH_MS) {
+      const { projectId, taskId } = this.ids();
+      try {
+        const list = await this.api.listTaskAttachments(projectId, taskId);
+        this.attachmentsLoadedAt = Date.now();
+        this.attachments.set(list);
+        current = list.find((a) => a.id === attachment.id);
+      } catch (error) {
+        console.error('Refreshing the attachments failed', error);
+        await this.toast('Couldn’t open the file. Try again.');
+        return;
+      }
+    }
+    if (!current) {
+      await this.toast('This file has been removed.');
+      return;
+    }
+    await this.attachmentWrites.open(current, this.anchor());
+  }
+
+  /** The task files are attached to, and where their toasts sit. */
+  private attachmentTarget(): AttachmentTarget {
+    return { ...this.ids(), anchor: this.anchor() };
+  }
+
   /** The task comments are written on, and where their toasts sit. */
   private commentTarget(): CommentTarget {
     return { ...this.ids(), anchor: this.anchor() };
@@ -857,6 +986,9 @@ export class TaskDetailPage {
       this.mentionPicked = undefined;
     } else if (editor === 'comment') {
       this.editingComment.set(undefined);
+    } else if (editor === 'attachSource' && this.sourceChoice) {
+      void this.attach(this.sourceChoice);
+      this.sourceChoice = undefined;
     }
   }
 
@@ -1135,6 +1267,7 @@ export class TaskDetailPage {
     this.statuses.reload();
     this.subscription.reload();
     this.subtasks.reload();
+    this.attachments.reload();
   }
 
   private async toast(message: string): Promise<void> {

@@ -14,7 +14,6 @@ import {
   IonButton,
   IonButtons,
   IonContent,
-  IonFooter,
   IonHeader,
   IonIcon,
   IonInput,
@@ -40,6 +39,13 @@ import {
 } from '@core/task-create';
 import { TITLE_MAX, parentTypes } from '@core/task-edit';
 import { PRIORITY_OPTIONS, assigneeOptions } from '@core/task-filters';
+import { AttachSourceSheetComponent } from '../../attachments/attach-source-sheet/attach-source-sheet.component';
+import {
+  type FileSource,
+  FileSourceService,
+  type PickedFile,
+} from '../../attachments/file-source.service';
+import { PendingFilesComponent } from '../../attachments/pending-files/pending-files.component';
 import { AuthService } from '../../auth/auth.service';
 import { projectSwatch, projectTint } from '../../projects/project-colors';
 import { FLUX_API } from '../../providers/flux-api.token';
@@ -49,12 +55,20 @@ import {
   PickerSheetComponent,
 } from '../../shared/picker-sheet/picker-sheet.component';
 import { TYPE_ICONS } from '../../shared/task-row/task-row.component';
+import { AccessoryBarComponent } from '../accessory-bar/accessory-bar.component';
 import { CreateChipComponent } from '../create-chip/create-chip.component';
 import { TaskCreateService } from '../task-create.service';
 
-/** The picker sheets the chips open. */
+/** The picker sheets the chips open, and the paperclip's source sheet. */
 type Picker =
-  'project' | 'type' | 'assignee' | 'priority' | 'due' | 'labels' | 'parent';
+  | 'project'
+  | 'type'
+  | 'assignee'
+  | 'priority'
+  | 'due'
+  | 'labels'
+  | 'parent'
+  | 'attach';
 
 /** Parent candidates fetched per search. */
 const PARENT_PAGE_SIZE = 20;
@@ -70,7 +84,8 @@ const typeLabel = (type: string) => type[0] + type.slice(1).toLowerCase();
  * is required. The optional chips open FM-33's pickers, and a callout says
  * what the task will start as. A close that would lose what was entered
  * asks first, and "Keep the sheet open" clears the form after each create
- * instead of closing.
+ * instead of closing. The bar at the bottom attaches files (paperclip) and
+ * photos (camera); they upload once the task exists.
  */
 @Component({
   selector: 'app-create-task-sheet',
@@ -83,7 +98,6 @@ const typeLabel = (type: string) => type[0] + type.slice(1).toLowerCase();
     IonButtons,
     IonButton,
     IonContent,
-    IonFooter,
     IonIcon,
     IonInput,
     IonTextarea,
@@ -92,6 +106,9 @@ const typeLabel = (type: string) => type[0] + type.slice(1).toLowerCase();
     CreateChipComponent,
     PickerSheetComponent,
     DateSheetComponent,
+    AttachSourceSheetComponent,
+    PendingFilesComponent,
+    AccessoryBarComponent,
   ],
   host: { class: 'ion-page' },
 })
@@ -99,6 +116,7 @@ export class CreateTaskSheetComponent {
   private readonly api = inject(FLUX_API);
   private readonly creates = inject(TaskCreateService);
   private readonly alerts = inject(AlertController);
+  private readonly fileSources = inject(FileSourceService);
   /**
    * The modal presenting the sheet; absent in specs. (Not `modal`: Ionic
    * reserves that name on a modal's component.)
@@ -129,6 +147,15 @@ export class CreateTaskSheetComponent {
   protected readonly keepOpen = signal(false);
   protected readonly keyboardOpen = signal(false);
   protected readonly picker = signal<Picker | undefined>(undefined);
+  /** Files to attach once the task is created. */
+  protected readonly files = signal<readonly PickedFile[]>([]);
+  /** The paperclip's sources; the camera has its own button. */
+  protected readonly attachSources = this.fileSources.sources.filter(
+    (s) => s !== 'camera'
+  );
+  protected readonly canTakePhoto = this.fileSources.sources.includes('camera');
+  /** The source chosen in the source sheet, run once it has closed. */
+  private sourceChoice: FileSource | undefined;
 
   private readonly titleField = viewChild.required<IonInput>('titleField');
   private readonly descriptionField =
@@ -147,7 +174,8 @@ export class CreateTaskSheetComponent {
       !!d.priority ||
       !!d.dueDate ||
       d.labelNames.length > 0 ||
-      !!d.parent
+      !!d.parent ||
+      this.files().length > 0
     );
   });
 
@@ -390,7 +418,37 @@ export class CreateTaskSheetComponent {
     }
     if (picker === 'labels') {
       this.draft.update((d) => ({ ...d, labelNames: this.labelDraft() }));
+    } else if (picker === 'attach' && this.sourceChoice) {
+      void this.attach(this.sourceChoice);
+      this.sourceChoice = undefined;
     }
+  }
+
+  /** The paperclip: where from, or straight to the file picker on web. */
+  protected openAttachSource(): void {
+    if (this.attachSources.length === 1) {
+      void this.attach(this.attachSources[0]);
+      return;
+    }
+    this.sourceChoice = undefined;
+    this.picker.set('attach');
+  }
+
+  protected chooseSource(source: FileSource): void {
+    this.sourceChoice = source;
+    this.picker.set(undefined);
+  }
+
+  /** Adds a file from `source` to the ones attached after the create. */
+  protected async attach(source: FileSource): Promise<void> {
+    const file = await this.fileSources.pick(source);
+    if (file) {
+      this.files.update((files) => [...files, file]);
+    }
+  }
+
+  protected removeFile(index: number): void {
+    this.files.update((files) => files.filter((_, i) => i !== index));
   }
 
   protected pickProject(id: string): void {
@@ -450,7 +508,8 @@ export class CreateTaskSheetComponent {
     this.saving.set(true);
     const result = await this.creates.create(
       draft,
-      this.labels.hasValue() ? this.labels.value() : []
+      this.labels.hasValue() ? this.labels.value() : [],
+      this.files()
     );
     this.saving.set(false);
     if (!result) {
@@ -461,6 +520,7 @@ export class CreateTaskSheetComponent {
     const keepOpen = this.keepOpen();
     this.created()(result.task);
     this.draft.set(afterCreate(draft));
+    this.files.set([]);
     if (keepOpen) {
       void this.titleField().setFocus();
     } else {

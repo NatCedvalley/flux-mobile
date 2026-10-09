@@ -29,6 +29,8 @@ export type CommentDraft = { body: string; mentionedAccountIds: string[] };
  * the button, asks the page for the member picker (`mention`); the page
  * hands the pick back through `insertMention`. A mention is plain
  * `@First Last` text: its id is sent while that text stays in the comment.
+ * With `canAttach` (EDITOR+), a paperclip asks the page to attach a file to
+ * the task; the comment text is left alone.
  */
 @Component({
   selector: 'app-comment-composer',
@@ -39,9 +41,14 @@ export type CommentDraft = { body: string; mentionedAccountIds: string[] };
 export class CommentComposerComponent {
   /** A post is in flight: Send waits for it. */
   readonly sending = input(false);
+  /** Whether the paperclip shows: uploading takes EDITOR+. */
+  readonly canAttach = input(false);
+  /** An upload is in flight: the paperclip waits for it. */
+  readonly attaching = input(false);
 
   readonly send = output<CommentDraft>();
   readonly mention = output();
+  readonly attach = output();
 
   protected readonly text = signal('');
   protected readonly canSend = computed(

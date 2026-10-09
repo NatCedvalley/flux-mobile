@@ -1,0 +1,21 @@
+// The overflow sheet's rows (3n): 54px, 19px icons.
+ion-list {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+ion-item {
+  --min-height: 54px;
+  --background: transparent;
+  --border-color: var(--flux-na4);
+  font: var(--flux-font-sheet-item);
+  letter-spacing: var(--flux-tracking-sheet-item);
+  color: var(--flux-n12);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-14);
+    font-size: 19px;
+    color: var(--flux-na11);
+  }
+}

@@ -26,8 +26,14 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Flux uses the camera to attach photos to tasks.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Flux uses Face ID to unlock the app.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Flux can save photos you take to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Flux attaches photos you choose to tasks.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

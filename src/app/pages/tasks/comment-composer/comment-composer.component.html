@@ -22,6 +22,21 @@
           aria-hidden="true"
         ></ion-icon>
       </ion-button>
+      @if (canAttach()) {
+        <ion-button
+          class="attach"
+          fill="clear"
+          aria-label="Attach a file"
+          [disabled]="attaching()"
+          (click)="attach.emit()"
+        >
+          <ion-icon
+            slot="icon-only"
+            name="paperclip"
+            aria-hidden="true"
+          ></ion-icon>
+        </ion-button>
+      }
     </div>
     <ion-button
       class="send"

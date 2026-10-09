@@ -188,6 +188,46 @@ describe('HttpFluxApi', () => {
     expect(JSON.parse(init().body)).toEqual({ emoji: 'heart' });
   });
 
+  it('lists a task’s attachments', async () => {
+    const { api, url } = setup([{ id: 'f1' }]);
+    await expect(api.listTaskAttachments('p1', 't1')).resolves.toEqual([
+      { id: 'f1' },
+    ]);
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/attachments`);
+  });
+
+  it('uploads an attachment as a multipart file field', async () => {
+    const { api, url, init } = setup({ id: 'f2' }, 201);
+    const blob = new Blob(['%PDF'], { type: 'application/pdf' });
+    await expect(
+      api.uploadTaskAttachment('p1', 't1', blob, 'spec.pdf')
+    ).resolves.toEqual({ id: 'f2' });
+
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks/t1/attachments`);
+    expect(init().method).toBe('POST');
+    expect(init().headers.Authorization).toBe('Bearer a1');
+    expect(init().headers['Content-Type']).toBeUndefined();
+    const file = (init().body as FormData).get('file') as File;
+    expect(file).toBeInstanceOf(File);
+    expect(file.name).toBe('spec.pdf');
+    expect(file.type).toBe('application/pdf');
+  });
+
+  it('gives an upload longer than the usual timeout', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve(jsonResponse(201, { id: 'f3' })), 20)
+          )
+      );
+    const api = new HttpFluxApi(BASE_URL, withToken, fetchFn, 5);
+    await expect(
+      api.uploadTaskAttachment('p1', 't1', new Blob(['x']), 'a.txt')
+    ).resolves.toEqual({ id: 'f3' });
+  });
+
   it('gets the caller’s subscription to a task', async () => {
     const { api, url, init } = setup({ subscribed: true });
     await expect(api.getTaskSubscription('p1', 't1')).resolves.toEqual({

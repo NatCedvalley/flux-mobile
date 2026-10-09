@@ -1,0 +1,20 @@
+@for (file of files(); track $index) {
+  <li class="file">
+    <ion-icon
+      name="paperclip"
+      aria-hidden="true"
+    ></ion-icon>
+    <span class="file-name">{{ file.name }}</span>
+    <button
+      type="button"
+      class="remove"
+      [attr.aria-label]="'Remove ' + file.name"
+      (click)="removed.emit($index)"
+    >
+      <ion-icon
+        name="x"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+  </li>
+}

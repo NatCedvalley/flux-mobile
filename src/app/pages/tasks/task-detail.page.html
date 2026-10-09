@@ -221,9 +221,11 @@
           [subtasks]="subtasks.hasValue() ? subtasks.value() : undefined"
           [detailBase]="detailBase()"
           [editable]="canEdit()"
+          [attachmentCount]="attachmentCount()"
           (editDue)="openEditor('due')"
           (editLabels)="openEditor('labels')"
           (editDescription)="openEditor('description')"
+          (openAttachments)="openAttachments()"
         />
       } @else if (task.error() && !task.isLoading()) {
         <app-error-state
@@ -307,8 +309,11 @@
 @if (showComposer()) {
   <app-comment-composer
     [sending]="sending()"
+    [canAttach]="canEdit()"
+    [attaching]="!!uploading()"
     (send)="postComment($event)"
     (mention)="openMentions()"
+    (attach)="openAttachSource()"
   />
 } @else if (canComment()) {
   <app-task-action-bar
@@ -337,6 +342,48 @@
         (done)="commentSheetOpen.set(false)"
       />
     }
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="editor() === 'attachments'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="editorClosed('attachments')"
+>
+  <ng-template>
+    <app-attachments-sheet
+      [attachments]="attachments.hasValue() ? attachments.value() : undefined"
+      [error]="attachments.error()"
+      [members]="members.hasValue() ? members.value() : []"
+      [myId]="myId()"
+      [now]="now()"
+      [canAttach]="canEdit()"
+      [sources]="fileSources"
+      [uploading]="uploading()"
+      (opened)="openAttachment($event)"
+      (attach)="attach($event)"
+      (retry)="attachments.reload()"
+      (done)="editor.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="editor() === 'attachSource'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="editorClosed('attachSource')"
+>
+  <ng-template>
+    <app-attach-source-sheet
+      [sources]="fileSources"
+      [subtitle]="header()?.taskKey"
+      (picked)="chooseSource($event)"
+      (done)="editor.set(undefined)"
+    />
   </ng-template>
 </ion-modal>
 

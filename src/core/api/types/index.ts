@@ -13,6 +13,7 @@ import type {
   ChangeTaskStatusRequest,
   CommentReactionResponse,
   CreateTaskCommentRequest,
+  CreateTaskRequest,
   GetMyTasksData,
   LabelResponse,
   List2Data,
@@ -81,6 +82,12 @@ export type TaskUnarchive = UnarchiveTaskRequest;
  * missing field is cleared. Build it with `taskUpdateBody` (`@core/task-edit`).
  */
 export type TaskUpdate = UpdateTaskRequest;
+/**
+ * The body of POST /projects/{p}/tasks: only the title is required, and the
+ * server picks the starting status. Build it with `createTaskBody`
+ * (`@core/task-create`).
+ */
+export type NewTask = CreateTaskRequest;
 /** A project's label. Tasks carry label names; the label endpoints take ids. */
 export type Label = LabelResponse;
 /** Assigning a task: the whole list of assignees, replacing the old one. */

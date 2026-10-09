@@ -7,6 +7,7 @@ import type {
   MyProjectsQuery,
   MyTask,
   MyTasksQuery,
+  NewTask,
   NewTaskComment,
   NotificationsQuery,
   Page,
@@ -31,6 +32,7 @@ import type {
 import { ApiError } from '../auth/api-error';
 import { withComment, withoutComment } from '../comments';
 import { addDays, localIsoDate } from '../my-work';
+import { startingStatus } from '../task-create';
 import { allowedStatusCategories } from '../task-status';
 
 /**
@@ -82,6 +84,7 @@ const STATUSES: WorkflowStatus[] = [
     category: 'TODO',
     color: 'blue',
     position: 1,
+    isDefault: true,
   },
   {
     id: 's2',
@@ -505,7 +508,9 @@ function isContainer(type: Task['type']): boolean {
  * title, description, type and priority, so page specs catch lost data.
  * Comments are written as Ada (`a1`, the page specs' account): only the
  * author edits or deletes one, a comment with replies can't be deleted,
- * and a reaction toggles the caller's own.
+ * and a reaction toggles the caller's own. A created task is reported by
+ * Ada, numbered after the project's highest key, and starts in the status
+ * `startingStatus` picks (`todo` is the default status).
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
@@ -513,6 +518,7 @@ export class InMemoryFluxApi implements FluxApi {
   private readonly comments: Record<string, TaskComment[]>;
   private readonly activities: Record<string, TaskActivity[]>;
   private commentsAdded = 0;
+  private tasksAdded = 0;
   /** Task ids the caller is subscribed to: the watched ones to start with. */
   private readonly subscribed: Set<string>;
 
@@ -613,6 +619,99 @@ export class InMemoryFluxApi implements FluxApi {
     return task
       ? Promise.resolve(task)
       : Promise.reject(notFound(projectId, taskId));
+  }
+
+  createTask(projectId: string, request: NewTask): Promise<Task> {
+    const project = PROJECTS.find((p) => p.project?.id === projectId)?.project;
+    if (!project) {
+      return Promise.reject(new Error(`Project not found: ${projectId}`));
+    }
+    const title = request.title?.trim();
+    if (!title) {
+      return Promise.reject(
+        badRequest('VALIDATION_ERROR', 'Title must not be blank')
+      );
+    }
+    const type = request.type ?? 'TASK';
+    const assignee = request.assigneeId
+      ? MEMBERS.find((m) => m.accountId === request.assigneeId)
+      : undefined;
+    if (request.assigneeId && !assignee) {
+      return Promise.reject(
+        badRequest(
+          'ASSIGNEE_NOT_PROJECT_MEMBER',
+          'Assignees must be members of the project'
+        )
+      );
+    }
+    const parent = request.parentTaskId
+      ? this.find(projectId, request.parentTaskId)
+      : undefined;
+    if (request.parentTaskId && !parent) {
+      return Promise.reject(notFound(projectId, request.parentTaskId));
+    }
+    if (parent && !isContainer(parent.type)) {
+      return Promise.reject(
+        badRequest('INVALID_PARENT_TYPE', 'Only masters and epics hold tasks')
+      );
+    }
+    if (parent?.type === 'EPIC' && type === 'MASTER') {
+      return Promise.reject(
+        badRequest('INVALID_CHILD_TYPE', 'An epic can’t hold a master')
+      );
+    }
+    const status = startingStatus(STATUSES, type);
+    const key = project.projectKey ?? '';
+    const number =
+      Math.max(
+        0,
+        ...this.tasks
+          .filter((t) => t.projectId === projectId)
+          .map((t) => Number(t.taskKey?.split('-')[1]) || 0)
+      ) + 1;
+    const task: FixtureTask = {
+      id: `created-${++this.tasksAdded}`,
+      projectId,
+      projectKey: key,
+      projectName: project.name,
+      taskKey: `${key}-${number}`,
+      title,
+      description: request.description,
+      descriptionFormat: request.descriptionFormat,
+      type,
+      priority: request.priority ?? 'MEDIUM',
+      status: status?.slug,
+      statusName: status?.name,
+      statusCategory: status?.category,
+      isClosedStatus: false,
+      dueDate: request.dueDate,
+      labels: [],
+      assigneeId: assignee?.accountId,
+      assignees: assignee
+        ? [
+            {
+              accountId: assignee.accountId,
+              firstName: assignee.firstName,
+              lastName: assignee.lastName,
+            },
+          ]
+        : [],
+      reporterId: ADA.accountId,
+      reporterFirstName: ADA.firstName,
+      reporterLastName: ADA.lastName,
+      parentTaskId: parent?.id,
+      parentTask: parent && {
+        id: parent.id,
+        taskKey: parent.taskKey,
+        title: parent.title,
+        status: parent.status,
+      },
+      notMine: assignee?.accountId !== ADA.accountId,
+    };
+    this.tasks.push(task);
+    // The server subscribes the reporter.
+    this.subscribed.add(task.id ?? '');
+    return Promise.resolve(task);
   }
 
   changeTaskStatus(

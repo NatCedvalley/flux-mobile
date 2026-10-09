@@ -1,0 +1,322 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button
+        class="cancel"
+        (click)="cancel()"
+        >Cancel</ion-button
+      >
+    </ion-buttons>
+    <ion-title>New task</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="create"
+        fill="solid"
+        [disabled]="!canCreate()"
+        (click)="create()"
+        >Create</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="context">
+    <button
+      type="button"
+      class="project"
+      [attr.aria-label]="'Project: ' + (project()?.project?.name ?? '')"
+      (click)="openPicker('project')"
+    >
+      <span
+        class="project-avatar"
+        aria-hidden="true"
+        [style]="projectAvatar().style"
+        >{{ projectAvatar().initials }}</span
+      >
+      <span class="project-name">{{ project()?.project?.name }}</span>
+      <ion-icon
+        name="chevrons-up-down"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+    <button
+      type="button"
+      class="type-chip"
+      [attr.aria-label]="'Type: ' + typeLabel(draft().type)"
+      (click)="openPicker('type')"
+    >
+      <ion-icon
+        aria-hidden="true"
+        [name]="typeIcons[draft().type]"
+      ></ion-icon>
+      {{ typeLabel(draft().type) }}
+      <ion-icon
+        name="chevron-down"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+  </div>
+
+  <section class="fields">
+    <ion-input
+      #titleField
+      class="title"
+      aria-label="Title"
+      placeholder="Task title"
+      enterkeyhint="next"
+      [value]="draft().title"
+      [maxlength]="titleMax"
+      (ionInput)="setTitle($event.detail.value)"
+      (keydown.enter)="titleEntered($event)"
+    ></ion-input>
+    <p class="helper">Required · {{ draft().title.length }}/{{ titleMax }}</p>
+    <ion-textarea
+      #descriptionField
+      class="description"
+      aria-label="Description"
+      placeholder="Add a description, steps to reproduce, or paste a log…"
+      [value]="draft().description"
+      [autoGrow]="true"
+      [rows]="3"
+      (ionInput)="setDescription($event.detail.value)"
+    ></ion-textarea>
+  </section>
+
+  <div
+    class="chips"
+    role="group"
+    aria-label="Optional fields"
+  >
+    <app-create-chip
+      [icon]="assignee() ? undefined : 'user'"
+      [set]="!!assignee()"
+      (click)="openPicker('assignee')"
+    >
+      @if (assignee(); as person) {
+        <span
+          class="avatar"
+          aria-hidden="true"
+          [style.background]="person.fill"
+          >{{ person.initials }}</span
+        >
+        {{ person.label }}
+      } @else {
+        Assignee
+      }
+    </app-create-chip>
+    <app-create-chip
+      [icon]="priority()?.icon ?? 'chevrons-up'"
+      [set]="!!priority()"
+      [tone]="priorityTone()"
+      (click)="openPicker('priority')"
+    >
+      {{ priority()?.label ?? 'Priority' }}
+    </app-create-chip>
+    <app-create-chip
+      icon="calendar"
+      [set]="!!due()"
+      [tone]="due()?.overdue ? 'red' : undefined"
+      (click)="openPicker('due')"
+    >
+      {{ due()?.label ?? 'Due date' }}
+    </app-create-chip>
+    <app-create-chip
+      icon="tag"
+      [set]="!!labelsLabel()"
+      (click)="openPicker('labels')"
+    >
+      {{ labelsLabel() || 'Labels' }}
+    </app-create-chip>
+    <app-create-chip
+      icon="layers"
+      [set]="!!draft().parent"
+      (click)="openPicker('parent')"
+    >
+      @if (draft().parent; as parent) {
+        <span class="key">{{ parent.taskKey }}</span>
+        <span class="parent-title">{{ parent.title }}</span>
+      } @else {
+        Parent
+      }
+    </app-create-chip>
+  </div>
+
+  @if (callout(); as c) {
+    <p
+      class="callout"
+      role="note"
+    >
+      <ion-icon
+        name="info"
+        aria-hidden="true"
+      ></ion-icon>
+      <span
+        >{{ c.lead }} <strong>{{ c.status }}</strong
+        >{{ c.tail }}</span
+      >
+    </p>
+  }
+
+  <ion-toggle
+    class="keep-open"
+    justify="start"
+    labelPlacement="end"
+    [checked]="keepOpen()"
+    (ionChange)="keepOpen.set($event.detail.checked)"
+    >Keep the sheet open to add another</ion-toggle
+  >
+</ion-content>
+
+@if (keyboardOpen()) {
+  <ion-footer class="keyboard-bar">
+    <ion-toolbar>
+      <ion-buttons slot="end">
+        <ion-button (click)="closeKeyboard()">Done</ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-footer>
+}
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="picker() === 'project'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('project')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Project"
+      placeholder="Search projects"
+      emptyText="No projects match"
+      [items]="projectItems()"
+      [selected]="[draft().projectId]"
+      (picked)="pickProject($event)"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="picker() === 'type'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('type')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Type"
+      [items]="typeItems()"
+      [searchable]="false"
+      [selected]="[draft().type]"
+      (picked)="pickType($event)"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="picker() === 'assignee'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('assignee')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Assignee"
+      placeholder="Search people"
+      emptyText="No one matches"
+      [items]="memberItems()"
+      [failed]="!!members.error()"
+      [selected]="[draft().assigneeId ?? '']"
+      (picked)="pickAssignee($event)"
+      (retry)="members.reload()"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="picker() === 'priority'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('priority')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Priority"
+      [items]="priorityItems"
+      [searchable]="false"
+      [selected]="[draft().priority ?? '']"
+      (picked)="pickPriority($event)"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="picker() === 'due'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('due')"
+>
+  <ng-template>
+    <app-date-sheet
+      heading="Due date"
+      [value]="draft().dueDate"
+      (saved)="pickDue($event)"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="picker() === 'labels'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('labels')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Labels"
+      placeholder="Search labels"
+      emptyText="No labels match"
+      [items]="labelItems()"
+      [failed]="!!labels.error()"
+      [multiple]="true"
+      [(selected)]="labelDraft"
+      (retry)="labels.reload()"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
+
+<ion-modal
+  class="flux-sheet"
+  [isOpen]="picker() === 'parent'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('parent')"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Parent"
+      placeholder="Search masters and epics"
+      emptyText="No matching parent tasks"
+      [items]="parentItems()"
+      [failed]="!!parentResults.error()"
+      [remoteSearch]="true"
+      [selected]="[draft().parent?.id ?? '']"
+      (searched)="parentQuery.set($event)"
+      (picked)="pickParent($event)"
+      (retry)="parentResults.reload()"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>

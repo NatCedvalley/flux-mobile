@@ -128,6 +128,11 @@ ion-list {
   padding: 0;
 }
 
+// Room under the last row for the 56px create button and its inset.
+ion-content.has-fab {
+  --padding-bottom: calc(56px + var(--flux-space-24));
+}
+
 // Group headers: 36px, a dot in the status's 9, its name in 11 and the
 // count, on its wash over the row background, so rows don't show through
 // while it sticks.

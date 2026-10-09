@@ -1,0 +1,212 @@
+// Handoff 3i: the create sheet, over the shared sheet anatomy (sheet.scss).
+// The 52px nav row: Cancel, the centred title and the Create pill.
+ion-header ion-toolbar {
+  --background: var(--flux-bg);
+  --border-width: 0 0 1px;
+  --border-color: var(--flux-na4);
+  --padding-start: var(--flux-space-8);
+  --padding-end: var(--flux-space-16);
+  --min-height: 52px;
+}
+
+.cancel {
+  --color: var(--flux-na11);
+}
+
+ion-buttons ion-button.create {
+  --background: var(--flux-p9);
+  --background-activated: var(--flux-p10);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: var(--flux-radius-chip-select);
+  --padding-start: var(--flux-space-14);
+  --padding-end: var(--flux-space-14);
+  --box-shadow: none;
+  height: 34px;
+  font: var(--flux-font-create-action);
+  letter-spacing: var(--flux-tracking-create-action);
+}
+
+// Project and type come first: they limit the rest.
+.context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--flux-space-12);
+  min-height: 52px;
+  padding: 0 var(--flux-space-16);
+}
+
+// Plain buttons, styled below. (The chips style their own.)
+.project,
+.type-chip {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.project {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-8);
+  min-width: 0;
+  color: var(--flux-n12);
+
+  ion-icon {
+    flex: none;
+    font-size: 15px;
+    color: var(--flux-na10);
+  }
+}
+
+.project-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--flux-radius-chip);
+  background: var(--project-fill);
+  font: var(--flux-font-project-avatar);
+  letter-spacing: var(--flux-tracking-project-avatar);
+  color: var(--project-text);
+}
+
+.project-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-create-project);
+  letter-spacing: var(--flux-tracking-create-project);
+}
+
+.type-chip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--flux-space-6);
+  height: 32px;
+  padding: 0 var(--flux-space-10);
+  border-radius: var(--flux-radius-chip-select);
+  box-shadow: inset 0 0 0 1px var(--flux-na5);
+  font: var(--flux-font-chip);
+  letter-spacing: var(--flux-tracking-chip);
+  color: var(--flux-n12);
+
+  ion-icon {
+    font-size: 15px;
+    color: var(--flux-na11);
+  }
+}
+
+.fields {
+  padding: var(--flux-space-8) var(--flux-space-16) 0;
+  border-bottom: 1px solid var(--flux-na3);
+}
+
+ion-input.title {
+  --padding-top: var(--flux-space-4);
+  --padding-bottom: var(--flux-space-4);
+  --highlight-color: transparent;
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  min-height: 0;
+  font: var(--flux-font-create-title);
+  letter-spacing: var(--flux-tracking-create-title);
+  color: var(--flux-n12);
+  caret-color: var(--flux-p9);
+}
+
+.helper {
+  margin: var(--flux-space-2) 0 var(--flux-space-10);
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+}
+
+ion-textarea.description {
+  --padding-top: 0;
+  --padding-bottom: var(--flux-space-12);
+  --highlight-color: transparent;
+  --placeholder-color: var(--flux-na9);
+  --placeholder-opacity: 1;
+  min-height: 0;
+  font: var(--flux-font-create-description);
+  letter-spacing: var(--flux-tracking-create-description);
+  color: var(--flux-n12);
+  caret-color: var(--flux-p9);
+}
+
+// Optional fields, 8px apart, wrapping.
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--flux-space-8);
+  padding: var(--flux-space-14) var(--flux-space-16);
+}
+
+// The assignee's 22px avatar, at the chip's start.
+.avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-inline-start: calc(-1 * var(--flux-space-6));
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-detail-avatar);
+  letter-spacing: var(--flux-tracking-detail-avatar);
+  color: var(--flux-avatar-text);
+}
+
+.key {
+  flex: none;
+  font: var(--flux-font-key);
+}
+
+.parent-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// What the task will start as, from the project's workflow.
+.callout {
+  display: flex;
+  gap: var(--flux-space-8);
+  margin: 0 var(--flux-space-16) var(--flux-space-14);
+  padding: var(--flux-space-10) var(--flux-space-12);
+  border-radius: var(--flux-radius-card);
+  background: var(--flux-bluea3);
+  font: var(--flux-font-callout);
+  letter-spacing: var(--flux-tracking-callout);
+  color: var(--flux-blue11);
+
+  ion-icon {
+    flex: none;
+    margin-top: 1px;
+    font-size: 15px;
+  }
+
+  strong {
+    font-weight: 650;
+  }
+}
+
+.keep-open {
+  margin: 0 var(--flux-space-16) var(--flux-space-16);
+  font: var(--flux-font-toggle-label);
+  letter-spacing: var(--flux-tracking-toggle-label);
+  color: var(--flux-n12);
+}
+
+// The sheet's own keyboard accessory bar (iOS's is hidden while it's open).
+.keyboard-bar ion-toolbar {
+  --background: var(--flux-n2);
+  --border-width: 1px 0 0;
+  --border-color: var(--flux-na4);
+  --min-height: 48px;
+  --padding-end: var(--flux-space-8);
+}

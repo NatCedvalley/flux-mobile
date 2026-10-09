@@ -53,13 +53,20 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [class.has-fab]="canCreate()">
   <ion-refresher
     slot="fixed"
     (ionRefresh)="refresh($event)"
   >
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
+
+  @if (canCreate()) {
+    <app-create-task-fab
+      slot="fixed"
+      (opened)="openCreate()"
+    />
+  }
 
   @let list = current();
   @if (list.error() && !list.isLoading()) {

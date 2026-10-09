@@ -40,8 +40,9 @@ src/
 └── app/      Angular/Ionic UI only: pages, routes, the handoff icon set
               (icons/), shared list components (shared/), the project
               switcher, on-device project preferences and the cached
-              project list with the caller's roles (projects/), and
-              the providers that bridge into src/core
+              project list with the caller's roles (projects/), the
+              create sheet and its button (task-create/), and the
+              providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -296,7 +297,7 @@ sheet (an inline `flux-sheet` `ion-modal`):
 - The shared sheets are in `src/app/shared/`:
   - `picker-sheet/` is the one searchable picker (`ion-searchbar` over a
     list, single or multiple choice). Labels, parent, assignees, priority and
-    type use it, and FM-35's create sheet should too. A multiple choice edits
+    type use it, and so does the create sheet. A multiple choice edits
     a draft that the page applies when the sheet closes. With
     `remoteSearch`, it emits `searched` 300 ms after typing pauses.
   - `text-edit-sheet/` (title, description) and `date-sheet/` (due date).
@@ -382,11 +383,63 @@ Projects tab and My Work search load their projects through it, and the
 Projects tab's pull-to-refresh calls `invalidate()` first, so the counts
 are fresh.
 
+### Task create
+
+My Work and the Projects list have a create button (`app-create-task-fab`,
+`src/app/task-create/`, 3i's FAB: bottom end, 20px above the tab bar), shown
+to an EDITOR+ in the open project, or on My Work in any project. The lists
+pad their bottom so it never covers the last row. It opens the create sheet
+(`CreateTaskSheetComponent`) through `CreateTaskLauncherService`:
+
+- The sheet is presented with `ModalController` from the app root, not
+  inline in the page: the iOS card effect (`presentingElement`, the root
+  `ion-router-outlet`) scales the presenting element, and would scale a
+  modal declared inside it too. Its inputs arrive through `componentProps`,
+  which reach signal inputs because `main.ts` sets Ionic's
+  `useSetInputAPI`. While it's open, `StatusBarService.forceDark()` turns
+  the status bar's text light and, on iOS, `Keyboard.setAccessoryBarVisible`
+  hides the native accessory bar. The sheet draws its own (Done only, while
+  the keyboard is open). Paperclip and camera wait for FM-36, and there is
+  no @ or mic.
+- It starts in the open project, or on My Work in the project opened last
+  on the Projects tab (`initialProject()`), and lists only EDITOR+
+  projects. Changing project drops the assignee, labels and parent.
+- Only the title is required (`TITLE_MAX`, 120; Enter moves on to the
+  description, which is Markdown). The type chip lists the types the
+  parent allows (`allowedChildTypes()`, `src/core/task-create/`), and the
+  parent picker searches the types the type allows (`parentTypes()`). The
+  assignee, priority, due date, labels and parent chips open the shared
+  pickers. The server takes one `assigneeId`, so the assignee picker is
+  single choice. Release is display-only, so there is no release chip.
+- The callout says what the task will start as: `startingStatus()` mirrors
+  flux-operations' `resolveDefaultStatusForType` (the project's `isDefault`
+  status for a leaf type that may use it, else the first TODO/IN_PROGRESS
+  status by position, or PLANNING for masters and epics), plus the chosen
+  assignee or "unassigned". A workflow status's `assignmentRule` only runs
+  on a status change, never on create, so it isn't mentioned.
+- `TaskCreateService` does the write: `POST /projects/{p}/tasks` with
+  `createTaskBody()` (unset fields left out so the server's defaults apply),
+  then each label through `POST /labels/{id}/tasks/{t}`, one at a time, and
+  the task fetched again. Labels sent on the POST would only reach the
+  task's own column, not the server's label links. A failed create shows
+  the server's message and keeps the form; a failed label still counts as
+  created, and the toast says so.
+- Success shows a 4 s `CHK-161 created` toast with Open, which pushes task
+  detail onto the current tab. "Keep the sheet open to add another" clears
+  the form but its project and type instead of closing. Cancel or a swipe
+  down asks "Discard this task?" when anything was entered (the modal's
+  `canDismiss`).
+- The Projects list puts a task created in its project at the top of its
+  group (`GroupedTaskPager.placeTask()`) if the filters let it in; under a
+  sort other than newest first it stays at the top until the list reloads.
+  My Work reloads its lists instead, because its rows carry project and
+  status names a created task lacks.
+
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
-tasks, a project's tasks, one task, its update (PUT), parent,
+tasks, a project's tasks, one task, its create, update (PUT), parent,
 assignees and delete, a status change, archive and unarchive, its
 children, activities, comments (list, post, edit, delete and toggle a
 reaction) and subscription (read, subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
@@ -405,10 +458,11 @@ query-string and JSON handling it shares with `AuthClient`. `src/core/mock/in-me
 test double: its fixtures are dated relative to today and it applies the
 my-tasks filters (including status, priority and search) and the project
 list's filters (comma lists, assignee, labels, search) and sort, so page
-specs use it (`addProjectTasks()` adds rows to page through). Its status
-changes, archiving and edits follow the backend's rules and error codes
-(a PUT clears what it leaves out, as above), and `done` is the closed
-status. Comments are written as Ada (`a1`, the page specs' account): only
+specs use it (`addProjectTasks()` adds rows to page through). Its creates,
+status changes, archiving and edits follow the backend's rules and error codes
+(a PUT clears what it leaves out, as above), `done` is the closed
+status and `todo` the default one. A created task is reported by Ada and
+numbered after its project's highest key. Comments are written as Ada (`a1`, the page specs' account): only
 she edits or deletes hers, a comment with replies can't be deleted, and
 reactions toggle hers. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
@@ -876,6 +930,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-task create (FM-35), push notifications
+push notifications
 (FM-7 also unregisters the device token in `AuthSession.logout()`), offline
 caching, app store assets, and Play Store upload.

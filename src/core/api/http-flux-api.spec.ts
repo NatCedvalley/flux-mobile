@@ -246,6 +246,16 @@ describe('HttpFluxApi', () => {
     expect(JSON.parse(init().body)).toEqual({ reason: 'Undone' });
   });
 
+  it('creates a task with a POST to the project’s tasks', async () => {
+    const { api, url, init } = setup({ id: 't9', taskKey: 'CHK-9' }, 201);
+    const task = await api.createTask('p1', { title: 'New', type: 'BUG' });
+    expect(url()).toBe(`${BASE_URL}/projects/p1/tasks`);
+    expect(init().method).toBe('POST');
+    expect(init().headers.Authorization).toBe('Bearer a1');
+    expect(JSON.parse(init().body)).toEqual({ title: 'New', type: 'BUG' });
+    expect(task.taskKey).toBe('CHK-9');
+  });
+
   it('updates a task with a PUT of the whole body', async () => {
     const { api, url, init } = setup({ id: 't1' });
     await api.updateTask('p1', 't1', { title: 'New', labels: ['a'] });

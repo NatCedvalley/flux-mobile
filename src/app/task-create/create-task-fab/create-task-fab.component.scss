@@ -1,0 +1,29 @@
+// Ionic makes whatever sits in ion-content's fixed slot absolute, so the
+// host spans the content to position the button by, letting taps through.
+:host {
+  inset: 0;
+  pointer-events: none;
+}
+
+// 18px in from the right and 20px above the tab bar (the handoff's 104px
+// from the screen's bottom, less its 84px tab bar).
+ion-fab {
+  pointer-events: auto;
+  right: calc(var(--flux-space-16) + var(--flux-space-2));
+  bottom: calc(var(--flux-space-16) + var(--flux-space-4));
+}
+
+ion-fab-button {
+  --background: var(--flux-p9);
+  --background-activated: var(--flux-p10);
+  --background-hover: var(--flux-p10);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: var(--flux-radius-fab);
+  --box-shadow: var(--flux-shadow-fab);
+  width: 56px;
+  height: 56px;
+
+  ion-icon {
+    font-size: 24px;
+  }
+}

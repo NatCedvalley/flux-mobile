@@ -11,6 +11,10 @@ import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
+import {
+  type CreateTaskOptions,
+  CreateTaskLauncherService,
+} from '../../task-create/create-task-launcher.service';
 import { TaskChangesService } from '../../task-status/task-changes.service';
 import { ProjectTasksPage } from './project-tasks.page';
 
@@ -36,6 +40,7 @@ describe('ProjectTasksPage', () => {
   let api: FluxApi;
   let prefs: ReturnType<typeof fakePrefs>;
   let toast: { create: ReturnType<typeof vi.fn> };
+  let launcher: { open: ReturnType<typeof vi.fn> };
 
   async function create(
     options: {
@@ -49,6 +54,7 @@ describe('ProjectTasksPage', () => {
     toast = {
       create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
     };
+    launcher = { open: vi.fn().mockResolvedValue(undefined) };
     await TestBed.configureTestingModule({
       imports: [ProjectTasksPage],
       providers: [
@@ -56,6 +62,7 @@ describe('ProjectTasksPage', () => {
         { provide: FLUX_API, useValue: api },
         { provide: ProjectPrefsService, useValue: prefs },
         { provide: ToastController, useValue: toast },
+        { provide: CreateTaskLauncherService, useValue: launcher },
         {
           provide: AuthService,
           useValue: {
@@ -606,6 +613,75 @@ describe('ProjectTasksPage', () => {
     await settle();
 
     expect(texts('.project-name')).toEqual(['Checkout']);
+  });
+
+  describe('create', () => {
+    /** Taps the create button; resolves with what it opened the sheet with. */
+    async function openCreate(): Promise<CreateTaskOptions> {
+      element()
+        .querySelector<HTMLElement>('app-create-task-fab ion-fab-button')!
+        .click();
+      await settle();
+      return launcher.open.mock.calls[0][0] as CreateTaskOptions;
+    }
+
+    it('opens the create sheet on the open project, offering EDITOR+ ones', async () => {
+      const mixed = new InMemoryFluxApi();
+      vi.spyOn(mixed, 'listMyProjects').mockResolvedValue({
+        content: [
+          { project: { id: 'p1', name: 'Checkout' }, role: 'EDITOR' },
+          { project: { id: 'p3', name: 'Ops' }, role: 'VIEWER' },
+        ],
+      });
+      await create({ api: mixed });
+      await settle();
+
+      const options = await openCreate();
+
+      expect(options.projectId).toBe('p1');
+      expect(options.projects.map((p) => p.project?.id)).toEqual(['p1']);
+    });
+
+    it('has no create button for a viewer', async () => {
+      const viewer = new InMemoryFluxApi();
+      vi.spyOn(viewer, 'listMyProjects').mockResolvedValue({
+        content: [{ project: { id: 'p1', name: 'Checkout' }, role: 'VIEWER' }],
+      });
+      await create({ api: viewer });
+      await settle();
+
+      expect(element().querySelector('app-create-task-fab')).toBeNull();
+    });
+
+    it('puts a task created here at the top of its group', async () => {
+      await create();
+      await settle();
+      const options = await openCreate();
+
+      options.created(await api.createTask('p1', { title: 'New one' }));
+      await settle();
+
+      expect(headers()).toContain('To Do 2');
+      expect(texts('app-project-task-row .key')).toContain('CHK-161');
+      const todo = texts('app-project-task-row .key');
+      expect(todo.indexOf('CHK-161')).toBeLessThan(todo.indexOf('CHK-150'));
+    });
+
+    it('leaves out a created task the filters or the project rule out', async () => {
+      await create();
+      await settle();
+      await applyFilters({ priorities: ['HIGH'] });
+      const options = await openCreate();
+
+      options.created(await api.createTask('p1', { title: 'Medium one' }));
+      options.created(
+        await api.createTask('p2', { title: 'Elsewhere', priority: 'HIGH' })
+      );
+      await settle();
+
+      expect(texts('app-project-task-row .key')).not.toContain('CHK-161');
+      expect(texts('app-project-task-row .key')).not.toContain('BIL-91');
+    });
   });
 
   describe('swipe actions', () => {

@@ -62,4 +62,26 @@ describe('StatusBarService', () => {
 
     expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
   });
+
+  it('forces light text while a card sheet is open, then follows the theme', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    service.init();
+
+    service.forceDark(true);
+    expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
+    onChange?.();
+    expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
+
+    service.forceDark(false);
+    expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Light });
+  });
+
+  it('ignores the override on web', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
+    service.init();
+
+    service.forceDark(true);
+
+    expect(StatusBar.setStyle).not.toHaveBeenCalled();
+  });
 });

@@ -1,0 +1,45 @@
+:host {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+// 36px, radius 10: dashed `--na6` while unset, filled once set.
+button {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--flux-space-12);
+  border: 1px dashed var(--flux-na6);
+  border-radius: var(--flux-radius-button);
+  background: none;
+  font: var(--flux-font-chip);
+  letter-spacing: var(--flux-tracking-chip);
+  color: var(--flux-na11);
+  cursor: pointer;
+}
+
+button.set {
+  border: 0;
+  background: var(--flux-pa3);
+  font: var(--flux-font-chip-selected);
+  letter-spacing: var(--flux-tracking-chip-selected);
+  color: var(--flux-pa11);
+}
+
+button.set[data-tone='red'] {
+  background: var(--flux-reda3);
+  color: var(--flux-red11);
+}
+
+button.set[data-tone='amber'] {
+  background: var(--flux-ambera3);
+  color: var(--flux-amber11);
+}
+
+ion-icon {
+  flex: none;
+  font-size: 15px;
+}

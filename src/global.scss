@@ -60,6 +60,15 @@ ion-modal.flux-sheet {
 }
 
 /*
+ * The create sheet (3i): a full-height card over the app, which steps back
+ * behind it (`presentingElement`), with the sheet's 22px corners.
+ */
+ion-modal.flux-create-sheet {
+  --border-radius: var(--flux-radius-sheet);
+  --box-shadow: var(--flux-shadow-sheet);
+}
+
+/*
  * A sheet as tall as its content (the status sheet, 3h), as Ionic's
  * auto-height sheet does it: the page flows instead of filling the modal,
  * so the sheet scrolls its own body.

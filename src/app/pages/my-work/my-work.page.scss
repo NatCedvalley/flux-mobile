@@ -87,6 +87,11 @@ ion-list {
   padding: 0;
 }
 
+// Room under the last row for the 56px create button and its inset.
+ion-content.has-fab {
+  --padding-bottom: calc(56px + var(--flux-space-24));
+}
+
 // Bucket headers: 34px, uppercase section-header type. Overdue is red,
 // with a clock, and says so in words too. The a2/a3 washes sit on the row
 // background, so rows don't show through a sticky header.

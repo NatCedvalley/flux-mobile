@@ -8,7 +8,7 @@ import {
   resource,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   IonButton,
   IonButtons,
@@ -24,18 +24,25 @@ import {
   IonSegment,
   IonSegmentButton,
   IonToolbar,
+  NavController,
   type RefresherCustomEvent,
   type SegmentCustomEvent,
 } from '@ionic/angular';
 import type { MyTask, Page } from '@core/api';
 import { FOCUS_DAYS, addDays, focusBuckets, localIsoDate } from '@core/my-work';
 import { avatarFillIndex, initials } from '@core/people';
+import { can } from '@core/permissions';
+import { initialProject } from '@core/project-list';
 import { AuthService } from '../../auth/auth.service';
+import { MyProjectsService } from '../../projects/my-projects.service';
+import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 import { TaskRowComponent } from '../../shared/task-row/task-row.component';
+import { CreateTaskFabComponent } from '../../task-create/create-task-fab/create-task-fab.component';
+import { CreateTaskLauncherService } from '../../task-create/create-task-launcher.service';
 
 type Segment = 'assigned' | 'focus' | 'watching';
 
@@ -52,7 +59,8 @@ const EMPTY_MESSAGES: Record<Segment, string> = {
  * Home tab (handoff 3a): the user's open tasks across every project. Focus
  * groups the assigned ones due soon into Overdue, Today and Next 7 days; All
  * assigned and Watching list everything, in the server's order (priority,
- * then due date).
+ * then due date). An EDITOR+ in any project gets the create button, which
+ * starts in the project opened last.
  */
 @Component({
   selector: 'app-my-work',
@@ -75,6 +83,7 @@ const EMPTY_MESSAGES: Record<Segment, string> = {
     IonRefresherContent,
     IonSegment,
     IonSegmentButton,
+    CreateTaskFabComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     SkeletonRowsComponent,
@@ -84,6 +93,11 @@ const EMPTY_MESSAGES: Record<Segment, string> = {
 export class MyWorkPage {
   private readonly api = inject(FLUX_API);
   private readonly account = inject(AuthService).account;
+  private readonly myProjects = inject(MyProjectsService);
+  private readonly prefs = inject(ProjectPrefsService);
+  private readonly creates = inject(CreateTaskLauncherService);
+  private readonly nav = inject(NavController);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly segment = signal<Segment>('focus');
   /** The local day. Read again on refresh, so Focus rolls over at midnight. */
@@ -167,6 +181,15 @@ export class MyWorkPage {
     return `var(--flux-avatar-${index + 1})`;
   });
 
+  /** The projects the user may create tasks in; none hides the button. */
+  private readonly creatable = resource({
+    loader: async () =>
+      (await this.myProjects.load()).filter((p) => can(p.role, 'create')),
+  });
+  protected readonly canCreate = computed(
+    () => this.creatable.hasValue() && this.creatable.value().length > 0
+  );
+
   /** The pull-to-refresh in progress, completed once its reload settles. */
   private readonly refresher = signal<
     RefresherCustomEvent['target'] | undefined
@@ -202,11 +225,51 @@ export class MyWorkPage {
     this.refresher.set(event.target);
   }
 
+  /**
+   * Opens the create sheet (3i) on the project opened last on the Projects
+   * tab, else the first pinned one, else the first listed.
+   */
+  protected async openCreate(): Promise<void> {
+    if (!this.creatable.hasValue()) {
+      return;
+    }
+    const projects = this.creatable.value();
+    const [lastId] = await Promise.all([
+      this.prefs.lastProjectId(),
+      this.prefs.load(),
+    ]);
+    const projectId = initialProject(projects, lastId, this.prefs.pinned())
+      ?.project?.id;
+    if (!projectId) {
+      return;
+    }
+    await this.creates.open({
+      projects,
+      projectId,
+      // My Work's rows carry project and status names a created task
+      // lacks, and only some lists take it, so they load again.
+      created: () => this.reloadLists(),
+      openTask: (task) =>
+        void this.nav.navigateForward(['tasks', task.projectId, task.id], {
+          relativeTo: this.route,
+          state: { task },
+        }),
+    });
+  }
+
   /** Reloads the visible segment, and the subtitle's count if it failed too. */
   protected retry(): void {
     this.current().reload();
     if (this.assigned.error()) {
       this.assigned.reload();
+    }
+  }
+
+  private reloadLists(): void {
+    this.focus.reload();
+    this.assigned.reload();
+    if (this.watchingOpened()) {
+      this.watching.reload();
     }
   }
 }

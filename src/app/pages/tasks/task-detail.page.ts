@@ -54,6 +54,7 @@ import { localIsoDate } from '@core/my-work';
 import { avatarFillIndex, initials } from '@core/people';
 import { can } from '@core/permissions';
 import { priorityFact } from '@core/project-list';
+import { TASK_TYPES } from '@core/task-create';
 import { assigneeSummary, commentCount } from '@core/task-detail';
 import { TITLE_MAX, type TaskChange, parentTypes } from '@core/task-edit';
 import {
@@ -125,16 +126,6 @@ type Editor =
   | 'priority'
   | 'title'
   | 'type';
-
-/** The types in the type picker, leaf types first. */
-const TYPES: readonly NonNullable<Task['type']>[] = [
-  'TASK',
-  'BUG',
-  'FEATURE',
-  'IMPROVEMENT',
-  'EPIC',
-  'MASTER',
-];
 
 /** Parent candidates fetched per search. */
 const PARENT_PAGE_SIZE = 20;
@@ -399,7 +390,7 @@ export class TaskDetailPage {
       icon: priorityFact(option.value)?.icon,
     })
   );
-  protected readonly typeItems: PickerItem[] = TYPES.map((type) => ({
+  protected readonly typeItems: PickerItem[] = TASK_TYPES.map((type) => ({
     id: type,
     label: type[0] + type.slice(1).toLowerCase(),
     icon: TYPE_ICONS[type],

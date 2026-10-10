@@ -1,0 +1,234 @@
+// Handoff 3c: the rail over the columns, filling the content's height so
+// each column scrolls its own cards.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// One row of status pills, 16px apart, the active one underlined in its
+// hue on the `--na4` rule.
+.rail {
+  display: flex;
+  flex: none;
+  gap: var(--flux-space-16);
+  padding: 0 var(--flux-space-16);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--flux-na4);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--flux-space-6);
+  margin-bottom: -1px;
+  padding: var(--flux-space-4) 0 var(--flux-space-8);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  white-space: nowrap;
+  font: var(--flux-font-rail-label);
+  letter-spacing: var(--flux-tracking-rail-label);
+  color: var(--flux-na10);
+
+  .dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  &.active {
+    border-bottom-color: var(--group-dot);
+    color: var(--group-text);
+  }
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--flux-radius-pill);
+  background: var(--group-dot);
+}
+
+// 296px columns, 12px apart, snapping to the 16px gutter so the next one
+// peeks. Snap is off while a card is held, so the edge advance can scroll.
+.columns {
+  display: flex;
+  flex: auto;
+  gap: var(--flux-space-12);
+  min-height: 0;
+  padding: var(--flux-space-14) var(--flux-space-16) 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--flux-space-16);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  // The end padding a scrolling flex row would otherwise drop.
+  &::after {
+    content: '';
+    flex: none;
+    width: var(--flux-space-4);
+  }
+
+  &.dragging {
+    scroll-snap-type: none;
+  }
+}
+
+.column {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--flux-space-10);
+  width: 296px;
+  min-height: 0;
+  border-radius: var(--flux-radius-card-lg);
+  scroll-snap-align: start;
+  transition:
+    opacity 150ms ease-out,
+    background-color 150ms ease-out;
+
+  // The held card's type can't go here.
+  &.refused {
+    opacity: 0.4;
+  }
+
+  // The held card would land here.
+  &.over {
+    background: var(--group-wash);
+  }
+}
+
+// Not scrolled with the cards: dot, name, count.
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--flux-space-8);
+  min-height: 20px;
+}
+
+.name {
+  font: var(--flux-font-column-name);
+  letter-spacing: var(--flux-tracking-column-name);
+  color: var(--flux-n12);
+}
+
+.count {
+  font: var(--flux-font-column-count);
+  letter-spacing: var(--flux-tracking-column-count);
+  color: var(--flux-na10);
+}
+
+.reason {
+  margin-inline-start: auto;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+}
+
+.cards {
+  display: flex;
+  flex: auto;
+  flex-direction: column;
+  gap: var(--flux-space-10);
+  min-height: 0;
+  padding-bottom: var(--flux-space-16);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+app-board-card {
+  flex: none;
+  transition: opacity 150ms ease-out;
+
+  // The card's place while its ghost is held.
+  &.picked {
+    opacity: 0.4;
+  }
+}
+
+// A card's outline in `--na3` blocks: the board's first load, and a
+// column's next page.
+.skeleton-card {
+  flex: none;
+  padding: var(--flux-space-12);
+  border-radius: var(--flux-radius-card-lg);
+  background: var(--flux-bg);
+  box-shadow: var(--flux-shadow-card);
+  opacity: 0;
+  animation: fade-in 150ms ease-out 200ms forwards;
+
+  ion-skeleton-text {
+    width: 80%;
+    height: 14px;
+  }
+
+  .short {
+    width: 50%;
+    margin-top: var(--flux-space-8);
+  }
+}
+
+ion-skeleton-text {
+  --background: var(--flux-na3);
+  --background-rgb: var(--ion-text-color-rgb);
+  margin: 0;
+  border-radius: var(--flux-radius-tag);
+}
+
+.skeleton .head-text {
+  width: 96px;
+  height: 13px;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.more-error {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+}
+
+// 44px, dashed `--na6`.
+.add {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-space-6);
+  min-height: 44px;
+  border: 1px dashed var(--flux-na6);
+  border-radius: var(--flux-radius-card-lg);
+  background: transparent;
+  font: var(--flux-font-add-task);
+  letter-spacing: var(--flux-tracking-add-task);
+  color: var(--flux-na11);
+
+  ion-icon {
+    font-size: 16px;
+  }
+
+  &:active {
+    background: var(--flux-na3);
+  }
+}

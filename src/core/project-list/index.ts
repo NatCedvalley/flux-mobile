@@ -27,8 +27,11 @@ export {
 export {
   AI_CANDIDATE_LABEL,
   GROUP_BY_VALUES,
+  VIEW_MODES,
   aiFilterQuery,
   resolveGroupBy,
+  resolveViewMode,
   type AiTaskFilter,
   type GroupBy,
+  type ViewMode,
 } from './view-settings';

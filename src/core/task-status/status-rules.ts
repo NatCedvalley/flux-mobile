@@ -83,6 +83,26 @@ export function nextStatus(
     .find((s) => !!s.category && allowed.includes(s.category));
 }
 
+/**
+ * What dropping a board card on a status column does: nothing on its own
+ * column, refused where its type can't go, the resolution picker first for
+ * a closed status, otherwise a plain move.
+ */
+export type DropAction = 'same' | 'blocked' | 'resolution' | 'move';
+
+export function dropAction(
+  task: Pick<Task, 'status' | 'type'>,
+  status: WorkflowStatus
+): DropAction {
+  if (status.slug === task.status) {
+    return 'same';
+  }
+  if (blockedReason(task.type, status.category)) {
+    return 'blocked';
+  }
+  return status.isClosed ? 'resolution' : 'move';
+}
+
 export type StatusSheetRow = {
   status: WorkflowStatus;
   current: boolean;

@@ -24,6 +24,11 @@ export type PagerState = {
   groups: LoadedGroup[];
   /** Every group is fully loaded: nothing left to scroll for. */
   done: boolean;
+  /**
+   * Every group in order, empty and unfinished ones included: the board's
+   * columns, which each page on their own (`loadMoreIn`).
+   */
+  columns: LoadedGroup[];
 };
 
 type GroupProgress = LoadedGroup & { nextPage: number };
@@ -36,7 +41,8 @@ type GroupProgress = LoadedGroup & { nextPage: number };
  * first group that isn't complete yet. A group's own filter wins over the
  * same key in the base query, so narrow the groups to the filter first
  * (`narrowGroups` in `@core/task-filters`). `placeTask` moves a changed row
- * without a refetch.
+ * without a refetch. The board shows every group as a column instead
+ * (`state.columns`) and pages each one with `loadMoreIn`.
  */
 export class GroupedTaskPager {
   private projectId = '';
@@ -45,6 +51,7 @@ export class GroupedTaskPager {
   /** Bumped by `start`, so pages fetched for an older list are dropped. */
   private generation = 0;
   private loadingMore: Promise<void> | null = null;
+  private loadingIn = new Map<string, Promise<void>>();
   private listener: (state: PagerState) => void = () => undefined;
 
   constructor(
@@ -58,16 +65,16 @@ export class GroupedTaskPager {
       firstIncomplete < 0
         ? this.groups
         : this.groups.slice(0, firstIncomplete + 1);
+    const loaded = ({ group, tasks, total, complete }: GroupProgress) => ({
+      group,
+      tasks,
+      total,
+      complete,
+    });
     return {
-      groups: visible
-        .filter((g) => g.total > 0)
-        .map(({ group, tasks, total, complete }) => ({
-          group,
-          tasks,
-          total,
-          complete,
-        })),
+      groups: visible.filter((g) => g.total > 0).map(loaded),
       done: firstIncomplete < 0,
+      columns: this.groups.map(loaded),
     };
   }
 
@@ -89,6 +96,7 @@ export class GroupedTaskPager {
   ): Promise<void> {
     const generation = ++this.generation;
     this.loadingMore = null;
+    this.loadingIn.clear();
     const pages = await Promise.all(
       groups.map((group) =>
         this.api.listProjectTasks(projectId, {
@@ -157,14 +165,36 @@ export class GroupedTaskPager {
    * call tries the same page again.
    */
   loadMore(): Promise<void> {
-    this.loadingMore ??= this.fetchNext().finally(() => {
+    this.loadingMore ??= this.fetchNext(
+      this.groups.find((g) => !g.complete)
+    ).finally(() => {
       this.loadingMore = null;
     });
     return this.loadingMore;
   }
 
-  private async fetchNext(): Promise<void> {
-    const target = this.groups.find((g) => !g.complete);
+  /**
+   * Loads the next page of the group keyed `groupKey`, if it has one.
+   * Concurrent calls for the same group share one request; a failure
+   * rejects and leaves the group as it was.
+   */
+  loadMoreIn(groupKey: string): Promise<void> {
+    let loading = this.loadingIn.get(groupKey);
+    if (!loading) {
+      const target = this.groups.find(
+        (g) => g.group.key === groupKey && !g.complete
+      );
+      loading = this.fetchNext(target).finally(() => {
+        if (this.loadingIn.get(groupKey) === loading) {
+          this.loadingIn.delete(groupKey);
+        }
+      });
+      this.loadingIn.set(groupKey, loading);
+    }
+    return loading;
+  }
+
+  private async fetchNext(target: GroupProgress | undefined): Promise<void> {
     if (!target) {
       return;
     }

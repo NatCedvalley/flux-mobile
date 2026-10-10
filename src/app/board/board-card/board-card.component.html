@@ -1,0 +1,74 @@
+<a
+  class="card"
+  draggable="false"
+  [routerLink]="['tasks', task().projectId, task().id]"
+  [state]="{ task: task() }"
+>
+  <div class="top">
+    <ion-icon
+      class="type"
+      [name]="icon()"
+      aria-hidden="true"
+    ></ion-icon>
+    @if (task().taskKey) {
+      <span class="key">{{ task().taskKey }}</span>
+    }
+    @if (priority(); as priority) {
+      <span
+        class="priority"
+        [attr.data-level]="priority.level"
+      >
+        <ion-icon
+          [name]="priority.icon"
+          aria-hidden="true"
+        ></ion-icon
+        >{{ priority.label }}
+      </span>
+    }
+  </div>
+  <div class="title">{{ task().title }}</div>
+  <div class="footer">
+    @for (chip of chips(); track $index) {
+      <span
+        class="chip"
+        [class.release]="chip.kind === 'release'"
+        >{{ chip.text }}</span
+      >
+    }
+    <span class="spacer"></span>
+    @if (due(); as due) {
+      <span
+        class="due"
+        [class.urgent]="due.urgent"
+      >
+        @if (due.urgent) {
+          <ion-icon
+            name="clock"
+            aria-hidden="true"
+          ></ion-icon>
+        }
+        {{ due.label }}
+      </span>
+    }
+    @if (assignee()) {
+      <span
+        class="avatar"
+        role="img"
+        [attr.aria-label]="'Assigned to ' + assigneeName()"
+        [style.background]="avatarFill()"
+        >{{ avatarInitials() }}</span
+      >
+    } @else {
+      <span
+        class="avatar unassigned"
+        role="img"
+        aria-label="Unassigned"
+      >
+        <ion-icon
+          name="user"
+          aria-hidden="true"
+        ></ion-icon>
+      </span>
+    }
+  </div>
+</a>

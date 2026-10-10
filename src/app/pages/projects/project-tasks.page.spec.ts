@@ -3,8 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { RouterLink, provideRouter } from '@angular/router';
 import { ToastController } from '@ionic/angular';
-import type { FluxApi, MyProject } from '@core/api';
-import type { GroupBy } from '@core/project-list';
+import type { FluxApi, MyProject, Task, WorkflowStatus } from '@core/api';
+import type { GroupBy, PagerState } from '@core/project-list';
 import type { TaskFilters } from '@core/task-filters';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
@@ -47,6 +47,7 @@ describe('ProjectTasksPage', () => {
       api?: FluxApi;
       prefs?: ReturnType<typeof fakePrefs>;
       defaultGroupBy?: string;
+      defaultView?: string;
     } = {}
   ) {
     api = options.api ?? new InMemoryFluxApi();
@@ -69,6 +70,7 @@ describe('ProjectTasksPage', () => {
             account: signal({
               id: 'a1',
               defaultGroupBy: options.defaultGroupBy,
+              defaultView: options.defaultView,
             }),
           },
         },
@@ -925,6 +927,225 @@ describe('ProjectTasksPage', () => {
       changes.report(await api.getTask('p1', '1'), true);
       await settle();
       expect(texts('app-project-task-row .key')).not.toContain('CHK-142');
+    });
+  });
+  describe('board', () => {
+    const boardApi = () =>
+      new InMemoryFluxApi().setTaskViewSettings('p1', { viewMode: 'board' });
+
+    function board() {
+      return fixture.componentInstance as unknown as {
+        pages(): PagerState;
+        orderedStatuses(): WorkflowStatus[];
+        chooseView(view: 'list' | 'board'): void;
+        dropped(drop: { task: Task; status: WorkflowStatus }): void;
+        filterOpen(): boolean;
+        sheetOpen(): boolean;
+        sheetExpand(): string | undefined;
+      };
+    }
+
+    /** Each column as `name: KEY, KEY`. */
+    function columns(): string[] {
+      return Array.from(element().querySelectorAll('section.column')).map(
+        (c) =>
+          `${c.querySelector('.name')?.textContent}: ${Array.from(
+            c.querySelectorAll('app-board-card .key')
+          )
+            .map((k) => k.textContent)
+            .join(', ')}`
+      );
+    }
+
+    function task(key: string): Task {
+      return board()
+        .pages()
+        .columns.flatMap((c) => c.tasks)
+        .find((t) => t.taskKey === key)!;
+    }
+
+    function status(slug: string): WorkflowStatus {
+      return board()
+        .orderedStatuses()
+        .find((s) => s.slug === slug)!;
+    }
+
+    it('shows the list by default, with the List/Board segment', async () => {
+      await create();
+      await settle();
+
+      expect(
+        element().querySelector<HTMLIonSegmentElement>('ion-segment')?.value
+      ).toBe('list');
+      expect(element().querySelector('app-task-board')).toBeNull();
+      expect(headers()).toContain('To Do 1');
+    });
+
+    it("opens on the board from the project's override", async () => {
+      await create({ api: boardApi() });
+      await settle();
+
+      expect(columns()).toEqual([
+        'Backlog: CHK-131',
+        'To Do: CHK-150',
+        'In Progress: CHK-142',
+        'Done: CHK-120',
+      ]);
+      expect(element().querySelector('ion-list')).toBeNull();
+      expect(element().querySelector('.strip')).toBeNull();
+      expect(element().querySelector('app-create-task-fab')).toBeNull();
+      expect(texts('.project-subline')).toEqual(['Board · drag to move']);
+    });
+
+    it("falls back to the account's default view", async () => {
+      await create({ defaultView: 'board' });
+      await settle();
+
+      expect(element().querySelector('app-task-board')).not.toBeNull();
+    });
+
+    it('switches to the board and saves it as the override', async () => {
+      await create();
+      await settle();
+      const save = vi.spyOn(api, 'updateTaskViewSettings');
+
+      board().chooseView('board');
+      await settle();
+
+      expect(save).toHaveBeenCalledWith('p1', { viewMode: 'board' });
+      expect(columns()).toHaveLength(4);
+    });
+
+    it('keeps the board when saving it fails', async () => {
+      await create();
+      await settle();
+      vi.spyOn(api, 'updateTaskViewSettings').mockRejectedValue(
+        new ApiError(0)
+      );
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      board().chooseView('board');
+      await settle();
+
+      expect(columns()).toHaveLength(4);
+    });
+
+    it('has status columns while the list is grouped by priority', async () => {
+      await create({
+        api: new InMemoryFluxApi().setTaskViewSettings('p1', {
+          viewMode: 'board',
+          groupBy: 'priority',
+        }),
+      });
+      await settle();
+
+      expect(texts('section.column .name')).toEqual([
+        'Backlog',
+        'To Do',
+        'In Progress',
+        'Done',
+      ]);
+    });
+
+    it('opens the filter sheet from the header, and narrows the columns', async () => {
+      await create({ api: boardApi() });
+      await settle();
+
+      element().querySelector<HTMLElement>('.icon-button.filters')!.click();
+      expect(board().filterOpen()).toBe(true);
+      await applyFilters({ statuses: ['todo', 'done'] });
+
+      expect(texts('section.column .name')).toEqual(['To Do', 'Done']);
+      expect(element().querySelector('.filters-dot')).not.toBeNull();
+    });
+
+    it('moves a dropped card to its column, with Undo', async () => {
+      await create({ api: boardApi() });
+      await settle();
+
+      board().dropped({ task: task('CHK-150'), status: status('in_progress') });
+      await settle();
+
+      expect(columns()).toContain('In Progress: CHK-150, CHK-142');
+      expect(columns()).toContain('To Do: ');
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Moved to In Progress' })
+      );
+    });
+
+    it('asks for a resolution before a drop on a closed status', async () => {
+      await create({ api: boardApi() });
+      await settle();
+      const change = vi.spyOn(api, 'changeTaskStatus');
+
+      board().dropped({ task: task('CHK-142'), status: status('done') });
+
+      expect(board().sheetOpen()).toBe(true);
+      expect(board().sheetExpand()).toBe('done');
+      expect(change).not.toHaveBeenCalled();
+    });
+
+    it('moves a card that task detail changed', async () => {
+      await create({ api: boardApi() });
+      await settle();
+
+      TestBed.inject(TaskChangesService).report({
+        ...task('CHK-150'),
+        status: 'in_progress',
+        statusCategory: 'IN_PROGRESS',
+      });
+      await settle();
+
+      expect(columns()).toContain('In Progress: CHK-150, CHK-142');
+    });
+
+    describe('Add task', () => {
+      async function addTo(slug: string): Promise<CreateTaskOptions> {
+        const column = element().querySelector(
+          `section[data-column="${slug}"]`
+        )!;
+        column.querySelector<HTMLElement>('.add')!.click();
+        await settle();
+        return launcher.open.mock.calls.at(-1)![0] as CreateTaskOptions;
+      }
+
+      it('opens the create sheet with the column, then moves the task there', async () => {
+        await create({ api: boardApi() });
+        await settle();
+        const options = await addTo('in_progress');
+        expect(options.status?.slug).toBe('in_progress');
+
+        options.created(await api.createTask('p1', { title: 'New one' }));
+        await settle();
+
+        expect(columns()).toContain('In Progress: CHK-161, CHK-142');
+        // Quietly: the created toast is the one showing.
+        expect(toast.create).not.toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Moved to In Progress' })
+        );
+      });
+
+      it("leaves a type the column can't use where it started", async () => {
+        await create({ api: boardApi() });
+        await settle();
+        const change = vi.spyOn(api, 'changeTaskStatus');
+        const options = await addTo('backlog');
+
+        options.created(await api.createTask('p1', { title: 'A task' }));
+        await settle();
+
+        expect(change).not.toHaveBeenCalled();
+        expect(columns()).toContain('To Do: CHK-161, CHK-150');
+      });
+
+      it('has no Add task on a closed column', async () => {
+        await create({ api: boardApi() });
+        await settle();
+
+        expect(
+          element().querySelector('section[data-column="done"] .add')
+        ).toBeNull();
+      });
     });
   });
 });

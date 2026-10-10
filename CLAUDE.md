@@ -42,8 +42,9 @@ src/
               switcher, on-device project preferences and the cached
               project list with the caller's roles (projects/), the
               create sheet and its button (task-create/), attachment
-              upload, opening and the file sources (attachments/), and
-              the providers that bridge into src/core
+              upload, opening and the file sources (attachments/), the
+              project board and its drag (board/), and the providers
+              that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -150,8 +151,14 @@ On open it fetches the first page of every group at once, which also gives
 each header its count and hides empty groups. `ion-infinite-scroll` then
 pages the first group that isn't complete yet, and a later group is only
 shown once every group above it is complete. Rows are `app-project-task-row`
-(key, priority, due date and the assignee's avatar). The List/Board/Calendar
-segment is not built yet (FM-6).
+(key, priority, due date and the assignee's avatar).
+
+A List/Board segment sits under the header. The view resolves like the
+group-by (`resolveViewMode()`): the project's `viewMode`, then the account's
+`defaultView`, then the list. The values are flux-web's lowercase `list`
+and `board`. `calendar` falls through until the calendar is built (FM-38).
+A tap saves the project's override with `PUT {viewMode}` without waiting,
+and only a tap does: flux-web also re-saves it on every load.
 
 The strip under the header has two buttons, each opening a bottom sheet
 (an inline `ion-modal` with the global `flux-sheet` class, never an
@@ -198,6 +205,67 @@ The page wraps each row, so project search rows don't swipe.
 - A change made on task detail moves the row too (`TaskChangesService`),
   if it's loaded. A task archived or deleted there drops its row; one
   restored by Undo there comes back only when the list reloads.
+
+### Board
+
+The board (handoff 3c, `src/app/board/`) shows the project's statuses as
+columns, whatever the list's group-by, through the same `GroupedTaskPager`.
+`state.columns` lists every group, empty ones included, and
+`loadMoreIn(key)` pages one of them. The header's `sliders-horizontal`
+button opens the Filters sheet (with a dot while filters are set) in place
+of the strip, and a status filter narrows the columns. The board has no
+create button.
+
+- **Layout** (`app-task-board`):
+  - A rail of status pills with counts follows the horizontal scroll and
+    jumps to a column.
+  - Columns are 296 px wide with a 12 px gap and snap
+    (`scroll-snap-type: x mandatory`), so the next one peeks.
+  - The board fills the content: each column's head stays put while its
+    cards scroll.
+  - An IntersectionObserver sentinel (a skeleton card) at a column's end
+    loads its next page. A failed page shows Retry in that column.
+- **Cards** (`app-board-card`) are plain divs:
+  - type icon, key and priority, then the title;
+  - up to two chips, the first release (violet) then labels;
+  - the due date, red with a clock when it's today or past;
+  - a 26 px avatar.
+
+  The list response has no comment or attachment counts, so the cards
+  don't show 3c's counts.
+
+- **Drag** (`board-drag.ts`, pointer events; `ion-reorder-group` only
+  reorders vertically) is EDITOR+ only:
+  - A 400 ms long press picks a card up. Moving more than 8 px first is a
+    scroll.
+  - A ghost copy follows the finger. Resting within 40 px of a screen edge
+    for 500 ms scrolls one column that way, and repeats.
+  - Once a card is up, `touchmove` is cancelled so the browser can't start
+    a scroll (which would fire `pointercancel`). The click after a drop is
+    swallowed.
+  - A column the type can't use (`blockedReason()`) dims and gives the
+    reason, and refuses the drop.
+  - `dropAction()` (`src/core/task-status/`) decides the drop: a closed
+    status opens the status sheet with its resolution picker; anything
+    else goes through `TaskStatusService.move()` with Undo. The card lands
+    at the top of its new column. There is no reordering within a column.
+  - Haptics: light on pickup, medium on the drop.
+- **Pull-to-refresh.** Ionic's gesture refresher (Android, web) only
+  checks that the page is at its top. So the board turns it off
+  (`blocksRefresh`) while a card is held, and for a touch that starts in a
+  column already scrolled down. A refresh that starts cancels a press that
+  hasn't picked up yet. iOS uses the native refresher, which reads the
+  content's bounce, so on iOS the board is 1 px taller than the content;
+  that refresh starts from the rail and column heads.
+  This hasn't been tried on an iPhone yet.
+- **Add task to <status>** ends each column except closed ones (EDITOR+).
+  - It opens the create sheet with that `status`.
+  - The callout then says the task starts there (`createdStatus()` in
+    `@core/task-create`). If the drafted type can't use the column, it says
+    why and names the normal starting status.
+  - After the create, the page moves the task there quietly
+    (`move(…, undoable = false)`), because the create POST has no status.
+    That status change can run the status's `assignmentRule` on the server.
 
 ### Task detail
 
@@ -431,7 +499,7 @@ are fresh.
 
 ### Task create
 
-My Work and the Projects list have a create button (`app-create-task-fab`,
+My Work and the Projects list (not the board) have a create button (`app-create-task-fab`,
 `src/app/task-create/`, 3i's FAB: bottom end, 20px above the tab bar), shown
 to an EDITOR+ in the open project, or on My Work in any project. The lists
 pad their bottom so it never covers the last row. It opens the create sheet

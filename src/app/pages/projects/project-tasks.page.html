@@ -37,12 +37,44 @@
             aria-hidden="true"
           ></ion-icon>
         </ion-button>
+        @if (view() === 'board' && listValue()) {
+          <ion-button
+            class="icon-button filters"
+            aria-haspopup="dialog"
+            [attr.aria-label]="
+              filterCount()
+                ? 'Filters, ' + filterCount() + ' in use'
+                : 'Filters'
+            "
+            (click)="openFilters()"
+          >
+            <ion-icon
+              slot="icon-only"
+              name="sliders-horizontal"
+              aria-hidden="true"
+            ></ion-icon>
+            @if (filterCount()) {
+              <span
+                class="filters-dot"
+                aria-hidden="true"
+              ></span>
+            }
+          </ion-button>
+        }
       </ion-buttons>
     } @else {
       <h1 class="flux-screen-title">Projects</h1>
     }
   </ion-toolbar>
   @if (title() && listValue()) {
+    <ion-toolbar class="segment-bar">
+      <app-view-segment
+        [view]="pendingView()"
+        (viewChange)="chooseView($event)"
+      />
+    </ion-toolbar>
+  }
+  @if (title() && listValue() && view() !== 'board') {
     <div class="strip">
       <button
         type="button"
@@ -69,15 +101,20 @@
   }
 </ion-header>
 
-<ion-content [class.has-fab]="canCreate()">
+<ion-content
+  [class.has-fab]="showFab()"
+  [class.board]="view() === 'board' || pendingView() === 'board'"
+>
   <ion-refresher
     slot="fixed"
+    [disabled]="refreshBlocked()"
+    (ionStart)="refreshStarted()"
     (ionRefresh)="refresh($event)"
   >
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  @if (canCreate()) {
+  @if (showFab()) {
     <app-create-task-fab
       slot="fixed"
       (opened)="openCreate()"
@@ -102,7 +139,11 @@
       (retry)="retry()"
     />
   } @else if (!list.hasValue()) {
-    <app-skeleton-rows [rowHeight]="62" />
+    @if (pendingView() === 'board') {
+      <app-task-board [today]="today()" />
+    } @else {
+      <app-skeleton-rows [rowHeight]="62" />
+    }
   } @else if (empty() && filterCount()) {
     <app-empty-state
       icon="search"
@@ -119,6 +160,18 @@
     <app-empty-state
       icon="circle-check"
       message="No tasks in this project."
+    />
+  } @else if (view() === 'board') {
+    <app-task-board
+      [columns]="boardColumns()"
+      [today]="today()"
+      [canMove]="canMove()"
+      [canCreate]="canCreate()"
+      [failed]="columnsFailed()"
+      (loadMore)="loadColumn($event)"
+      (dropped)="dropped($event)"
+      (add)="openCreate($event)"
+      (blocksRefresh)="refreshBlocked.set($event)"
     />
   } @else {
     <ion-list lines="full">

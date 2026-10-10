@@ -1,0 +1,144 @@
+// Handoff 3c card: radius 14, `--bg`, the card shadow, 12px padding.
+:host {
+  display: block;
+}
+
+.card {
+  display: block;
+  padding: var(--flux-space-12);
+  border-radius: var(--flux-radius-card-lg);
+  background: var(--flux-bg);
+  box-shadow: var(--flux-shadow-card);
+  color: inherit;
+  text-decoration: none;
+  // A long press picks the card up: no iOS callout or text selection.
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// Type icon, key, then the priority at the far end.
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-7);
+  margin-bottom: var(--flux-space-6);
+}
+
+.type {
+  flex: none;
+  font-size: 14px;
+  color: var(--flux-na11);
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+  color: var(--flux-pa11);
+}
+
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-space-2);
+  margin-inline-start: auto;
+  font: var(--flux-font-card-priority);
+  letter-spacing: var(--flux-tracking-card-priority);
+  color: var(--flux-na11);
+
+  ion-icon {
+    font-size: 12px;
+  }
+
+  &[data-level='CRITICAL'] {
+    color: var(--flux-red11);
+  }
+
+  &[data-level='HIGH'] {
+    color: var(--flux-amber11);
+  }
+}
+
+.title {
+  font: var(--flux-font-card-title);
+  letter-spacing: var(--flux-tracking-card-title);
+  color: var(--flux-n12);
+  text-wrap: pretty;
+}
+
+// Chips, a spacer, the due date and the avatar.
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-8);
+  min-width: 0;
+  margin-top: var(--flux-space-10);
+}
+
+.chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 22px;
+  padding: 0 var(--flux-space-7);
+  overflow: hidden;
+  border-radius: var(--flux-radius-tag);
+  background: var(--flux-na3);
+  color: var(--flux-na11);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-card-chip);
+  letter-spacing: var(--flux-tracking-card-chip);
+
+  &.release {
+    background: var(--flux-violeta3);
+    color: var(--flux-violet11);
+  }
+}
+
+.spacer {
+  flex: auto;
+}
+
+.due {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--flux-space-4);
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+
+  ion-icon {
+    font-size: 13px;
+  }
+
+  &.urgent {
+    font: var(--flux-font-meta-strong);
+    color: var(--flux-red11);
+  }
+}
+
+// 26px circle: initials on the person's fill, or a user glyph.
+.avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--flux-radius-pill);
+  font: var(--flux-font-card-avatar);
+  letter-spacing: var(--flux-tracking-card-avatar);
+  color: var(--flux-avatar-text);
+
+  &.unassigned {
+    background: var(--flux-na3);
+    color: var(--flux-na10);
+
+    ion-icon {
+      font-size: 14px;
+    }
+  }
+}

@@ -160,8 +160,11 @@
       ></ion-icon>
       <span
         >{{ c.lead }} <strong>{{ c.status }}</strong
-        >{{ c.tail }}</span
-      >
+        >{{ c.tail }}
+        @if (c.note) {
+          {{ c.note }}
+        }
+      </span>
     </p>
   }
 

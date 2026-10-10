@@ -195,6 +195,89 @@ describe('GroupedTaskPager', () => {
     expect(summary(pager.state)[0]).toEqual(['todo', 3, 3]);
   });
 
+  describe('columns', () => {
+    function columns(state: PagerState): [string, number, number][] {
+      return state.columns.map((g) => [g.group.key, g.tasks.length, g.total]);
+    }
+
+    it('lists every group, empty and unfinished ones included', async () => {
+      const { api } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+
+      expect(columns(pager.state)).toEqual([
+        ['todo', 2, 3],
+        ['doing', 2, 5],
+        ['review', 0, 0],
+        ['done', 2, 2],
+      ]);
+    });
+
+    it('pages one column with loadMoreIn, leaving the others', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks.mockClear();
+
+      await pager.loadMoreIn('doing');
+
+      expect(listProjectTasks).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ status: 'doing', page: 1 })
+      );
+      expect(columns(pager.state)).toEqual([
+        ['todo', 2, 3],
+        ['doing', 4, 5],
+        ['review', 0, 0],
+        ['done', 2, 2],
+      ]);
+      expect(pager.state.columns[1].complete).toBe(false);
+    });
+
+    it('does nothing for a complete or unknown column', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks.mockClear();
+
+      await pager.loadMoreIn('done');
+      await pager.loadMoreIn('nope');
+
+      expect(listProjectTasks).not.toHaveBeenCalled();
+    });
+
+    it('shares one request per column, but not across columns', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks.mockClear();
+
+      await Promise.all([
+        pager.loadMoreIn('todo'),
+        pager.loadMoreIn('todo'),
+        pager.loadMoreIn('doing'),
+      ]);
+
+      expect(listProjectTasks).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the column and retries the same page after a failure', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks.mockRejectedValueOnce(new Error('offline'));
+
+      await expect(pager.loadMoreIn('doing')).rejects.toThrow('offline');
+      expect(pager.state.columns[1].tasks).toHaveLength(2);
+
+      await pager.loadMoreIn('doing');
+      expect(listProjectTasks).toHaveBeenLastCalledWith(
+        'p1',
+        expect.objectContaining({ status: 'doing', page: 1 })
+      );
+    });
+  });
+
   describe('placeTask', () => {
     async function loaded() {
       const { api } = fakeApi(rows);

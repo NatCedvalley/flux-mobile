@@ -1,0 +1,25 @@
+<ion-segment
+  [value]="view()"
+  (ionChange)="changed($event)"
+>
+  <ion-segment-button
+    value="list"
+    layout="icon-start"
+  >
+    <ion-icon
+      name="list"
+      aria-hidden="true"
+    ></ion-icon>
+    <ion-label>List</ion-label>
+  </ion-segment-button>
+  <ion-segment-button
+    value="board"
+    layout="icon-start"
+  >
+    <ion-icon
+      name="square-kanban"
+      aria-hidden="true"
+    ></ion-icon>
+    <ion-label>Board</ion-label>
+  </ion-segment-button>
+</ion-segment>

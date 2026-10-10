@@ -13,6 +13,8 @@ import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import type { CommentSheetChoice } from './comment-sheet/comment-sheet.component';
 import type { OverflowAction } from './task-overflow-sheet/task-overflow-sheet.component';
+import { AttachmentService } from '../../attachments/attachment.service';
+import { FileSourceService } from '../../attachments/file-source.service';
 import { AuthService } from '../../auth/auth.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskChangesService } from '../../task-status/task-changes.service';
@@ -31,9 +33,16 @@ describe('TaskDetailPage', () => {
     pop: ReturnType<typeof vi.fn>;
     navigateBack: ReturnType<typeof vi.fn>;
   };
+  let fileSources: { sources: string[]; pick: ReturnType<typeof vi.fn> };
 
   async function create(
-    options: { taskId?: string; row?: TaskPreview; api?: InMemoryFluxApi } = {}
+    options: {
+      taskId?: string;
+      row?: TaskPreview;
+      api?: InMemoryFluxApi;
+      /** The file sources the platform offers; native's by default. */
+      sources?: string[];
+    } = {}
   ) {
     TestBed.resetTestingModule();
     api = options.api ?? new InMemoryFluxApi();
@@ -50,6 +59,10 @@ describe('TaskDetailPage', () => {
       ),
     };
     nav = { pop: vi.fn().mockResolvedValue(true), navigateBack: vi.fn() };
+    fileSources = {
+      sources: options.sources ?? ['camera', 'photos', 'files'],
+      pick: vi.fn(),
+    };
     await TestBed.configureTestingModule({
       imports: [TaskDetailPage],
       providers: [
@@ -59,6 +72,7 @@ describe('TaskDetailPage', () => {
         { provide: AlertController, useValue: alert },
         { provide: NavController, useValue: nav },
         { provide: AuthService, useValue: { account: signal({ id: 'a1' }) } },
+        { provide: FileSourceService, useValue: fileSources },
       ],
     }).compileComponents();
     if (options.row) {
@@ -1024,6 +1038,138 @@ describe('TaskDetailPage', () => {
         'This comment has replies. Delete its replies first.'
       );
       expect(texts('.thread > li > .comment .author')).toHaveLength(2);
+    });
+  });
+
+  describe('attachments', () => {
+    /** The page's protected members the attachment tests drive. */
+    type AttachmentPage = {
+      editor(): string | undefined;
+      editorClosed(editor: string): void;
+      openAttachments(): void;
+      openAttachSource(): void;
+      chooseSource(source: string): void;
+      attach(source: string): Promise<void>;
+      openAttachment(attachment: { id?: string }): Promise<void>;
+      attachments: { value(): { id?: string; fileName?: string }[] };
+    };
+    const attachmentPage = () =>
+      fixture.componentInstance as unknown as AttachmentPage;
+    const picked = {
+      name: 'photo-1.jpg',
+      blob: new Blob(['x'], { type: 'image/jpeg' }),
+    };
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('counts them on the Details row, which opens the sheet', async () => {
+      await create();
+      await settle();
+      expect(text('.attachments .count')).toBe('2');
+      const members = vi.spyOn(api, 'listAssignableMembers');
+
+      element().querySelector<HTMLButtonElement>('button.attachments')!.click();
+      await settle();
+      expect(attachmentPage().editor()).toBe('attachments');
+      // To name the uploaders.
+      expect(members).toHaveBeenCalledWith('p1');
+
+      await create({ taskId: '2' });
+      await settle();
+      expect(text('.attachments .count')).toBe('0');
+    });
+
+    it('shows a dash when they fail to load', async () => {
+      const failing = new InMemoryFluxApi();
+      vi.spyOn(failing, 'listTaskAttachments').mockRejectedValue(
+        new ApiError(500)
+      );
+      await create({ api: failing });
+      await settle();
+      expect(text('.attachments .count')).toBe('—');
+    });
+
+    it('uploads a photo and puts it at the top', async () => {
+      await create();
+      await settle();
+      fileSources.pick.mockResolvedValue(picked);
+
+      await attachmentPage().attach('camera');
+      await settle();
+
+      expect(fileSources.pick).toHaveBeenCalledWith('camera');
+      expect(attachmentPage().attachments.value()[0].fileName).toBe(
+        'photo-1.jpg'
+      );
+      expect(text('.attachments .count')).toBe('3');
+      expect(lastToast()).toBe('Attached photo-1.jpg');
+    });
+
+    it('opens one, fetching fresh URLs once the list is 10 minutes old', async () => {
+      await create();
+      await settle();
+      const open = vi
+        .spyOn(TestBed.inject(AttachmentService), 'open')
+        .mockResolvedValue();
+      const list = vi.spyOn(api, 'listTaskAttachments');
+
+      await attachmentPage().openAttachment({ id: 'f1' });
+      expect(list).not.toHaveBeenCalled();
+      expect(open).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'f1' }),
+        expect.anything()
+      );
+
+      const later = Date.now() + 11 * 60_000;
+      vi.spyOn(Date, 'now').mockReturnValue(later);
+      await attachmentPage().openAttachment({ id: 'f2' });
+      expect(list).toHaveBeenCalledWith('p1', '1');
+      expect(open).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          id: 'f2',
+          previewUrl: 'https://files.test/f2',
+        }),
+        expect.anything()
+      );
+    });
+
+    it('gives an EDITOR the composer paperclip, which asks where from', async () => {
+      await create();
+      await settle();
+      tab('Comments').click();
+      await settle();
+      expect(
+        element().querySelector('app-comment-composer .attach')
+      ).not.toBeNull();
+
+      attachmentPage().openAttachSource();
+      expect(attachmentPage().editor()).toBe('attachSource');
+      fileSources.pick.mockResolvedValue(picked);
+      attachmentPage().chooseSource('photos');
+      expect(fileSources.pick).not.toHaveBeenCalled();
+      attachmentPage().editorClosed('attachSource');
+      expect(fileSources.pick).toHaveBeenCalledWith('photos');
+      await settle();
+      expect(attachmentPage().attachments.value()).toHaveLength(3);
+
+      await create({ api: withRole('COMMENTER') });
+      await settle();
+      tab('Comments').click();
+      await settle();
+      expect(element().querySelector('app-comment-composer')).not.toBeNull();
+      expect(
+        element().querySelector('app-comment-composer .attach')
+      ).toBeNull();
+    });
+
+    it('goes straight to the file picker when that is the only source', async () => {
+      await create({ sources: ['files'] });
+      await settle();
+      fileSources.pick.mockResolvedValue(undefined);
+
+      attachmentPage().openAttachSource();
+      expect(attachmentPage().editor()).toBeUndefined();
+      expect(fileSources.pick).toHaveBeenCalledWith('files');
     });
   });
 });

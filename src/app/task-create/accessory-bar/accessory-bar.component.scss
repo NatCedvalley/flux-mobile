@@ -1,0 +1,22 @@
+// The sheet's own accessory bar (iOS's is hidden while it's open): the
+// paperclip and camera, always, and Done while the keyboard is up.
+.keyboard-bar ion-toolbar {
+  --background: var(--flux-n2);
+  --border-width: 1px 0 0;
+  --border-color: var(--flux-na4);
+  --min-height: 48px;
+  --padding-start: var(--flux-space-8);
+  --padding-end: var(--flux-space-8);
+}
+
+.keyboard-bar ion-buttons[slot='start'] {
+  gap: var(--flux-space-6);
+
+  ion-button {
+    --color: var(--flux-na11);
+  }
+
+  ion-icon {
+    font-size: 20px;
+  }
+}

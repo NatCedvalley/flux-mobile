@@ -1,0 +1,50 @@
+// Files to attach once the task exists, one per line.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-space-6);
+  padding: 0 var(--flux-space-16) var(--flux-space-14);
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-8);
+  height: 36px;
+  padding: 0 var(--flux-space-4) 0 var(--flux-space-12);
+  border-radius: var(--flux-radius-button);
+  background: var(--flux-na3);
+  font: var(--flux-font-chip);
+  letter-spacing: var(--flux-tracking-chip);
+  color: var(--flux-na11);
+
+  > ion-icon {
+    flex: none;
+    font-size: 15px;
+  }
+}
+
+.file-name {
+  flex: auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--flux-n12);
+}
+
+.remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+  color: var(--flux-na10);
+
+  ion-icon {
+    font-size: 15px;
+  }
+}

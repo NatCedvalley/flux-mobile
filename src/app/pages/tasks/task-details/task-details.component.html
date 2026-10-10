@@ -184,6 +184,24 @@
   }
 </div>
 
+<button
+  type="button"
+  class="card field attachments"
+  (click)="openAttachments.emit()"
+>
+  <ion-icon
+    name="paperclip"
+    aria-hidden="true"
+  ></ion-icon>
+  <span class="field-label">Attachments</span>
+  <span class="value count">{{ attachmentCount() }}</span>
+  <ion-icon
+    class="chevron"
+    name="chevron-right"
+    aria-hidden="true"
+  ></ion-icon>
+</button>
+
 @if (isContainer()) {
   <div class="card subtasks">
     <span class="label">

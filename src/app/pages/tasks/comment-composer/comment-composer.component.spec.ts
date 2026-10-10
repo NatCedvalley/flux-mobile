@@ -104,4 +104,21 @@ describe('CommentComposerComponent', () => {
     fixture.detectChanges();
     expect(send().disabled).toBe(true);
   });
+
+  it('shows the paperclip only to those who may attach', () => {
+    const paperclip = () =>
+      element().querySelector<HTMLIonButtonElement>('.attach');
+    expect(paperclip()).toBeNull();
+
+    let attached = 0;
+    fixture.componentInstance.attach.subscribe(() => attached++);
+    fixture.componentRef.setInput('canAttach', true);
+    fixture.detectChanges();
+    paperclip()!.click();
+    expect(attached).toBe(1);
+
+    fixture.componentRef.setInput('attaching', true);
+    fixture.detectChanges();
+    expect(paperclip()!.disabled).toBe(true);
+  });
 });

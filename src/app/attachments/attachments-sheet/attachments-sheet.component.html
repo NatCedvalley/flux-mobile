@@ -1,0 +1,95 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Attachments</ion-title>
+    <ion-buttons slot="end">
+      <ion-button
+        class="done"
+        (click)="done.emit()"
+        >Done</ion-button
+      >
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<div class="body">
+  @if (uploading(); as name) {
+    <ion-list lines="full">
+      <ion-item class="uploading">
+        <span
+          slot="start"
+          class="thumb"
+        >
+          <ion-spinner name="crescent"></ion-spinner>
+        </span>
+        <ion-label>
+          <h3>{{ name }}</h3>
+          <p>Uploading…</p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  }
+
+  @if (rows(); as rows) {
+    @if (rows.length) {
+      <ion-list
+        lines="full"
+        aria-label="Attachments"
+      >
+        @for (row of rows; track row.attachment.id) {
+          <ion-item
+            button="true"
+            detail="false"
+            class="attachment"
+            (click)="opened.emit(row.attachment)"
+          >
+            <span
+              slot="start"
+              class="thumb"
+              aria-hidden="true"
+            >
+              @if (row.thumbnail) {
+                <img
+                  [src]="row.thumbnail"
+                  alt=""
+                />
+              } @else {
+                <ion-icon [name]="row.icon"></ion-icon>
+              }
+            </span>
+            <ion-label>
+              <h3>{{ row.attachment.fileName }}</h3>
+              <p>{{ row.meta }}</p>
+            </ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    } @else if (!uploading()) {
+      <app-empty-state
+        icon="paperclip"
+        message="No attachments yet"
+      />
+    }
+  } @else if (error()) {
+    <app-error-state
+      subject="the attachments"
+      [error]="error()"
+      (retry)="retry.emit()"
+    />
+  } @else {
+    <app-skeleton-rows
+      [count]="2"
+      [rowHeight]="60"
+    />
+  }
+
+  @if (canAttach()) {
+    <section class="add">
+      <h2>Add</h2>
+    </section>
+    <app-attach-sources
+      [sources]="sources()"
+      [disabled]="!!uploading()"
+      (picked)="attach.emit($event)"
+    />
+  }
+</div>

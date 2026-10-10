@@ -201,12 +201,3 @@ ion-textarea.description {
   letter-spacing: var(--flux-tracking-toggle-label);
   color: var(--flux-n12);
 }
-
-// The sheet's own keyboard accessory bar (iOS's is hidden while it's open).
-.keyboard-bar ion-toolbar {
-  --background: var(--flux-n2);
-  --border-width: 1px 0 0;
-  --border-color: var(--flux-na4);
-  --min-height: 48px;
-  --padding-end: var(--flux-space-8);
-}

@@ -10,6 +10,7 @@ import type {
 } from '../generated/iam';
 import type {
   AssignTaskRequest,
+  AttachmentResponse,
   ChangeTaskStatusRequest,
   CommentReactionResponse,
   CreateTaskCommentRequest,
@@ -69,6 +70,14 @@ export type NewTaskComment = CreateTaskCommentRequest;
 /** An edited comment. The server ignores `mentionedAccountIds` here. */
 export type TaskCommentUpdate = UpdateTaskCommentRequest;
 export type TaskResolution = TaskResolutionResponse;
+/**
+ * A file attached to a task. Its URLs are S3 presigned GETs: they need no
+ * token, expire 15 minutes after the list call that signed them, and are
+ * null when the server can't sign. `previewUrl` serves the file inline,
+ * `thumbnailUrl` is set for jpeg/png/gif/bmp only, and `uploadedBy` is an
+ * account id.
+ */
+export type Attachment = AttachmentResponse;
 /**
  * A status change: the status's slug, and a resolution's slug when (and
  * only when) the status is closed.

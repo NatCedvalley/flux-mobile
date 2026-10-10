@@ -42,6 +42,23 @@ describe('JsonHttpClient', () => {
     expect(JSON.parse(init.body)).toEqual({ name: 'x' });
   });
 
+  it('sends FormData as it is, leaving its Content-Type to fetch', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse(201, {}));
+    const form = new FormData();
+    form.append('file', new Blob(['x']), 'a.txt');
+    await new JsonHttpClient(BASE_URL, fetchFn).request('POST', '/files', {
+      accessToken: 'a1',
+      body: form,
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect(init.headers).toEqual({
+      Accept: 'application/json',
+      Authorization: 'Bearer a1',
+    });
+    expect(init.body).toBe(form);
+  });
+
   it('encodes the query string and leaves out undefined values', async () => {
     const fetchFn = vi.fn().mockResolvedValue(jsonResponse(200, {}));
     await new JsonHttpClient(BASE_URL, fetchFn).request('GET', '/tasks', {
@@ -122,6 +139,15 @@ describe('JsonHttpClient', () => {
     const fetchFn = vi.fn().mockReturnValue(new Promise(() => undefined));
     const error = await new JsonHttpClient(BASE_URL, fetchFn, 5)
       .request('GET', '/tasks')
+      .catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ status: 0 });
+  });
+
+  it("lets a request's timeout replace the client's", async () => {
+    const fetchFn = vi.fn().mockReturnValue(new Promise(() => undefined));
+    const error = await new JsonHttpClient(BASE_URL, fetchFn, 60_000)
+      .request('GET', '/tasks', { timeoutMs: 5 })
       .catch((e: unknown) => e);
 
     expect(error).toMatchObject({ status: 0 });

@@ -5,6 +5,7 @@ import type { MyProject, Task } from '@core/api';
 import type { TaskDraft } from '@core/task-create';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { FileSourceService } from '../../attachments/file-source.service';
 import { AuthService } from '../../auth/auth.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskCreateService } from '../task-create.service';
@@ -37,17 +38,20 @@ describe('CreateTaskSheetComponent', () => {
   let api: InMemoryFluxApi;
   let toast: { create: ReturnType<typeof vi.fn> };
   let created: ReturnType<typeof vi.fn>;
+  let fileSources: { sources: string[]; pick: ReturnType<typeof vi.fn> };
 
   async function create(projectId = 'p1'): Promise<void> {
     api = new InMemoryFluxApi();
     toast = { create: vi.fn().mockResolvedValue({ present: vi.fn() }) };
     created = vi.fn();
+    fileSources = { sources: ['camera', 'photos', 'files'], pick: vi.fn() };
     TestBed.configureTestingModule({
       imports: [CreateTaskSheetComponent],
       providers: [
         { provide: FLUX_API, useValue: api },
         { provide: ToastController, useValue: toast },
         { provide: AlertController, useValue: { create: vi.fn() } },
+        { provide: FileSourceService, useValue: fileSources },
         {
           provide: AuthService,
           useValue: { account: signal({ id: 'a1' }) },
@@ -228,5 +232,85 @@ describe('CreateTaskSheetComponent', () => {
       expect.objectContaining({ message: 'Task quota exceeded' })
     );
     expect(createButton().disabled).toBe(false);
+  });
+
+  describe('attachments', () => {
+    const button = (selector: string) =>
+      element().querySelector<HTMLIonButtonElement>(
+        `.keyboard-bar ${selector}`
+      );
+
+    it('keeps the paperclip and camera in the bar, Done only while typing', async () => {
+      await create();
+      expect(button('.attach')).not.toBeNull();
+      expect(button('.camera')).not.toBeNull();
+      expect(button('.done')).toBeNull();
+
+      window.dispatchEvent(new Event('ionKeyboardDidShow'));
+      await settle();
+      expect(button('.done')).not.toBeNull();
+    });
+
+    it('lists a photo taken, which can be removed again', async () => {
+      await create();
+      fileSources.pick.mockResolvedValue({
+        name: 'photo-1.jpg',
+        blob: new Blob(['x'], { type: 'image/jpeg' }),
+      });
+
+      button('.camera')!.click();
+      await settle();
+
+      expect(fileSources.pick).toHaveBeenCalledWith('camera');
+      expect(text('.file-name')).toBe('photo-1.jpg');
+      expect(fixture.componentInstance.dirty()).toBe(true);
+
+      element().querySelector<HTMLButtonElement>('.file .remove')!.click();
+      await settle();
+      expect(element().querySelector('.file')).toBeNull();
+      expect(fixture.componentInstance.dirty()).toBe(false);
+    });
+
+    it('asks where from, and picks once the sheet has closed', async () => {
+      await create();
+      const picker = sheet() as unknown as {
+        picker(): string | undefined;
+        chooseSource(source: string): void;
+        pickerClosed(picker: string): void;
+      };
+
+      button('.attach')!.click();
+      await settle();
+      expect(picker.picker()).toBe('attach');
+
+      picker.chooseSource('files');
+      expect(fileSources.pick).not.toHaveBeenCalled();
+      picker.pickerClosed('attach');
+      expect(fileSources.pick).toHaveBeenCalledWith('files');
+    });
+
+    it('uploads the files once the task exists, then clears them', async () => {
+      await create();
+      const upload = vi.spyOn(api, 'uploadTaskAttachment');
+      fileSources.pick.mockResolvedValue({
+        name: 'spec.pdf',
+        blob: new Blob(['%PDF']),
+      });
+      button('.camera')!.click();
+      await settle();
+      await type('With a file');
+
+      await sheet().create();
+      await settle();
+
+      const task = created.mock.calls[0][0] as Task;
+      expect(upload).toHaveBeenCalledWith(
+        'p1',
+        task.id,
+        expect.any(Blob),
+        'spec.pdf'
+      );
+      expect(element().querySelector('.file')).toBeNull();
+    });
   });
 });

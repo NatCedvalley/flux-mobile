@@ -1,5 +1,6 @@
 import type {
   AppNotification,
+  Attachment,
   CommentReaction,
   FluxApi,
   Label,
@@ -411,6 +412,107 @@ const NOTIFICATIONS: AppNotification[] = [
   },
 ];
 
+/** Attachments by task id, newest first. */
+function fixtureAttachments(now: Date): Record<string, Attachment[]> {
+  const file = (
+    id: string,
+    fileName: string,
+    contentType: string,
+    fileSize: number,
+    uploadedBy: string,
+    createdAt: string,
+    image = false
+  ): Attachment => ({
+    id,
+    entityType: 'TASK',
+    entityId: '1',
+    fileName,
+    fileSize,
+    contentType,
+    downloadUrl: `https://files.test/${id}?download`,
+    previewUrl: `https://files.test/${id}`,
+    thumbnailUrl: image ? `https://files.test/${id}?thumb` : undefined,
+    uploadedBy,
+    createdAt,
+  });
+  return {
+    '1': [
+      file(
+        'f1',
+        'login-redirect.png',
+        'image/png',
+        248_000,
+        ADA.accountId,
+        at(now, 1, 9, 30),
+        true
+      ),
+      file(
+        'f2',
+        'safari-trace.pdf',
+        'application/pdf',
+        1_830_000,
+        BEN.accountId,
+        at(now, 2, 16, 12)
+      ),
+    ],
+  };
+}
+
+/** The backend's default upload limits (`UploadLimits`). */
+const UPLOAD_ALLOWED = new Set(
+  'jpg,jpeg,png,gif,webp,svg,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,txt,csv,json,xml,md,log,html,htm,css,zip,7z,rar,mp4,mov,webm,m4v'.split(
+    ','
+  )
+);
+const UPLOAD_BLOCKED = new Set(
+  'exe,bat,sh,cmd,msi,dll,so,app,deb,rpm'.split(',')
+);
+const UPLOAD_MAX_MB = 100;
+const UPLOAD_MAX_COUNT = 50;
+
+/** The server's 422 for a file it won't take, or undefined if it takes it. */
+function uploadRefusal(
+  fileName: string,
+  size: number,
+  count: number
+): ApiError | undefined {
+  const dot = fileName.lastIndexOf('.');
+  const ext = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
+  const refuse = (code: string, message: string) =>
+    new ApiError(422, { code, message });
+  if (!ext) {
+    return refuse(
+      'INVALID_FILE_EXTENSION',
+      'This file has no extension, so its type cannot be determined. Rename it with a valid extension and try again.'
+    );
+  }
+  if (UPLOAD_BLOCKED.has(ext)) {
+    return refuse(
+      'BLOCKED_FILE_EXTENSION',
+      `'${ext}' files are blocked for security reasons.`
+    );
+  }
+  if (!UPLOAD_ALLOWED.has(ext)) {
+    return refuse(
+      'DISALLOWED_FILE_EXTENSION',
+      `'${ext}' files are not allowed. Supported types include images, video (mp4, mov, webm), PDF, Office documents, and archives.`
+    );
+  }
+  if (size > UPLOAD_MAX_MB * 1024 * 1024) {
+    return refuse(
+      'FILE_SIZE_EXCEEDED',
+      `This file is too large. The maximum upload size is ${UPLOAD_MAX_MB} MB.`
+    );
+  }
+  if (count >= UPLOAD_MAX_COUNT) {
+    return refuse(
+      'ATTACHMENT_LIMIT_EXCEEDED',
+      `This task has reached its attachment limit of ${UPLOAD_MAX_COUNT} files. Delete one before adding another.`
+    );
+  }
+  return undefined;
+}
+
 const PRIORITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
 /** One page of `items`, shaped like the backend's `PagedResponse`. */
@@ -510,14 +612,18 @@ function isContainer(type: Task['type']): boolean {
  * author edits or deletes one, a comment with replies can't be deleted,
  * and a reaction toggles the caller's own. A created task is reported by
  * Ada, numbered after the project's highest key, and starts in the status
- * `startingStatus` picks (`todo` is the default status).
+ * `startingStatus` picks (`todo` is the default status). Attachments are
+ * uploaded by Ada too, under the backend's default size, extension and
+ * count limits and with its 422 codes and messages.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
   private readonly viewSettings = new Map<string, TaskViewSettings>();
   private readonly comments: Record<string, TaskComment[]>;
   private readonly activities: Record<string, TaskActivity[]>;
+  private readonly attachments: Record<string, Attachment[]>;
   private commentsAdded = 0;
+  private attachmentsAdded = 0;
   private tasksAdded = 0;
   /** Task ids the caller is subscribed to: the watched ones to start with. */
   private readonly subscribed: Set<string>;
@@ -526,6 +632,7 @@ export class InMemoryFluxApi implements FluxApi {
     this.tasks = fixtureTasks(localIsoDate(today));
     this.comments = fixtureComments(today);
     this.activities = fixtureActivities(today);
+    this.attachments = fixtureAttachments(today);
     this.subscribed = new Set(
       this.tasks.filter((t) => t.watching).map((t) => t.id ?? '')
     );
@@ -1136,6 +1243,45 @@ export class InMemoryFluxApi implements FluxApi {
       (c) => ({ ...c, reactions })
     );
     return Promise.resolve(reactions);
+  }
+
+  listTaskAttachments(
+    projectId: string,
+    taskId: string
+  ): Promise<Attachment[]> {
+    return this.withTask(projectId, taskId, () => [
+      ...(this.attachments[taskId] ?? []),
+    ]);
+  }
+
+  async uploadTaskAttachment(
+    projectId: string,
+    taskId: string,
+    file: Blob,
+    fileName: string
+  ): Promise<Attachment> {
+    const list = await this.listTaskAttachments(projectId, taskId);
+    const refusal = uploadRefusal(fileName, file.size, list.length);
+    if (refusal) {
+      throw refusal;
+    }
+    const id = `f-new-${++this.attachmentsAdded}`;
+    const image = /^image\/(jpeg|png|gif|bmp)$/.test(file.type);
+    const attachment: Attachment = {
+      id,
+      entityType: 'TASK',
+      entityId: taskId,
+      fileName,
+      fileSize: file.size,
+      contentType: file.type || 'application/octet-stream',
+      downloadUrl: `https://files.test/${id}?download`,
+      previewUrl: `https://files.test/${id}`,
+      thumbnailUrl: image ? `https://files.test/${id}?thumb` : undefined,
+      uploadedBy: ADA.accountId,
+      createdAt: new Date().toISOString(),
+    };
+    this.attachments[taskId] = [attachment, ...list];
+    return attachment;
   }
 
   getTaskSubscription(

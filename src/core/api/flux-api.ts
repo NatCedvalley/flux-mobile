@@ -1,5 +1,6 @@
 import type {
   AppNotification,
+  Attachment,
   CommentReaction,
   Label,
   MyProject,
@@ -177,6 +178,21 @@ export type FluxApi = {
     commentId: string,
     emoji: string
   ): Promise<CommentReaction[]>;
+
+  /** GET /projects/{projectId}/tasks/{taskId}/attachments: newest first. */
+  listTaskAttachments(projectId: string, taskId: string): Promise<Attachment[]>;
+
+  /**
+   * POST /projects/{projectId}/tasks/{taskId}/attachments: multipart, the
+   * file in a `file` field. 422 when the project's size, extension or count
+   * limits refuse it.
+   */
+  uploadTaskAttachment(
+    projectId: string,
+    taskId: string,
+    file: Blob,
+    fileName: string
+  ): Promise<Attachment>;
 
   /** GET /projects/{projectId}/tasks/{taskId}/subscription */
   getTaskSubscription(

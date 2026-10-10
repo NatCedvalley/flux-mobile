@@ -1,0 +1,20 @@
+<header>
+  <h1>Attach a file</h1>
+  @if (subtitle()) {
+    <p class="subtitle">{{ subtitle() }}</p>
+  }
+</header>
+
+<app-attach-sources
+  [sources]="sources()"
+  (picked)="picked.emit($event)"
+/>
+
+<footer>
+  <ion-button
+    class="cancel"
+    expand="block"
+    (click)="done.emit()"
+    >Cancel</ion-button
+  >
+</footer>

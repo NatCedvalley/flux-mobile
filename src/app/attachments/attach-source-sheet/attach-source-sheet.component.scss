@@ -1,0 +1,41 @@
+// The overflow sheet's anatomy (3n): a title, the rows, a filled Cancel,
+// as tall as its content.
+:host {
+  background: var(--flux-surface);
+}
+
+header {
+  padding: var(--flux-space-16) var(--flux-space-16) var(--flux-space-10);
+}
+
+h1 {
+  margin: 0;
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.subtitle {
+  margin: var(--flux-space-2) 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--flux-font-sheet-subtitle);
+  color: var(--flux-na11);
+}
+
+footer {
+  padding: var(--flux-space-14) var(--flux-space-16)
+    calc(var(--flux-space-8) + var(--ion-safe-area-bottom, 0px));
+}
+
+.cancel {
+  --background: var(--flux-n4);
+  --background-activated: var(--flux-n5);
+  --box-shadow: none;
+  --border-radius: var(--flux-radius-docked);
+  --color: var(--flux-n12);
+  height: 48px;
+  margin: 0;
+  font: var(--flux-font-sheet-button);
+}

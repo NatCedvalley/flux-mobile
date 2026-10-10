@@ -41,8 +41,9 @@ src/
               (icons/), shared list components (shared/), the project
               switcher, on-device project preferences and the cached
               project list with the caller's roles (projects/), the
-              create sheet and its button (task-create/), and the
-              providers that bridge into src/core
+              create sheet and its button (task-create/), attachment
+              upload, opening and the file sources (attachments/), and
+              the providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -237,6 +238,48 @@ from `MyProjectsService`.
 - Pull-to-refresh reloads everything; each part has its own error state
   with Retry.
 
+**Attachments.** `src/app/attachments/`; the backend keeps them on the
+task only (no comment attachments).
+
+- The task carries no count, so detail loads
+  `GET .../tasks/{t}/attachments` (a plain array, newest first) with the
+  task. The last card in Details (after the description) shows the count
+  (`—` if it failed) and opens the attachments sheet.
+- The sheet lists each file with a 40px thumbnail (`thumbnailUrl`, set for
+  jpeg/png/gif/bmp) or a type icon, then size · uploader · age (`fileSize()`
+  and `uploaderName()` in `src/core/attachments/`).
+  - `uploadedBy` is only an account id, so the uploader comes from
+    `/members/assignable`; anyone else is "Former member".
+  - An EDITOR+ on a task that isn't archived also gets the sources to add
+    one.
+- **Opening.** The file URLs are S3 presigned GETs: they need no token
+  (adding one breaks the signature), and they expire 15 minutes after the
+  list call that signed them, or are null when the server can't sign.
+  - Tapping a row opens `previewUrl` (served inline) with
+    `@capacitor/browser` on native (SFSafariViewController or a Custom Tab),
+    or a new tab on web.
+  - A list older than 10 minutes is fetched again first.
+- **Uploading.** `AttachmentService.upload()` POSTs multipart (field `file`)
+  and puts the result at the top, or toasts `uploadErrorMessage()`. That
+  is the server's 422 message (size, extension, count, uploads off).
+  - A 413 has no message: Spring's multipart limit answers with a
+    ProblemDetail, and production nginx caps bodies at 20 MB with an HTML
+    page. It says "This file is too large to upload." instead.
+  - HEIC is refused by the server.
+- **File sources.** `FileSourceService` offers Take photo
+  (`Camera.takePhoto`), Choose photo (`Camera.chooseFromGallery`), both
+  JPEG, and Choose file (`@capawesome/capacitor-file-picker`).
+  - On web only Choose file, which reaches images too.
+  - A picked file is read with `fetch()` from its WebView-served path,
+    which CapacitorHttp passes through.
+  - A cancel is silent. A denied camera or photos permission shows an
+    alert saying to turn it on in Settings.
+  - iOS has `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`
+    and `NSPhotoLibraryAddUsageDescription` (the camera plugin's list). The
+    Android camera and photo picker need no permissions (no
+    `saveToGallery`).
+- Deleting an attachment isn't built (the backend allows EDITOR+).
+
 **Status changes.** These come from the status pill (a button for an
 EDITOR+), the docked bar and the list's swipe actions.
 
@@ -336,7 +379,9 @@ refetches the thread.
     until it reloads.
   - The POST and PUT responses have no reactions or replies, so an edit
     merges the body and `edited` into the shown comment.
-  - The paperclip waits for FM-36.
+  - An EDITOR+ also gets a paperclip, which uploads to the task (see
+    Attachments above). It asks where from in a source sheet, or goes
+    straight to the file picker on web. The comment text is left alone.
 - **Mentions:** an @ that starts a word, or the @ button, opens the member
   picker (`/members/assignable`, without the caller).
   - A mention is plain `@First Last` text. Its id goes in
@@ -370,8 +415,9 @@ flux-web's sanitizer policy (no scripts, frames, forms or inline styles).
 `app-rich-text` binds that output with `bypassSecurityTrustHtml`, since
 Angular's own sanitizer would strip mention ids. Links get
 `target="_blank"`, so they open in the system browser instead of replacing
-the WebView. Editor.js images that are uploads show a placeholder until
-attachments (FM-36) can sign their URLs.
+the WebView. Editor.js images that are uploads (`file.uploadId`) show a
+placeholder: they come from a separate pipeline (`/uploads`, signed with
+`GET /uploads/{id}/url`), which the app doesn't call yet.
 
 **Roles.** `can(role, action)` (`src/core/permissions/`) holds the
 backend's minimum role for each action: VIEWER reads, COMMENTER comments,
@@ -398,9 +444,10 @@ pad their bottom so it never covers the last row. It opens the create sheet
   which reach signal inputs because `main.ts` sets Ionic's
   `useSetInputAPI`. While it's open, `StatusBarService.forceDark()` turns
   the status bar's text light and, on iOS, `Keyboard.setAccessoryBarVisible`
-  hides the native accessory bar. The sheet draws its own (Done only, while
-  the keyboard is open). Paperclip and camera wait for FM-36, and there is
-  no @ or mic.
+  hides the native accessory bar. The sheet draws its own
+  (`AccessoryBarComponent`), always shown: the paperclip (Choose photo or
+  Choose file), the camera on native, and Done while the keyboard is open.
+  There is no @ or mic.
 - It starts in the open project, or on My Work in the project opened last
   on the Projects tab (`initialProject()`), and lists only EDITOR+
   projects. Changing project drops the assignee, labels and parent.
@@ -421,12 +468,14 @@ pad their bottom so it never covers the last row. It opens the create sheet
   `createTaskBody()` (unset fields left out so the server's defaults apply),
   then each label through `POST /labels/{id}/tasks/{t}`, one at a time, and
   the task fetched again. Labels sent on the POST would only reach the
-  task's own column, not the server's label links. A failed create shows
-  the server's message and keeps the form; a failed label still counts as
+  task's own column, not the server's label links. Then each picked file
+  is uploaded, one at a time (listed under the chips until then, and
+  counted by the discard check). A failed create shows the server's
+  message and keeps the form; a failed label or file still counts as
   created, and the toast says so.
 - Success shows a 4 s `CHK-161 created` toast with Open, which pushes task
   detail onto the current tab. "Keep the sheet open to add another" clears
-  the form but its project and type instead of closing. Cancel or a swipe
+  the form (files included) but its project and type instead of closing. Cancel or a swipe
   down asks "Discard this task?" when anything was entered (the modal's
   `canDismiss`).
 - The Projects list puts a task created in its project at the top of its
@@ -442,7 +491,8 @@ pad their bottom so it never covers the last row. It opens the create sheet
 tasks, a project's tasks, one task, its create, update (PUT), parent,
 assignees and delete, a status change, archive and unarchive, its
 children, activities, comments (list, post, edit, delete and toggle a
-reaction) and subscription (read, subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
+reaction), attachments (list and upload) and subscription (read,
+subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
 assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
@@ -454,7 +504,9 @@ it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
 written without it) and makes every request through
 `AuthService.withAccessToken` (see below). `JsonHttpClient`
 (`src/core/http/`) is the request (GET, POST, PUT, PATCH and DELETE), timeout,
-query-string and JSON handling it shares with `AuthClient`. `src/core/mock/in-memory-flux-api.ts` is the
+query-string and JSON handling it shares with `AuthClient`. A `FormData` body
+goes out as it is, with no `Content-Type` (fetch adds the boundary), and a
+request may set its own timeout (uploads get 120 s). `src/core/mock/in-memory-flux-api.ts` is the
 test double: its fixtures are dated relative to today and it applies the
 my-tasks filters (including status, priority and search) and the project
 list's filters (comma lists, assignee, labels, search) and sort, so page
@@ -462,7 +514,8 @@ specs use it (`addProjectTasks()` adds rows to page through). Its creates,
 status changes, archiving and edits follow the backend's rules and error codes
 (a PUT clears what it leaves out, as above), `done` is the closed
 status and `todo` the default one. A created task is reported by Ada and
-numbered after its project's highest key. Comments are written as Ada (`a1`, the page specs' account): only
+numbered after its project's highest key. CHK-142 has two attachments,
+and uploads are Ada's, under the backend's default limits and 422s. Comments are written as Ada (`a1`, the page specs' account): only
 she edits or deletes hers, a comment with replies can't be deleted, and
 reactions toggle hers. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a

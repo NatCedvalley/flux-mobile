@@ -26,7 +26,8 @@ type Person = {
  * the due date and labels rows and the description's pencil ask the page to
  * open their editors. The parent row always opens the parent; it changes
  * from the overflow sheet. A description the app can't write (HTML,
- * Editor.js) gets a note to edit it on the web instead of the pencil.
+ * Editor.js) gets a note to edit it on the web instead of the pencil. The
+ * Attachments row shows their count and asks the page to open them.
  */
 @Component({
   selector: 'app-task-details',
@@ -44,10 +45,13 @@ export class TaskDetailsComponent {
   readonly detailBase = input.required<string>();
   /** Whether the caller may edit the task (EDITOR+, not archived). */
   readonly editable = input(false);
+  /** The Attachments row's count: blank while loading, `—` if it failed. */
+  readonly attachmentCount = input('');
 
   readonly editDue = output();
   readonly editLabels = output();
   readonly editDescription = output();
+  readonly openAttachments = output();
 
   protected readonly descriptionLines = DESCRIPTION_LINES;
 

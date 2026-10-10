@@ -142,6 +142,13 @@
     </app-create-chip>
   </div>
 
+  @if (files().length) {
+    <app-pending-files
+      [files]="files()"
+      (removed)="removeFile($event)"
+    />
+  }
+
   @if (callout(); as c) {
     <p
       class="callout"
@@ -168,15 +175,30 @@
   >
 </ion-content>
 
-@if (keyboardOpen()) {
-  <ion-footer class="keyboard-bar">
-    <ion-toolbar>
-      <ion-buttons slot="end">
-        <ion-button (click)="closeKeyboard()">Done</ion-button>
-      </ion-buttons>
-    </ion-toolbar>
-  </ion-footer>
-}
+<app-accessory-bar
+  [keyboardOpen]="keyboardOpen()"
+  [canTakePhoto]="canTakePhoto"
+  (attach)="openAttachSource()"
+  (camera)="attach('camera')"
+  (done)="closeKeyboard()"
+/>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="picker() === 'attach'"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="pickerClosed('attach')"
+>
+  <ng-template>
+    <app-attach-source-sheet
+      [sources]="attachSources"
+      [subtitle]="draft().title.trim() || 'New task'"
+      (picked)="chooseSource($event)"
+      (done)="picker.set(undefined)"
+    />
+  </ng-template>
+</ion-modal>
 
 <ion-modal
   class="flux-sheet"

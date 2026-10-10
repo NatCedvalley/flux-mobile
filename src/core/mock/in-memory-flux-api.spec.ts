@@ -324,6 +324,49 @@ describe('InMemoryFluxApi', () => {
     });
   });
 
+  describe('attachments', () => {
+    it("lists CHK-142's newest first, and none elsewhere", async () => {
+      const list = await api.listTaskAttachments('p1', '1');
+      expect(list.map((a) => a.fileName)).toEqual([
+        'login-redirect.png',
+        'safari-trace.pdf',
+      ]);
+      expect(await api.listTaskAttachments('p1', '2')).toEqual([]);
+    });
+
+    it('uploads as Ada, at the top of the list', async () => {
+      const blob = new Blob(['x'], { type: 'image/jpeg' });
+      const added = await api.uploadTaskAttachment('p1', '1', blob, 'a.jpg');
+      expect(added).toMatchObject({
+        fileName: 'a.jpg',
+        fileSize: 1,
+        contentType: 'image/jpeg',
+        uploadedBy: 'a1',
+      });
+      expect(added.thumbnailUrl).toBeDefined();
+      const list = await api.listTaskAttachments('p1', '1');
+      expect(list[0].id).toBe(added.id);
+    });
+
+    it('refuses files the backend refuses, with its 422s', async () => {
+      const upload = (name: string, size = 1) =>
+        api
+          .uploadTaskAttachment('p1', '1', new Blob(['x'.repeat(size)]), name)
+          .catch((e: unknown) => e);
+      expect(await upload('photo.heic')).toMatchObject({
+        status: 422,
+        body: { code: 'DISALLOWED_FILE_EXTENSION' },
+        message: expect.stringContaining("'heic' files are not allowed."),
+      });
+      expect(await upload('run.exe')).toMatchObject({
+        body: { code: 'BLOCKED_FILE_EXTENSION' },
+      });
+      expect(await upload('README')).toMatchObject({
+        body: { code: 'INVALID_FILE_EXTENSION' },
+      });
+    });
+  });
+
   it('rejects task sub-resources of an unknown task', async () => {
     await expect(api.listTaskComments('p1', 'nope')).rejects.toThrow(
       'Task not found: p1/nope'

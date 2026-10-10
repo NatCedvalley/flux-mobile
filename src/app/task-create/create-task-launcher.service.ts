@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { ModalController } from '@ionic/angular';
-import type { MyProject, Task } from '@core/api';
+import type { MyProject, Task, WorkflowStatus } from '@core/api';
 import { StatusBarService } from '../status-bar/status-bar.service';
 import { CreateTaskSheetComponent } from './create-task-sheet/create-task-sheet.component';
 
@@ -12,6 +12,11 @@ export type CreateTaskOptions = {
   projects: readonly MyProject[];
   /** The project the sheet starts in. */
   projectId: string;
+  /**
+   * The board column the sheet was opened from: the page moves each task
+   * there after it's created, and the callout says so.
+   */
+  status?: WorkflowStatus;
   /** Called after each create, so the page can show the new task. */
   created: (task: Task) => void;
   /** Opens task detail, from the success toast's Open. */

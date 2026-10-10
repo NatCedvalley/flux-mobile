@@ -3,6 +3,7 @@ import {
   afterCreate,
   allowedChildTypes,
   createTaskBody,
+  createdStatus,
   defaultsCallout,
   emptyDraft,
   startingStatus,
@@ -141,5 +142,39 @@ describe('defaultsCallout', () => {
     expect(defaultsCallout('EPIC', 'Backlog', 'you').tail).toBe(
       ', assigned to you.'
     );
+  });
+
+  it('adds the note when there is one', () => {
+    expect(
+      defaultsCallout('BUG', 'To Do', undefined, 'Backlog: no.').note
+    ).toBe('Backlog: no.');
+  });
+});
+
+describe('createdStatus', () => {
+  const status = (slug: string) => STATUSES.find((s) => s.slug === slug)!;
+
+  it('is the starting status without a target', () => {
+    expect(createdStatus(STATUSES, 'BUG')).toEqual({ status: status('todo') });
+  });
+
+  it('is the target column when the type may use it', () => {
+    expect(createdStatus(STATUSES, 'BUG', status('review'))).toEqual({
+      status: status('review'),
+    });
+    expect(createdStatus(STATUSES, 'EPIC', status('backlog'))).toEqual({
+      status: status('backlog'),
+    });
+  });
+
+  it('says why the type stays in its starting status', () => {
+    expect(createdStatus(STATUSES, 'TASK', status('backlog'))).toEqual({
+      status: status('todo'),
+      refused: 'Backlog: epics and masters only.',
+    });
+    expect(createdStatus(STATUSES, 'EPIC', status('doing'))).toEqual({
+      status: status('backlog'),
+      refused: 'Doing: not for epics.',
+    });
   });
 });

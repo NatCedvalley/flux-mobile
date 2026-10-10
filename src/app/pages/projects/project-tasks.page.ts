@@ -41,11 +41,13 @@ import {
   type GroupBy,
   GroupedTaskPager,
   type PagerState,
+  type ViewMode,
   aiFilterQuery,
   initialProject,
   projectInitials,
   projectSubline,
   resolveGroupBy,
+  resolveViewMode,
   statusHue,
   taskGroupKey,
   taskGroups,
@@ -57,9 +59,14 @@ import {
   assigneeOptions,
   filteredGroups,
 } from '@core/task-filters';
-import { nextStatus, workflowOrder } from '@core/task-status';
+import { dropAction, nextStatus, workflowOrder } from '@core/task-status';
 import type { ChipOption } from '../../shared/option-chips/option-chips.component';
 import { AuthService } from '../../auth/auth.service';
+import {
+  type BoardColumn,
+  type BoardDrop,
+  TaskBoardComponent,
+} from '../../board/task-board/task-board.component';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
@@ -67,6 +74,7 @@ import { ProjectSwitcherComponent } from '../../projects/project-switcher/projec
 import { statusChipOptions } from '../../projects/status-options';
 import { TaskFilterSheetComponent } from '../../projects/task-filter-sheet/task-filter-sheet.component';
 import { ViewOptionsSheetComponent } from '../../projects/view-options-sheet/view-options-sheet.component';
+import { ViewSegmentComponent } from '../../projects/view-segment/view-segment.component';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
@@ -91,10 +99,12 @@ const GROUP_BY_LABELS: Record<GroupBy, string> = {
 };
 
 /**
- * How the loaded list is grouped, the filter sheet's status chips, and the
- * workflow in order (for the swipe actions and the status sheet).
+ * The loaded view (list or board), how the list is grouped (the board is
+ * always by status), the filter sheet's status chips, and the workflow in
+ * order (for the swipe actions, the board's columns and the status sheet).
  */
 type ListView = {
+  view: ViewMode;
   groupBy: GroupBy;
   statusOptions: ChipOption[];
   statuses: WorkflowStatus[];
@@ -111,7 +121,9 @@ const TAB_BAR = 'tab-bar';
  * sort, kept for the session) and the filters (kept until the project
  * changes). For an EDITOR+, rows swipe: the end side moves the task to its
  * next status (or opens the status sheet from More), the start side
- * archives a done task.
+ * archives a done task. The List/Board segment switches to the board (3c),
+ * saved as the project's `viewMode` override like the group-by; there a
+ * card dragged to another column changes its status.
  */
 @Component({
   selector: 'app-project-tasks',
@@ -144,8 +156,10 @@ const TAB_BAR = 'tab-bar';
     ProjectTaskRowComponent,
     SkeletonRowsComponent,
     StatusSheetComponent,
+    TaskBoardComponent,
     TaskFilterSheetComponent,
     ViewOptionsSheetComponent,
+    ViewSegmentComponent,
   ],
 })
 export class ProjectTasksPage {
@@ -159,6 +173,7 @@ export class ProjectTasksPage {
   private readonly nav = inject(NavController);
   private readonly route = inject(ActivatedRoute);
   private readonly content = viewChild.required(IonContent);
+  private readonly board = viewChild(TaskBoardComponent);
 
   /** The local day. Read again on refresh, so due dates roll over. */
   protected readonly today = signal(localIsoDate(new Date()));
@@ -206,7 +221,10 @@ export class ProjectTasksPage {
       ? {
           name: current.project?.name ?? '',
           initials: projectInitials(current.project),
-          subline: projectSubline(current),
+          subline:
+            this.view() === 'board' && can(current.role, 'changeStatus')
+              ? 'Board · drag to move'
+              : projectSubline(current),
           colors: projectTint(current.project?.id ?? ''),
         }
       : undefined;
@@ -232,13 +250,22 @@ export class ProjectTasksPage {
     source: this.currentId,
     computation: () => null,
   });
+  /** A view picked here, kept like `groupByChoice`. */
+  private readonly viewChoice = linkedSignal<string | null, ViewMode | null>({
+    source: this.currentId,
+    computation: () => null,
+  });
 
   /** Each project's workflow statuses, fetched once per session. */
   private readonly statuses = new Map<string, Promise<WorkflowStatus[]>>();
   /** Each project's assignable members, fetched once per session. */
   private readonly members = new Map<string, Promise<ProjectMember[]>>();
   private readonly pager = new GroupedTaskPager(this.api);
-  protected readonly pages = signal<PagerState>({ groups: [], done: true });
+  protected readonly pages = signal<PagerState>({
+    groups: [],
+    done: true,
+    columns: [],
+  });
 
   /** Loads the open project's settings and the first page of each group. */
   protected readonly list = resource({
@@ -250,11 +277,12 @@ export class ProjectTasksPage {
             filters: this.filters(),
             sort: this.sort(),
             groupByChoice: this.groupByChoice(),
+            viewChoice: this.viewChoice(),
           }
         : undefined;
     },
     loader: async ({ params, abortSignal }): Promise<ListView> => {
-      const { projectId, filters, sort, groupByChoice } = params;
+      const { projectId, filters, sort, groupByChoice, viewChoice } = params;
       const [statuses, settings] = await Promise.all([
         this.workflowStatuses(projectId),
         this.api.getTaskViewSettings(projectId),
@@ -263,18 +291,24 @@ export class ProjectTasksPage {
       const groupBy =
         groupByChoice ??
         resolveGroupBy(settings.groupBy, this.account()?.defaultGroupBy);
+      const view =
+        viewChoice ??
+        resolveViewMode(settings.viewMode, this.account()?.defaultView);
+      const grouping = view === 'board' ? 'status' : groupBy;
       const categoryPositions = this.current()?.project?.categoryPositions;
       const filtered = filteredGroups(
-        groupBy,
-        taskGroups(groupBy, statuses, categoryPositions),
+        grouping,
+        taskGroups(grouping, statuses, categoryPositions),
         filters
       );
+      this.columnsFailed.set(new Set());
       await this.pager.start(projectId, filtered.groups, {
         ...aiFilterQuery(settings.aiTaskFilter),
         ...filtered.query,
         sort,
       });
       return {
+        view,
         groupBy,
         statusOptions: statusChipOptions(statuses, categoryPositions),
         statuses: workflowOrder(statuses, categoryPositions),
@@ -294,6 +328,17 @@ export class ProjectTasksPage {
   });
   protected readonly groupBy = computed<GroupBy>(
     () => this.listValue()?.groupBy ?? 'status'
+  );
+  protected readonly view = computed<ViewMode>(
+    () => this.listValue()?.view ?? 'list'
+  );
+  /** The view being loaded, for its skeleton: a choice made, or the last. */
+  protected readonly pendingView = computed(
+    () => this.viewChoice() ?? this.listValue()?.view ?? 'list'
+  );
+  /** How the loaded rows are grouped: the board's columns are statuses. */
+  private readonly grouping = computed<GroupBy>(() =>
+    this.view() === 'board' ? 'status' : this.groupBy()
   );
   protected readonly groupByLabel = computed(
     () => GROUP_BY_LABELS[this.groupBy()]
@@ -315,13 +360,31 @@ export class ProjectTasksPage {
   protected readonly canCreate = computed(() =>
     can(this.current()?.role, 'create')
   );
-  protected readonly empty = computed(() => this.pages().groups.length === 0);
+  /** The board has no create button: each column has Add task instead. */
+  protected readonly showFab = computed(
+    () => this.canCreate() && this.view() !== 'board'
+  );
+  /** The board's columns: every status group, empty ones included. */
+  protected readonly boardColumns = computed<BoardColumn[]>(() => {
+    const statuses = new Map(this.orderedStatuses().map((s) => [s.slug, s]));
+    return this.pages().columns.flatMap((loaded) => {
+      const status = statuses.get(loaded.group.key);
+      return status ? [{ status, loaded }] : [];
+    });
+  });
+  protected readonly empty = computed(() =>
+    this.view() === 'board'
+      ? this.boardColumns().length === 0
+      : this.pages().groups.length === 0
+  );
   /**
    * The next page failed to load. Infinite scroll stops until Retry, so the
    * failure is said in words rather than by a spinner that just stops.
    */
   protected readonly moreFailed = signal(false);
   protected readonly retryingMore = signal(false);
+  /** Board columns whose next page failed, which show Retry. */
+  protected readonly columnsFailed = signal<ReadonlySet<string>>(new Set());
 
   protected readonly switcherOpen = signal(false);
   protected readonly filterOpen = signal(false);
@@ -349,6 +412,9 @@ export class ProjectTasksPage {
   });
 
   protected readonly hueColors = groupHueColors;
+
+  /** The board holds a card, or a touch started in a scrolled column. */
+  protected readonly refreshBlocked = signal(false);
 
   /** The pull-to-refresh in progress, completed once its reloads settle. */
   private readonly refresher = signal<
@@ -406,8 +472,11 @@ export class ProjectTasksPage {
     }
   }
 
-  /** Opens the create sheet (3i) on the open project. */
-  protected openCreate(): void {
+  /**
+   * Opens the create sheet (3i) on the open project; from a board column
+   * (`status`), each task created is then moved to that column.
+   */
+  protected openCreate(status?: WorkflowStatus): void {
     const projectId = this.currentId();
     if (!projectId) {
       return;
@@ -415,7 +484,13 @@ export class ProjectTasksPage {
     void this.creates.open({
       projects: this.projectList().filter((p) => can(p.role, 'create')),
       projectId,
-      created: (task) => this.created(task),
+      status,
+      created: (task) => {
+        this.created(task);
+        if (status) {
+          void this.moveCreated(task, status);
+        }
+      },
       openTask: (task) =>
         void this.nav.navigateForward(['tasks', task.projectId, task.id], {
           relativeTo: this.route,
@@ -462,6 +537,23 @@ export class ProjectTasksPage {
       .updateTaskViewSettings(projectId, { groupBy })
       .catch((error: unknown) =>
         console.error('Saving the group-by failed', error)
+      );
+  }
+
+  /** Switches List/Board, and saves the choice as the project's override. */
+  protected chooseView(view: ViewMode): void {
+    const projectId = this.currentId();
+    if (!projectId || view === this.view()) {
+      return;
+    }
+    this.viewChoice.set(view);
+    this.refreshBlocked.set(false);
+    void this.content().scrollToTop(0);
+    // Like the group-by, the view doesn't wait for the save.
+    this.api
+      .updateTaskViewSettings(projectId, { viewMode: view })
+      .catch((error: unknown) =>
+        console.error('Saving the view failed', error)
       );
   }
 
@@ -530,6 +622,35 @@ export class ProjectTasksPage {
     }
   }
 
+  /**
+   * A card dropped on another column: the move, or the status sheet with
+   * the resolution picker open for a closed status. (The board has already
+   * refused a column the task's type can't use.)
+   */
+  protected dropped({ task, status }: BoardDrop): void {
+    switch (dropAction(task, status)) {
+      case 'move':
+        void impact('medium');
+        void this.move(task, { status });
+        break;
+      case 'resolution':
+        void impact('medium');
+        this.openSheet(task, status.slug);
+        break;
+    }
+  }
+
+  /** Loads a board column's next page; a failure shows its Retry. */
+  protected async loadColumn(key: string): Promise<void> {
+    this.setColumnFailed(key, false);
+    try {
+      await this.pager.loadMoreIn(key);
+    } catch (error) {
+      console.error('Loading more tasks failed', error);
+      this.setColumnFailed(key, true);
+    }
+  }
+
   /** Archives a done task; the server archives its subtasks with it. */
   protected async archive(task: Task, sliding: IonItemSliding): Promise<void> {
     void sliding.close();
@@ -579,6 +700,11 @@ export class ProjectTasksPage {
     this.refresher.set(event.target);
   }
 
+  /** A pull started: a card press on the board can't become a drag. */
+  protected refreshStarted(): void {
+    this.board()?.cancelPress();
+  }
+
   protected retry(): void {
     if (this.projects.error()) {
       this.projects.reload();
@@ -626,8 +752,39 @@ export class ProjectTasksPage {
     const matches = !statuses.length || statuses.includes(task.status ?? '');
     this.pager.placeTask(
       task,
-      matches ? taskGroupKey(this.groupBy(), task) : undefined
+      matches ? taskGroupKey(this.grouping(), task) : undefined
     );
+  }
+
+  /**
+   * Moves a task created from a board column there, quietly: the created
+   * toast is already showing. A type the column can't use stays where it
+   * started (the sheet's callout said so).
+   */
+  private async moveCreated(task: Task, status: WorkflowStatus): Promise<void> {
+    if (
+      task.projectId !== this.currentId() ||
+      dropAction(task, status) !== 'move'
+    ) {
+      return;
+    }
+    await this.statusChanges.move(
+      task,
+      status,
+      undefined,
+      { apply: (t) => this.place(t), anchor: TAB_BAR },
+      false
+    );
+  }
+
+  private setColumnFailed(key: string, failed: boolean): void {
+    const next = new Set(this.columnsFailed());
+    if (failed) {
+      next.add(key);
+    } else {
+      next.delete(key);
+    }
+    this.columnsFailed.set(next);
   }
 
   /**

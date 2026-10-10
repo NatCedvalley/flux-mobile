@@ -2,10 +2,12 @@
 export {
   allowedStatusCategories,
   blockedReason,
+  dropAction,
   nextStatus,
   statusSheetGroups,
   withStatus,
   workflowOrder,
+  type DropAction,
   type StatusCategory,
   type StatusSheetGroup,
   type StatusSheetRow,

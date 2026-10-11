@@ -218,12 +218,31 @@ export class BoardDrag {
     }
   }
 
+  /**
+   * The column under the finger. Beside the columns (a gap, or past the
+   * last one once the edge advance has reached the end), the nearest one
+   * within the edge zone, level with the finger.
+   */
   private columnAt(x: number, y: number): string | undefined {
     const element = this.host.ownerDocument.elementFromPoint(x, y);
     const column = element?.closest<HTMLElement>('[data-column]');
-    return column && this.host.contains(column)
-      ? column.dataset['column']
-      : undefined;
+    if (column && this.host.contains(column)) {
+      return column.dataset['column'];
+    }
+    let nearest: { key: string | undefined; distance: number } | undefined;
+    for (const candidate of this.host.querySelectorAll<HTMLElement>(
+      '[data-column]'
+    )) {
+      const rect = candidate.getBoundingClientRect();
+      if (y < rect.top || y > rect.bottom) {
+        continue;
+      }
+      const distance = Math.max(rect.left - x, x - rect.right, 0);
+      if (distance <= EDGE_PX && (!nearest || distance < nearest.distance)) {
+        nearest = { key: candidate.dataset['column'], distance };
+      }
+    }
+    return nearest?.key;
   }
 
   /** Arms the edge advance while the finger rests near a side. */

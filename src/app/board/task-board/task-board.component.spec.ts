@@ -125,8 +125,8 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
   }
 
-  function release(): void {
-    document.dispatchEvent(pointer('pointerup', 100, 20));
+  function release(x = 100): void {
+    document.dispatchEvent(pointer('pointerup', x, 20));
     fixture.detectChanges();
   }
 
@@ -321,6 +321,22 @@ describe('TaskBoardComponent', () => {
       release();
 
       expect(dropped).toEqual([]);
+    });
+
+    it('drops beside the columns on the nearest one, within the edge zone', () => {
+      render();
+      // Scrolled to the end: the last column fills 47-343, nothing after it.
+      section('done').getBoundingClientRect = () =>
+        ({ top: 0, bottom: 500, left: 47, right: 343 }) as DOMRect;
+      pickUp();
+      under = null;
+      release(360);
+      expect(dropped).toEqual([{ task: TASK, status: STATUSES[3] }]);
+
+      pickUp();
+      under = null;
+      release(390);
+      expect(dropped).toHaveLength(1);
     });
 
     it('advances a column after resting at the screen edge', () => {

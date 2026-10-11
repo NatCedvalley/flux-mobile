@@ -37,7 +37,7 @@
             aria-hidden="true"
           ></ion-icon>
         </ion-button>
-        @if (view() === 'board' && listValue()) {
+        @if (pendingView() === 'board' && listValue()) {
           <ion-button
             class="icon-button filters"
             aria-haspopup="dialog"
@@ -74,7 +74,7 @@
       />
     </ion-toolbar>
   }
-  @if (title() && listValue() && view() !== 'board') {
+  @if (title() && listValue() && pendingView() !== 'board') {
     <div class="strip">
       <button
         type="button"
@@ -103,7 +103,7 @@
 
 <ion-content
   [class.has-fab]="showFab()"
-  [class.board]="view() === 'board' || pendingView() === 'board'"
+  [class.board]="pendingView() === 'board'"
 >
   <ion-refresher
     slot="fixed"

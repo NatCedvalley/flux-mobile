@@ -332,7 +332,11 @@ export class ProjectTasksPage {
   protected readonly view = computed<ViewMode>(
     () => this.listValue()?.view ?? 'list'
   );
-  /** The view being loaded, for its skeleton: a choice made, or the last. */
+  /**
+   * The view being loaded, or the one shown once it has: a choice made, or
+   * the last. The chrome follows it, so switching doesn't show the list's
+   * strip over the board's skeleton.
+   */
   protected readonly pendingView = computed(
     () => this.viewChoice() ?? this.listValue()?.view ?? 'list'
   );
@@ -362,7 +366,7 @@ export class ProjectTasksPage {
   );
   /** The board has no create button: each column has Add task instead. */
   protected readonly showFab = computed(
-    () => this.canCreate() && this.view() !== 'board'
+    () => this.canCreate() && this.pendingView() !== 'board'
   );
   /** The board's columns: every status group, empty ones included. */
   protected readonly boardColumns = computed<BoardColumn[]>(() => {

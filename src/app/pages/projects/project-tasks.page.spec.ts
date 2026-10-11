@@ -1016,6 +1016,18 @@ describe('ProjectTasksPage', () => {
       expect(columns()).toHaveLength(4);
     });
 
+    it("drops the list's strip and button as soon as Board is chosen", async () => {
+      await create();
+      await settle();
+
+      board().chooseView('board');
+      fixture.detectChanges();
+
+      expect(element().querySelector('.strip')).toBeNull();
+      expect(element().querySelector('app-create-task-fab')).toBeNull();
+      expect(element().querySelector('app-task-board')).not.toBeNull();
+    });
+
     it('keeps the board when saving it fails', async () => {
       await create();
       await settle();

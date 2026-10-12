@@ -271,6 +271,11 @@ $flux-shadows: (
     light: 0 1px 2px rgba(0, 0, 0, 0.1),
     dark: 0 1px 2px rgba(0, 0, 0, 0.4),
   ),
+  // A board card picked up to drag (ours; 3c doesn't specify one).
+  lifted: (
+      light: 0 12px 28px rgba(0, 0, 0, 0.18),
+      dark: 0 12px 28px rgba(0, 0, 0, 0.5),
+    ),
 ) !default;
 
 // Sheet and modal backdrop.
@@ -656,6 +661,36 @@ $flux-type: (
   ),
   toggle-label: (
     size: 13.5px,
+    weight: 550,
+  ),
+  // Board (FM-37, 3c): the status rail, a column's name and count, a
+  // card's priority word, chips and 26px avatar, and the dashed Add task.
+  rail-label: (
+      size: 11.5px,
+      weight: 600,
+    ),
+  column-name: (
+    size: 13px,
+    weight: 700,
+  ),
+  column-count: (
+    size: 12px,
+    weight: 450,
+  ),
+  card-priority: (
+    size: 11px,
+    weight: 650,
+  ),
+  card-chip: (
+    size: 10.5px,
+    weight: 650,
+  ),
+  card-avatar: (
+    size: 10px,
+    weight: 650,
+  ),
+  add-task: (
+    size: 13px,
     weight: 550,
   ),
 ) !default;

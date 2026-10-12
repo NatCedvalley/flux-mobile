@@ -1,0 +1,38 @@
+// The segmented control as on My Work: `--na3` track, the checked chip in
+// `--n1` (dark `--n5`) with a small shadow.
+:host {
+  display: block;
+}
+
+ion-segment {
+  --background: var(--flux-na3);
+  min-height: 36px;
+  border-radius: var(--flux-radius-segmented);
+}
+
+ion-segment-button {
+  --indicator-color: var(--flux-n1);
+  --indicator-box-shadow: var(--flux-shadow-segmented);
+  --border-radius: var(--flux-radius-segmented);
+  --color: var(--flux-na11);
+  --color-checked: var(--flux-n12);
+  min-height: 36px;
+  font: var(--flux-font-segment-label);
+  letter-spacing: var(--flux-tracking-segment-label);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-6);
+    font-size: 14px;
+  }
+
+  &.segment-button-checked {
+    font: var(--flux-font-segment-label-active);
+    letter-spacing: var(--flux-tracking-segment-label-active);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  ion-segment-button {
+    --indicator-color: var(--flux-n5);
+  }
+}

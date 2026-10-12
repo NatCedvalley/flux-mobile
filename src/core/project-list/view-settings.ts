@@ -25,6 +25,32 @@ export function resolveGroupBy(
   return isGroupBy(accountDefault) ? accountDefault : 'status';
 }
 
+/**
+ * How a project's tasks are shown, as flux-web writes `viewMode`. flux-web
+ * also has `calendar`; it isn't built here yet, so it falls through.
+ */
+export const VIEW_MODES = ['list', 'board'] as const;
+export type ViewMode = (typeof VIEW_MODES)[number];
+
+function isViewMode(value: string | null | undefined): value is ViewMode {
+  return (VIEW_MODES as readonly (string | null | undefined)[]).includes(value);
+}
+
+/**
+ * The view in effect, resolved like flux-web: the project's own override
+ * (task-view-settings `viewMode`), then the account's `defaultView`, then
+ * the list. An empty or unknown value falls through to the next tier.
+ */
+export function resolveViewMode(
+  projectOverride: string | null | undefined,
+  accountDefault: string | null | undefined
+): ViewMode {
+  if (isViewMode(projectOverride)) {
+    return projectOverride;
+  }
+  return isViewMode(accountDefault) ? accountDefault : 'list';
+}
+
 /** The label AI-drafted task candidates carry. */
 export const AI_CANDIDATE_LABEL = 'ai:candidate';
 

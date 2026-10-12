@@ -23,12 +23,14 @@ mkdir -p "$OUT_DIR"
 # Points (x y), from the login screen and the tab layout on an iPhone 17:
 # 62 pt top safe area, a 52 pt tab bar above the 34 pt home indicator. On
 # the Projects tab the first row sits under the 52 pt project header, the
-# 38 pt group-by strip and a 36 pt group header, so it spans about 188-250.
+# 52 pt List/Board segment, the 38 pt group-by strip and a 36 pt group
+# header, so it spans about 240-302. (The CI project has no saved view, so
+# it opens on the list.)
 EMAIL_FIELD='201 155'
 PASSWORD_FIELD='201 211'
 SIGN_IN_BUTTON='201 286'
 PROJECTS_TAB='201 814'
-FIRST_TASK_ROW='160 222'
+FIRST_TASK_ROW='160 271'
 
 tap() {
   # shellcheck disable=SC2086

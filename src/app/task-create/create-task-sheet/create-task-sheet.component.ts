@@ -24,7 +24,7 @@ import {
   IonToggle,
   IonToolbar,
 } from '@ionic/angular';
-import type { MyProject, Task } from '@core/api';
+import type { MyProject, Task, WorkflowStatus } from '@core/api';
 import { dueFact, localIsoDate } from '@core/my-work';
 import { avatarFillIndex, initials } from '@core/people';
 import { priorityFact, projectInitials } from '@core/project-list';
@@ -34,7 +34,7 @@ import {
   allowedChildTypes,
   defaultsCallout,
   emptyDraft,
-  startingStatus,
+  createdStatus,
   withProject,
 } from '@core/task-create';
 import { TITLE_MAX, parentTypes } from '@core/task-edit';
@@ -134,6 +134,8 @@ export class CreateTaskSheetComponent {
   readonly projects = input.required<readonly MyProject[]>();
   /** The project to start in. */
   readonly projectId = input.required<string>();
+  /** The board column it was opened from, which the task moves to. */
+  readonly status = input<WorkflowStatus>();
   /** Called after each create. */
   readonly created = input<(task: Task) => void>(() => undefined);
   /** Opens a created task, from its toast's Open. */
@@ -346,10 +348,12 @@ export class CreateTaskSheetComponent {
 
   /** `This bug will start in **To Do**, unassigned.`, once known. */
   protected readonly callout = computed(() => {
-    const { type } = this.draft();
-    const status = this.statuses.hasValue()
-      ? startingStatus(this.statuses.value(), type)
-      : undefined;
+    const { type, projectId } = this.draft();
+    // The column belongs to the project the sheet opened in.
+    const target = projectId === this.projectId() ? this.status() : undefined;
+    const { status, refused } = this.statuses.hasValue()
+      ? createdStatus(this.statuses.value(), type, target)
+      : { status: undefined, refused: undefined };
     if (!status?.name) {
       return undefined;
     }
@@ -357,7 +361,7 @@ export class CreateTaskSheetComponent {
     const named =
       assignee &&
       (this.draft().assigneeId === this.myId() ? 'you' : assignee.label);
-    return defaultsCallout(type, status.name, named || undefined);
+    return defaultsCallout(type, status.name, named || undefined, refused);
   });
 
   constructor() {

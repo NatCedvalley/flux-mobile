@@ -186,6 +186,27 @@ describe('CreateTaskSheetComponent', () => {
     expect(text('app-create-chip:has(.set)')).toBe('AR Me');
   });
 
+  it('says it starts in the board column it was added from, if its type may', async () => {
+    await create();
+    const [, , inProgress] = await api.listWorkflowStatuses('p1');
+    fixture.componentRef.setInput('status', inProgress);
+    await settle();
+    expect(text('.callout')).toBe(
+      'This task will start in In Progress, unassigned.'
+    );
+
+    sheet().draft.update((d) => ({ ...d, type: 'EPIC' }));
+    await settle();
+    expect(text('.callout')).toBe(
+      'This epic will start in Backlog, unassigned. In Progress: not for epics.'
+    );
+
+    // The column is the opening project's; another project has its own.
+    sheet().draft.update((d) => ({ ...d, type: 'TASK', projectId: 'p2' }));
+    await settle();
+    expect(text('.callout')).not.toContain('In Progress');
+  });
+
   it('creates the task, then clears the form but its project and type when kept open', async () => {
     await create('p2');
     const announce = vi.spyOn(TestBed.inject(TaskCreateService), 'announce');

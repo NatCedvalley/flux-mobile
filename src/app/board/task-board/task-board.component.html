@@ -1,0 +1,139 @@
+@if (columns(); as columns) {
+  <div
+    #rail
+    class="rail"
+    role="tablist"
+    aria-label="Columns"
+  >
+    @for (column of columns; track column.loaded.group.key; let i = $index) {
+      <button
+        type="button"
+        role="tab"
+        class="pill"
+        [class.active]="i === active()"
+        [attr.aria-selected]="i === active()"
+        [style]="hueColors(column.status)"
+        (click)="jump(i)"
+      >
+        <span
+          class="dot"
+          aria-hidden="true"
+        ></span>
+        {{ name(column.status) }} {{ column.loaded.total }}
+      </button>
+    }
+  </div>
+
+  <div
+    #scroller
+    class="columns"
+    [class.dragging]="drag.dragging()"
+    (scroll)="scrolled()"
+  >
+    @for (column of columns; track column.loaded.group.key) {
+      @let refused = refusal(column);
+      <section
+        class="column"
+        [attr.data-column]="column.loaded.group.key"
+        [attr.aria-label]="name(column.status)"
+        [class.refused]="!!refused"
+        [class.over]="
+          !refused && drag.over() === column.loaded.group.key && drag.dragging()
+        "
+        [style]="hueColors(column.status)"
+      >
+        <header class="head">
+          <span
+            class="dot"
+            aria-hidden="true"
+          ></span>
+          <span class="name">{{ name(column.status) }}</span>
+          <span class="count">{{ column.loaded.total }}</span>
+          @if (refused) {
+            <span class="reason">{{ refused }}</span>
+          }
+        </header>
+        <div class="cards">
+          @for (task of column.loaded.tasks; track task.id) {
+            <app-board-card
+              [attr.data-task-id]="task.id"
+              [class.picked]="isPicked(task)"
+              [task]="task"
+              [today]="today()"
+            />
+          }
+          @if (!column.loaded.complete) {
+            @if (failed().has(column.loaded.group.key)) {
+              <div
+                class="more-error"
+                role="alert"
+              >
+                <span>Couldn't load more.</span>
+                <ion-button
+                  fill="clear"
+                  size="small"
+                  (click)="loadMore.emit(column.loaded.group.key)"
+                  >Retry</ion-button
+                >
+              </div>
+            } @else {
+              <div
+                class="skeleton-card"
+                aria-busy="true"
+                aria-label="Loading"
+                [attr.data-more]="column.loaded.group.key"
+              >
+                <ion-skeleton-text animated="true"></ion-skeleton-text>
+                <ion-skeleton-text
+                  class="short"
+                  animated="true"
+                ></ion-skeleton-text>
+              </div>
+            }
+          }
+          @if (canCreate() && !column.status.isClosed) {
+            <button
+              type="button"
+              class="add"
+              (click)="add.emit(column.status)"
+            >
+              <ion-icon
+                name="plus"
+                aria-hidden="true"
+              ></ion-icon>
+              Add task to {{ name(column.status) }}
+            </button>
+          }
+        </div>
+      </section>
+    }
+  </div>
+} @else {
+  <div
+    class="columns skeleton"
+    aria-busy="true"
+    aria-label="Loading"
+  >
+    @for (c of skeletonColumns; track c) {
+      <div class="column">
+        <div class="head">
+          <ion-skeleton-text
+            class="head-text"
+            animated="true"
+          ></ion-skeleton-text>
+        </div>
+        <div class="cards">
+          @for (card of skeletonCards; track card) {
+            <div class="skeleton-card">
+              <ion-skeleton-text animated="true"></ion-skeleton-text>
+              <ion-skeleton-text
+                class="short"
+                animated="true"
+              ></ion-skeleton-text>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

@@ -1,5 +1,5 @@
 import type { NewTask, Task, WorkflowStatus } from '../api';
-import { allowedStatusCategories } from '../task-status';
+import { allowedStatusCategories, blockedReason } from '../task-status';
 
 export type TaskType = NonNullable<Task['type']>;
 
@@ -130,23 +130,61 @@ export function createTaskBody(draft: TaskDraft): NewTask {
 }
 
 /** The create sheet's callout, read as `lead` **status** `tail`. */
-export type DefaultsCallout = { lead: string; status: string; tail: string };
+export type DefaultsCallout = {
+  lead: string;
+  status: string;
+  tail: string;
+  /** Why the task won't go to the status it was added from, if it won't. */
+  note?: string;
+};
 
 /**
  * The callout stating what the new task starts as: `This bug will start in
  * **To Do**, unassigned.` `assignee` is the chosen assignee as the sheet
  * names them ("you", or a name), or undefined for none. The workflow's
  * assignment rules only run on a status change, never on a create, so they
- * aren't mentioned.
+ * aren't mentioned (a board column's move can run them; that is expected).
+ * `note` says why the task won't go to the column it was added from.
  */
 export function defaultsCallout(
   type: TaskType,
   statusName: string,
-  assignee: string | undefined
+  assignee: string | undefined,
+  note?: string
 ): DefaultsCallout {
   return {
     lead: `This ${type.toLowerCase()} will start in`,
     status: statusName,
     tail: assignee ? `, assigned to ${assignee}.` : ', unassigned.',
+    ...(note ? { note } : {}),
+  };
+}
+
+export type CreatedStatus = {
+  status: WorkflowStatus | undefined;
+  /** `Backlog: epics and masters only.` when the target refuses the type. */
+  refused?: string;
+};
+
+/**
+ * Where a new task ends up. Added from a board column (`target`), it is
+ * moved there right after the create when its type may use it; otherwise,
+ * or with no target, it stays in its starting status (`startingStatus`).
+ */
+export function createdStatus(
+  statuses: readonly WorkflowStatus[],
+  type: TaskType,
+  target?: WorkflowStatus
+): CreatedStatus {
+  if (!target) {
+    return { status: startingStatus(statuses, type) };
+  }
+  const reason = blockedReason(type, target.category);
+  if (!reason) {
+    return { status: target };
+  }
+  return {
+    status: startingStatus(statuses, type),
+    refused: `${target.name ?? target.slug}: ${reason.toLowerCase()}.`,
   };
 }

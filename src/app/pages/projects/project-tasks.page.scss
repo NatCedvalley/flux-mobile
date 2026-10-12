@@ -84,6 +84,30 @@
   }
 }
 
+// The Filters button on the board's header: a dot while filters are set.
+.filters {
+  position: relative;
+}
+
+.filters-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--flux-radius-pill);
+  background: var(--flux-p9);
+}
+
+// List / Board under the header (3b, 3c), padded as on My Work.
+.segment-bar {
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-16);
+  --padding-top: var(--flux-space-2);
+  --padding-bottom: var(--flux-space-10);
+  --min-height: 0;
+}
+
 // 38px strip under the header: the group-by button, which opens the view
 // options, and the Filters button at the far end.
 .strip {
@@ -126,6 +150,13 @@
 
 ion-list {
   padding: 0;
+}
+
+// The board fills the content and scrolls inside its columns. On iOS it is
+// 1px taller, so the content can bounce and Ionic's native pull-to-refresh
+// (which reads that bounce) still starts from the rail and column heads.
+:host-context(.plt-ios) ion-content.board app-task-board {
+  height: calc(100% + 1px);
 }
 
 // Room under the last row for the 56px create button and its inset.

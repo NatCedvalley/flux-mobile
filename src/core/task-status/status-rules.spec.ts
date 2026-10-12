@@ -2,6 +2,7 @@ import type { Task, WorkflowStatus } from '../api';
 import {
   allowedStatusCategories,
   blockedReason,
+  dropAction,
   nextStatus,
   statusSheetGroups,
   withStatus,
@@ -179,6 +180,33 @@ describe('statusSheetGroups', () => {
       current: true,
       blocked: undefined,
     });
+  });
+});
+
+describe('dropAction', () => {
+  const status = (slug: string) => STATUSES.find((s) => s.slug === slug)!;
+  const task: Task = { status: 'todo', type: 'TASK' };
+
+  it("does nothing on the card's own column", () => {
+    expect(dropAction(task, status('todo'))).toBe('same');
+  });
+
+  it('refuses a column the type cannot use', () => {
+    expect(dropAction(task, status('backlog'))).toBe('blocked');
+    expect(
+      dropAction({ status: 'backlog', type: 'EPIC' }, status('todo'))
+    ).toBe('blocked');
+  });
+
+  it('asks for a resolution on a closed status', () => {
+    expect(dropAction(task, status('done'))).toBe('resolution');
+  });
+
+  it('moves to any other status', () => {
+    expect(dropAction(task, status('review'))).toBe('move');
+    expect(
+      dropAction({ status: 'backlog', type: 'EPIC' }, status('done'))
+    ).toBe('resolution');
   });
 });
 

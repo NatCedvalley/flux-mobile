@@ -1,9 +1,11 @@
 // Handoff 3c: the rail over the columns, filling the content's height so
-// each column scrolls its own cards.
+// each column scrolls its own cards. A size container, so the columns can
+// centre on the board's width (`cqw`).
 :host {
   display: flex;
   flex-direction: column;
   height: 100%;
+  container-type: inline-size;
 }
 
 // One row of status pills, 16px apart, the active one underlined in its
@@ -56,29 +58,32 @@
   background: var(--group-dot);
 }
 
-// 296px columns, 12px apart, snapping to the 16px gutter so the next one
-// peeks. Snap is off while a card is held, so the edge advance can scroll.
+// 296px columns, 12px apart, each snapping to the centre so the previous
+// and next ones peek either side (about 40px of gutter on a phone, never
+// under 16px). Snap is off while a card is held, so the edge advance can
+// scroll.
 .columns {
+  --side: max(var(--flux-space-16), calc((100cqw - 296px) / 2));
   display: flex;
   flex: auto;
   gap: var(--flux-space-12);
   min-height: 0;
-  padding: var(--flux-space-14) var(--flux-space-16) 0;
+  padding: var(--flux-space-14) 0 0 var(--side);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--flux-space-16);
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
     display: none;
   }
 
-  // The end padding a scrolling flex row would otherwise drop.
+  // The end gutter (after the last gap), so the last column centres too.
+  // End padding on a scrolling flex row isn't scrollable everywhere.
   &::after {
     content: '';
     flex: none;
-    width: var(--flux-space-4);
+    width: calc(var(--side) - var(--flux-space-12));
   }
 
   &.dragging {
@@ -94,7 +99,7 @@
   width: 296px;
   min-height: 0;
   border-radius: var(--flux-radius-card-lg);
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   transition:
     opacity 150ms ease-out,
     background-color 150ms ease-out;

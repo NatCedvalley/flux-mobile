@@ -24,14 +24,19 @@ export type BoardColumn = { status: WorkflowStatus; loaded: LoadedGroup };
 
 export type BoardDrop = { task: Task; status: WorkflowStatus };
 
-/** A column's width (3c: 296px, so the next one peeks) and the gap after it. */
+/**
+ * A column's width (3c: 296px, so the columns either side peek) and the
+ * gap after it. Columns snap to the centre, so scrolling one column is
+ * always this step.
+ */
 export const COLUMN_WIDTH = 296;
 export const COLUMN_GAP = 12;
 
 /**
  * The project board (handoff 3c): a rail of status pills with counts, which
- * follows the columns and jumps to one, over 296px columns that snap as
- * they scroll sideways, the next one peeking. Each column's head stays put
+ * follows the columns and jumps to one, over 296px columns that snap to
+ * the centre as they scroll sideways, their neighbours peeking either side.
+ * Each column's head stays put
  * while its cards scroll, and each column pages on its own as its end comes
  * into view. For an EDITOR+, a long press picks a card up to drag it to
  * another column (`BoardDrag`); a column its type can't use dims and says

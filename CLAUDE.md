@@ -219,8 +219,11 @@ create button.
 - **Layout** (`app-task-board`):
   - A rail of status pills with counts follows the horizontal scroll and
     jumps to a column.
-  - Columns are 296 px wide with a 12 px gap and snap
-    (`scroll-snap-type: x mandatory`), so the next one peeks.
+  - Columns are 296 px wide with a 12 px gap and snap to the centre
+    (`scroll-snap-type: x mandatory`, `scroll-snap-align: center`), so the
+    columns either side peek. The side gutter is `(width − 296) / 2`, at
+    least 16 px (about 40 px on a phone). A column scroll is always one
+    308 px step.
   - The board fills the content: each column's head stays put while its
     cards scroll.
   - An IntersectionObserver sentinel (a skeleton card) at a column's end
@@ -248,7 +251,7 @@ create button.
   - `dropAction()` (`src/core/task-status/`) decides the drop: a closed
     status opens the status sheet with its resolution picker; anything
     else goes through `TaskStatusService.move()` with Undo. The card lands
-    at the top of its new column. There is no reordering within a column.
+    at the top of its new column. Reordering within a column is FM-40.
   - Haptics: light on pickup, medium on the drop.
 - **Pull-to-refresh.** Ionic's gesture refresher (Android, web) only
   checks that the page is at its top. So the board turns it off

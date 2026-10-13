@@ -25,6 +25,7 @@ import type {
   MyTaskResponse,
   NotificationResponse,
   ProjectMemberResponse,
+  ReorderTasksRequest,
   TaskActivityResponse,
   TaskCommentResponse,
   TaskResolutionResponse,
@@ -83,6 +84,11 @@ export type Attachment = AttachmentResponse;
  * only when) the status is closed.
  */
 export type TaskStatusChange = ChangeTaskStatusRequest;
+/**
+ * A board column's order: every task id in one status, top first. The
+ * server sets each one's position to its index, and only those.
+ */
+export type TaskReorder = ReorderTasksRequest;
 /** Restoring an archived task: `reason` is required. */
 export type TaskUnarchive = UnarchiveTaskRequest;
 /**

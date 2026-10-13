@@ -2,7 +2,6 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  afterRenderEffect,
   computed,
   inject,
   input,
@@ -22,7 +21,16 @@ import { BoardDrag, type Pickup } from './board-drag';
 /** A board column: its status and the rows loaded so far. */
 export type BoardColumn = { status: WorkflowStatus; loaded: LoadedGroup };
 
-export type BoardDrop = { task: Task; status: WorkflowStatus };
+/**
+ * A card let go over a column that takes it. `index` is where among that
+ * column's other cards it was let go, or undefined when the column can't be
+ * reordered: then the card goes where the board order puts it.
+ */
+export type BoardDrop = {
+  task: Task;
+  status: WorkflowStatus;
+  index: number | undefined;
+};
 
 /**
  * A column's width (3c: 296px, so the columns either side peek) and the
@@ -31,16 +39,23 @@ export type BoardDrop = { task: Task; status: WorkflowStatus };
  */
 export const COLUMN_WIDTH = 296;
 export const COLUMN_GAP = 12;
+/** After a pickup, the gap starts sliding as it moves once this has passed. */
+export const GLIDE_AFTER_MS = 100;
 
 /**
  * The project board (handoff 3c): a rail of status pills with counts, which
  * follows the columns and jumps to one, over 296px columns that snap to
  * the centre as they scroll sideways, their neighbours peeking either side.
  * Each column's head stays put
- * while its cards scroll, and each column pages on its own as its end comes
- * into view. For an EDITOR+, a long press picks a card up to drag it to
- * another column (`BoardDrag`); a column its type can't use dims and says
- * why, and refuses the drop. With no columns yet, it draws skeleton cards.
+ * while its cards scroll. A column shows skeleton cards until it is loaded
+ * whole, in board order, and Retry if a page fails. For an EDITOR+, a long
+ * press picks a card up to drag it to another column (`BoardDrag`); a
+ * column its type can't use dims and says why, and refuses the drop. Where
+ * columns can be reordered (`canReorder`, and the column loaded), the held
+ * card's place closes up and a gap opens where it will land, in its own
+ * column or another, and holding it at a column's top or bottom scrolls
+ * that column. With no
+ * columns yet, it draws skeleton cards.
  */
 @Component({
   selector: 'app-task-board',
@@ -59,9 +74,14 @@ export class TaskBoardComponent {
   readonly today = input.required<string>();
   /** Cards can be dragged (EDITOR+). */
   readonly canMove = input(false);
+  /**
+   * Cards can be placed within a column (EDITOR+, with no filters, which
+   * would leave a column partial).
+   */
+  readonly canReorder = input(false);
   /** Columns end with Add task (EDITOR+), except closed ones. */
   readonly canCreate = input(false);
-  /** Columns whose next page failed, which show Retry instead. */
+  /** Columns whose loading failed, which show Retry instead. */
   readonly failed = input<ReadonlySet<string>>(new Set());
 
   readonly loadMore = output<string>();
@@ -82,11 +102,23 @@ export class TaskBoardComponent {
     scroller: () => this.scroller()?.nativeElement,
     step: COLUMN_WIDTH + COLUMN_GAP,
     enabled: () => this.canMove(),
-    picked: () => {
+    picked: (pickup) => {
       void impact('light');
       this.blockRefresh(true);
+      // Measured before its place closes up.
+      this.gapHeight.set(
+        this.cardElement(pickup.taskId)?.getBoundingClientRect().height ?? 0
+      );
+      // The gap opens where the card was without sliding, or the cards
+      // under it would jump up as its place closes, then slide back.
+      this.settled.set(false);
+      clearTimeout(this.settling);
+      this.settling = setTimeout(() => this.settled.set(true), GLIDE_AFTER_MS);
     },
-    dropped: (pickup, key) => this.drop(pickup, key),
+    dropped: (pickup, key, slot) => this.drop(pickup, key, slot),
+    columnScroller: (key) =>
+      this.columnElement(key)?.querySelector<HTMLElement>('.cards') ??
+      undefined,
   });
 
   private refreshBlocked = false;
@@ -99,35 +131,50 @@ export class TaskBoardComponent {
     return pickup && this.find(pickup)?.task;
   });
 
+  /** The held card's height: the gap opened where it will land. */
+  protected readonly gapHeight = signal(0);
+  private readonly settled = signal(false);
+  private settling: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * Whether the gap slides as it moves: only while a card is held, and not
+   * as it first opens. A drop takes it away at once too, as the card
+   * reappears.
+   */
+  protected readonly gliding = computed(
+    () => !!this.drag.dragging() && this.settled()
+  );
+
+  /**
+   * Where the held card will land, while it's over a column that can be
+   * reordered: the column's key, and the card the gap opens above
+   * (undefined: below the last one). It shows where the card already is,
+   * too, though a drop there changes nothing.
+   */
+  protected readonly gap = computed(() => {
+    const key = this.drag.over();
+    const slot = this.drag.slot();
+    const task = this.held();
+    const column = this.columns()?.find((c) => c.loaded.group.key === key);
+    if (
+      !task ||
+      !column ||
+      slot === undefined ||
+      this.refusal(column) ||
+      !this.reorderable(column)
+    ) {
+      return undefined;
+    }
+    const others = column.loaded.tasks.filter((t) => t.id !== task.id);
+    return others.length ? { key, before: others[slot]?.id } : undefined;
+  });
+
   protected readonly skeletonColumns = [0, 1];
   protected readonly skeletonCards = [0, 1, 2];
 
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(this.drag.attach());
-
-    // Each column's end, coming into view, pages that column. Observing
-    // again after each render reports a sentinel still in view, so a short
-    // page keeps loading until the column fills.
-    const observer =
-      typeof IntersectionObserver === 'undefined'
-        ? undefined
-        : new IntersectionObserver((entries) => {
-            for (const entry of entries) {
-              const key = (entry.target as HTMLElement).dataset['more'];
-              if (entry.isIntersecting && key) {
-                this.loadMore.emit(key);
-              }
-            }
-          });
-    afterRenderEffect(() => {
-      this.columns();
-      this.failed();
-      if (observer) {
-        this.observeSentinels(observer);
-      }
-    });
-    destroyRef.onDestroy(() => observer?.disconnect());
+    destroyRef.onDestroy(() => clearTimeout(this.settling));
   }
 
   protected hueColors(status: WorkflowStatus): Record<string, string> {
@@ -148,6 +195,30 @@ export class TaskBoardComponent {
 
   protected isPicked(task: Task): boolean {
     return this.drag.dragging()?.taskId === task.id;
+  }
+
+  /**
+   * Whether the held card's place closes up: where cards can be reordered,
+   * a gap shows where it will land instead.
+   */
+  protected isLifted(task: Task): boolean {
+    return this.isPicked(task) && this.canReorder();
+  }
+
+  /** Whether the gap opens above this card. */
+  protected gapBefore(column: BoardColumn, task: Task): boolean {
+    const gap = this.gap();
+    return gap?.key === column.loaded.group.key && gap.before === task.id;
+  }
+
+  /** Whether the gap opens below this card, the column's last other one. */
+  protected gapAfter(column: BoardColumn, task: Task): boolean {
+    const gap = this.gap();
+    if (gap?.key !== column.loaded.group.key || gap.before !== undefined) {
+      return false;
+    }
+    const held = this.drag.dragging()?.taskId;
+    return column.loaded.tasks.filter((t) => t.id !== held).at(-1) === task;
   }
 
   /** The page's refresher started: a press can't become a drag now. */
@@ -188,18 +259,53 @@ export class TaskBoardComponent {
     this.drag.scrolled();
   }
 
-  private drop(pickup: Pickup, key: string | undefined): void {
+  private drop(
+    pickup: Pickup,
+    key: string | undefined,
+    slot: number | undefined
+  ): void {
     const found = this.find(pickup);
     const target = this.columns()?.find((c) => c.loaded.group.key === key);
-    if (
-      !found ||
-      !target ||
-      target.status.slug === found.task.status ||
-      blockedReason(found.task.type, target.status.category)
-    ) {
+    if (!found || !target) {
       return;
     }
-    this.dropped.emit({ task: found.task, status: target.status });
+    const index = this.reorderable(target) ? slot : undefined;
+    if (target.status.slug === found.task.status) {
+      if (index !== undefined && !this.unchanged(target, found.task, index)) {
+        this.dropped.emit({ task: found.task, status: target.status, index });
+      }
+      return;
+    }
+    if (!blockedReason(found.task.type, target.status.category)) {
+      this.dropped.emit({ task: found.task, status: target.status, index });
+    }
+  }
+
+  /** Whether a card can be placed within the column: it's loaded whole. */
+  private reorderable(column: BoardColumn): boolean {
+    return this.canReorder() && column.loaded.complete;
+  }
+
+  /** Whether `index` is where `task` already is in its own column. */
+  private unchanged(column: BoardColumn, task: Task, index: number): boolean {
+    return (
+      column.status.slug === task.status &&
+      column.loaded.tasks.findIndex((t) => t.id === task.id) === index
+    );
+  }
+
+  private cardElement(taskId: string): HTMLElement | undefined {
+    return [
+      ...this.host.nativeElement.querySelectorAll<HTMLElement>(
+        '[data-task-id]'
+      ),
+    ].find((card) => card.dataset['taskId'] === taskId);
+  }
+
+  private columnElement(key: string): HTMLElement | undefined {
+    return [
+      ...this.host.nativeElement.querySelectorAll<HTMLElement>('[data-column]'),
+    ].find((column) => column.dataset['column'] === key);
   }
 
   private blockRefresh(blocked: boolean): void {
@@ -214,14 +320,5 @@ export class TaskBoardComponent {
       ?.find((c) => c.loaded.group.key === pickup.columnKey)
       ?.loaded.tasks.find((t) => t.id === pickup.taskId);
     return task && { task };
-  }
-
-  private observeSentinels(observer: IntersectionObserver): void {
-    observer.disconnect();
-    for (const sentinel of this.host.nativeElement.querySelectorAll(
-      '[data-more]'
-    )) {
-      observer.observe(sentinel);
-    }
   }
 }

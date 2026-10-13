@@ -33,6 +33,17 @@ export type PagerState = {
 
 type GroupProgress = LoadedGroup & { nextPage: number };
 
+/** How `start` pages: the rows per request, and an order for a whole group. */
+export type PagerOptions = {
+  /** Rows per request; the pager's page size by default. */
+  size?: number;
+  /**
+   * Sorts a group's rows once it is complete (the board's order, which the
+   * server can't sort by). Rows otherwise keep the server's order.
+   */
+  order?: (tasks: readonly Task[]) => Task[];
+};
+
 /**
  * Pages a project's task list group by group. The server can't sort tasks by
  * workflow status, so each group is its own filtered query (`status=…`):
@@ -42,11 +53,13 @@ type GroupProgress = LoadedGroup & { nextPage: number };
  * same key in the base query, so narrow the groups to the filter first
  * (`narrowGroups` in `@core/task-filters`). `placeTask` moves a changed row
  * without a refetch. The board shows every group as a column instead
- * (`state.columns`) and pages each one with `loadMoreIn`.
+ * (`state.columns`), loads each one whole with `loadAllIn`, and rearranges
+ * one with `reorder`.
  */
 export class GroupedTaskPager {
   private projectId = '';
   private baseQuery: ProjectTasksQuery = {};
+  private options: PagerOptions = {};
   private groups: GroupProgress[] = [];
   /** Bumped by `start`, so pages fetched for an older list are dropped. */
   private generation = 0;
@@ -92,7 +105,8 @@ export class GroupedTaskPager {
   async start(
     projectId: string,
     groups: readonly TaskGroup[],
-    baseQuery: ProjectTasksQuery = {}
+    baseQuery: ProjectTasksQuery = {},
+    options: PagerOptions = {}
   ): Promise<void> {
     const generation = ++this.generation;
     this.loadingMore = null;
@@ -104,7 +118,7 @@ export class GroupedTaskPager {
           ...baseQuery,
           ...group.query,
           page: 0,
-          size: this.pageSize,
+          size: options.size ?? this.pageSize,
         })
       )
     );
@@ -113,14 +127,16 @@ export class GroupedTaskPager {
     }
     this.projectId = projectId;
     this.baseQuery = baseQuery;
+    this.options = options;
     this.groups = groups.map((group, i) => {
       const tasks = pages[i].content ?? [];
       const total = pages[i].totalElements ?? tasks.length;
+      const complete = pages[i].last ?? tasks.length >= total;
       return {
         group,
-        tasks,
+        tasks: complete ? this.ordered(tasks) : tasks,
         total,
-        complete: pages[i].last ?? tasks.length >= total,
+        complete,
         nextPage: 1,
       };
     });
@@ -134,14 +150,14 @@ export class GroupedTaskPager {
 
   /**
    * Puts a changed task in the group keyed `groupKey`: in place if it's
-   * already there, otherwise at the top, taking it out of its old group and
-   * moving one off that group's count. With no group (or one not in the
-   * list, e.g. filtered out) the row is only taken out.
+   * already there, otherwise at `index` (the top by default), taking it out
+   * of its old group and moving one off that group's count. With no group
+   * (or one not in the list, e.g. filtered out) the row is only taken out.
    *
    * Taking a row out of a group still paging shifts the server's pages
    * under it, so the next page can skip one row until the list reloads.
    */
-  placeTask(task: Task, groupKey: string | undefined): void {
+  placeTask(task: Task, groupKey: string | undefined, index = 0): void {
     const from = this.groups.find((g) => g.tasks.some((t) => t.id === task.id));
     const to = this.groups.find((g) => g.group.key === groupKey);
     if (from && from === to) {
@@ -152,10 +168,30 @@ export class GroupedTaskPager {
         from.total = Math.max(0, from.total - 1);
       }
       if (to) {
-        to.tasks = [task, ...to.tasks];
+        to.tasks = [
+          ...to.tasks.slice(0, index),
+          task,
+          ...to.tasks.slice(index),
+        ];
         to.total++;
       }
     }
+    this.listener(this.state);
+  }
+
+  /**
+   * Rearranges the loaded rows of the group keyed `groupKey` in the order
+   * of `taskIds`. Ids not in the group are ignored, and rows missing from
+   * `taskIds` go last.
+   */
+  reorder(groupKey: string, taskIds: readonly string[]): void {
+    const target = this.groups.find((g) => g.group.key === groupKey);
+    if (!target) {
+      return;
+    }
+    const rank = new Map(taskIds.map((id, i) => [id, i]));
+    const at = (t: Task) => rank.get(t.id ?? '') ?? taskIds.length;
+    target.tasks = [...target.tasks].sort((a, b) => at(a) - at(b));
     this.listener(this.state);
   }
 
@@ -194,6 +230,24 @@ export class GroupedTaskPager {
     return loading;
   }
 
+  /**
+   * Loads every remaining page of the group keyed `groupKey`. Shares the
+   * requests with `loadMoreIn`; a failure rejects and keeps the pages that
+   * landed, so calling it again resumes.
+   */
+  async loadAllIn(groupKey: string): Promise<void> {
+    const generation = this.generation;
+    const incomplete = () =>
+      this.groups.some((g) => g.group.key === groupKey && !g.complete);
+    while (generation === this.generation && incomplete()) {
+      await this.loadMoreIn(groupKey);
+    }
+  }
+
+  private ordered(tasks: Task[]): Task[] {
+    return this.options.order ? this.options.order(tasks) : tasks;
+  }
+
   private async fetchNext(target: GroupProgress | undefined): Promise<void> {
     if (!target) {
       return;
@@ -204,7 +258,7 @@ export class GroupedTaskPager {
       ...this.baseQuery,
       ...target.group.query,
       page: target.nextPage,
-      size: this.pageSize,
+      size: this.options.size ?? this.pageSize,
     });
     if (generation !== this.generation) {
       return;
@@ -218,6 +272,9 @@ export class GroupedTaskPager {
     target.complete =
       content.length === 0 ||
       (page.last ?? target.tasks.length >= target.total);
+    if (target.complete) {
+      target.tasks = this.ordered(target.tasks);
+    }
     this.listener(this.state);
   }
 }

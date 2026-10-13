@@ -40,6 +40,12 @@ import type {
   Task,
   WorkflowStatus,
 } from '@core/api';
+import {
+  BOARD_PAGE_SIZE,
+  boardIndex,
+  boardOrder,
+  movedOrder,
+} from '@core/board';
 import { monthOf, monthTitle } from '@core/calendar';
 import { localIsoDate } from '@core/my-work';
 import { can } from '@core/permissions';
@@ -70,6 +76,7 @@ import {
 import { dropAction, nextStatus, workflowOrder } from '@core/task-status';
 import type { ChipOption } from '../../shared/option-chips/option-chips.component';
 import { AuthService } from '../../auth/auth.service';
+import { BoardOrderService } from '../../board/board-order.service';
 import {
   type BoardColumn,
   type BoardDrop,
@@ -135,7 +142,8 @@ const TAB_BAR = 'tab-bar';
  * next status (or opens the status sheet from More), the start side
  * archives a done task. The List/Board segment switches to the board (3c),
  * saved as the project's `viewMode` override like the group-by; there a
- * card dragged to another column changes its status. The calendar (3d)
+ * card dragged to another column changes its status, and one dropped in a
+ * column (with no filters set) saves that column's order. The calendar (3d)
  * shows the month's tasks by date, and a task dragged to another day
  * moves its dates.
  */
@@ -182,6 +190,7 @@ export class ProjectTasksPage {
   private readonly myProjects = inject(MyProjectsService);
   private readonly account = inject(AuthService).account;
   private readonly statusChanges = inject(TaskStatusService);
+  private readonly orders = inject(BoardOrderService);
   private readonly taskChanges = inject(TaskChangesService);
   protected readonly prefs = inject(ProjectPrefsService);
   private readonly creates = inject(CreateTaskLauncherService);
@@ -322,15 +331,26 @@ export class ProjectTasksPage {
         filters
       );
       const aiQuery = aiFilterQuery(settings.aiTaskFilter);
-      // The calendar loads its own tasks, by date.
-      if (view !== 'calendar') {
-        this.columnsFailed.set(new Set());
-        await this.pager.start(projectId, filtered.groups, {
-          ...aiQuery,
-          ...filtered.query,
-          sort,
-        });
+      const query = { ...aiQuery, ...filtered.query };
+      this.columnsFailed.set(new Set());
+      if (view === 'board') {
+        // Every column whole, in board order, which the server can't sort
+        // by: newest first breaks ties in position.
+        await this.pager.start(
+          projectId,
+          filtered.groups,
+          { ...query, sort: DEFAULT_SORT },
+          { size: BOARD_PAGE_SIZE, order: boardOrder }
+        );
+        for (const column of this.pager.state.columns) {
+          if (!column.complete) {
+            void this.loadColumn(column.group.key);
+          }
+        }
+      } else if (view === 'list') {
+        await this.pager.start(projectId, filtered.groups, { ...query, sort });
       }
+      // The calendar loads its own tasks, by date.
       return {
         projectId,
         view,
@@ -383,6 +403,14 @@ export class ProjectTasksPage {
   protected readonly canMove = computed(() =>
     can(this.current()?.role, 'changeStatus')
   );
+  /**
+   * Board cards can be placed within a column: not while filters are set,
+   * since a column then holds only some of its tasks, and the server
+   * renumbers only the ones it's sent.
+   */
+  protected readonly canReorder = computed(
+    () => this.canMove() && this.filterCount() === 0
+  );
   protected readonly canArchive = computed(() =>
     can(this.current()?.role, 'archive')
   );
@@ -429,7 +457,7 @@ export class ProjectTasksPage {
    */
   protected readonly moreFailed = signal(false);
   protected readonly retryingMore = signal(false);
-  /** Board columns whose next page failed, which show Retry. */
+  /** Board columns whose loading failed, which show Retry. */
   protected readonly columnsFailed = signal<ReadonlySet<string>>(new Set());
 
   protected readonly switcherOpen = signal(false);
@@ -440,6 +468,8 @@ export class ProjectTasksPage {
   protected readonly sheetOpen = signal(false);
   protected readonly sheetTask = signal<Task | undefined>(undefined);
   protected readonly sheetExpand = signal<string | undefined>(undefined);
+  /** A board card dropped on a closed status: where it was let go. */
+  private sheetDrop: { status: string; index: number } | undefined;
   /** Rows with a change on its way, which don't take another. */
   private readonly busy = new Set<string>();
   /** The row whose swipe actions are fully showing (one light haptic). */
@@ -675,7 +705,15 @@ export class ProjectTasksPage {
     this.openSheet(task);
   }
 
-  protected async move(task: Task, choice: StatusChoice): Promise<void> {
+  /**
+   * Moves a task to the status chosen. On the board, `index` is where it
+   * was let go in that column, whose order is saved once the move is.
+   */
+  protected async move(
+    task: Task,
+    choice: StatusChoice,
+    index?: number
+  ): Promise<void> {
     this.sheetOpen.set(false);
     const id = task.id ?? '';
     if (this.busy.has(id)) {
@@ -683,40 +721,54 @@ export class ProjectTasksPage {
     }
     this.busy.add(id);
     try {
-      await this.statusChanges.move(task, choice.status, choice.resolution, {
-        apply: (t) => this.place(t),
-        anchor: TAB_BAR,
-      });
+      await this.moveTo(task, choice.status, choice.resolution, index, true);
     } finally {
       this.busy.delete(id);
     }
   }
 
+  /** The status sheet's choice: at the drop point if it's the column dropped on. */
+  protected sheetMoved(task: Task, choice: StatusChoice): void {
+    const drop = this.sheetDrop;
+    void this.move(
+      task,
+      choice,
+      drop && drop.status === choice.status.slug ? drop.index : undefined
+    );
+  }
+
   /**
-   * A card dropped on another column: the move, or the status sheet with
-   * the resolution picker open for a closed status. (The board has already
-   * refused a column the task's type can't use.)
+   * A card dropped on the board: within its column, the new order; on
+   * another, the move, or the status sheet with the resolution picker open
+   * for a closed status. (The board has already refused a column the task's
+   * type can't use, and an order that doesn't change.)
    */
-  protected dropped({ task, status }: BoardDrop): void {
+  protected dropped({ task, status, index }: BoardDrop): void {
     switch (dropAction(task, status)) {
+      case 'same':
+        if (index !== undefined) {
+          void impact('medium');
+          void this.reorder(task, status.slug ?? '', index);
+        }
+        break;
       case 'move':
         void impact('medium');
-        void this.move(task, { status });
+        void this.move(task, { status }, index);
         break;
       case 'resolution':
         void impact('medium');
-        this.openSheet(task, status.slug);
+        this.openSheet(task, status.slug, index);
         break;
     }
   }
 
-  /** Loads a board column's next page; a failure shows its Retry. */
+  /** Loads a whole board column; a failure shows its Retry. */
   protected async loadColumn(key: string): Promise<void> {
     this.setColumnFailed(key, false);
     try {
-      await this.pager.loadMoreIn(key);
+      await this.pager.loadAllIn(key);
     } catch (error) {
-      console.error('Loading more tasks failed', error);
+      console.error('Loading a board column failed', error);
       this.setColumnFailed(key, true);
     }
   }
@@ -808,7 +860,12 @@ export class ProjectTasksPage {
     return found;
   }
 
-  private openSheet(task: Task, expand?: string): void {
+  /** `index`: where a board card dropped on a closed status was let go. */
+  private openSheet(task: Task, expand?: string, index?: number): void {
+    this.sheetDrop =
+      expand !== undefined && index !== undefined
+        ? { status: expand, index }
+        : undefined;
     this.sheetTask.set(task);
     this.sheetExpand.set(expand);
     this.sheetOpen.set(true);
@@ -817,21 +874,92 @@ export class ProjectTasksPage {
   /**
    * Shows a changed task in the group it now belongs to, or drops it when
    * the status filter no longer matches. (With status groups the filter has
-   * already narrowed the groups, so the pager drops it anyway.)
+   * already narrowed the groups, so the pager drops it anyway.) A row
+   * moving group goes to `index`; without one, to the top of a list group,
+   * or where the board order puts it in a column.
    */
-  private place(task: Task): void {
+  private place(task: Task, index?: number): void {
     const statuses = this.filters().statuses;
     const matches = !statuses.length || statuses.includes(task.status ?? '');
+    const key = matches ? taskGroupKey(this.grouping(), task) : undefined;
+    const column = this.pages().columns.find((c) => c.group.key === key);
     this.pager.placeTask(
       task,
-      matches ? taskGroupKey(this.grouping(), task) : undefined
+      key,
+      index ??
+        (this.view() === 'board' && column ? boardIndex(column.tasks, task) : 0)
     );
   }
 
   /**
+   * Moves `task` to `status`, showing it at `index` in that board column
+   * (a refusal puts it back where the board order puts it), then saves the
+   * column's order, since a status change keeps the task's old position.
+   */
+  private async moveTo(
+    task: Task,
+    status: WorkflowStatus,
+    resolution: string | undefined,
+    index: number | undefined,
+    undoable: boolean
+  ): Promise<void> {
+    const key = status.slug ?? '';
+    const moved = await this.statusChanges.move(
+      task,
+      status,
+      resolution,
+      {
+        apply: (t) => this.place(t, t.status === key ? index : undefined),
+        anchor: TAB_BAR,
+      },
+      undoable
+    );
+    if (moved && index !== undefined) {
+      const previous = boardOrder(this.columnTasks(key)).map((t) => t.id ?? '');
+      await this.saveOrder(task.projectId ?? '', key, previous);
+    }
+  }
+
+  /** Puts a card at `index` in its own column, and saves the column's order. */
+  private async reorder(task: Task, key: string, index: number): Promise<void> {
+    const id = task.id ?? '';
+    if (this.busy.has(id)) {
+      return;
+    }
+    this.busy.add(id);
+    const previous = this.columnTasks(key).map((t) => t.id ?? '');
+    this.pager.reorder(key, movedOrder(previous, id, index));
+    try {
+      await this.saveOrder(task.projectId ?? '', key, previous);
+    } finally {
+      this.busy.delete(id);
+    }
+  }
+
+  /** Saves a board column's order as shown; a refusal puts `previous` back. */
+  private async saveOrder(
+    projectId: string,
+    key: string,
+    previous: string[]
+  ): Promise<void> {
+    const taskIds = this.columnTasks(key).map((t) => t.id ?? '');
+    if (taskIds.length) {
+      await this.orders.save(projectId, taskIds, {
+        restore: () => this.pager.reorder(key, previous),
+        anchor: TAB_BAR,
+      });
+    }
+  }
+
+  private columnTasks(key: string): readonly Task[] {
+    return this.pages().columns.find((c) => c.group.key === key)?.tasks ?? [];
+  }
+
+  /**
    * Moves a task created from a board column there, quietly: the created
-   * toast is already showing. A type the column can't use stays where it
-   * started (the sheet's callout said so).
+   * toast is already showing. On the board it goes last, as the server
+   * puts a new task, and the column's order is saved. A type the column
+   * can't use stays where it started (the sheet's callout said so).
    */
   private async moveCreated(task: Task, status: WorkflowStatus): Promise<void> {
     if (
@@ -840,13 +968,14 @@ export class ProjectTasksPage {
     ) {
       return;
     }
-    await this.statusChanges.move(
-      task,
-      status,
-      undefined,
-      { apply: (t) => this.place(t), anchor: TAB_BAR },
-      false
+    const column = this.pages().columns.find(
+      (c) => c.group.key === status.slug
     );
+    const last =
+      this.view() === 'board' && this.canReorder() && column?.complete
+        ? column.tasks.length
+        : undefined;
+    await this.moveTo(task, status, undefined, last, false);
   }
 
   private setColumnFailed(key: string, failed: boolean): void {
@@ -862,7 +991,8 @@ export class ProjectTasksPage {
   /**
    * Shows a task just created in this project at the top of its group, if
    * the filters let it in. (The default sort is newest first; under another
-   * one it sits at the top until the list reloads.)
+   * one it sits at the top until the list reloads.) On the board it goes
+   * last in its column, where its position puts it.
    */
   private created(task: Task): void {
     if (task.projectId !== this.currentId() || !this.list.hasValue()) {

@@ -20,6 +20,7 @@ import type {
   TaskComment,
   TaskCommentUpdate,
   TaskParentChange,
+  TaskReorder,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
@@ -102,6 +103,13 @@ export type FluxApi = {
     taskId: string,
     change: TaskStatusChange
   ): Promise<Task>;
+
+  /**
+   * PATCH /projects/{projectId}/tasks/reorder (EDITOR+): a whole board
+   * column's order. The response leaves out assignees, so keep the tasks
+   * shown and only change their order.
+   */
+  reorderTasks(projectId: string, reorder: TaskReorder): Promise<Task[]>;
 
   /**
    * POST /projects/{projectId}/tasks/{taskId}/archive: archives the task and

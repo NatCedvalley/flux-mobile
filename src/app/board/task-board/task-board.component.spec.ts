@@ -1,10 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import type { Task, WorkflowStatus } from '@core/api';
-import { EDGE_DWELL_MS, LONG_PRESS_MS } from './board-drag';
+import {
+  COLUMN_SCROLL_MS,
+  COLUMN_SCROLL_PX,
+  EDGE_DWELL_MS,
+  LONG_PRESS_MS,
+} from './board-drag';
 import {
   type BoardColumn,
   type BoardDrop,
+  GLIDE_AFTER_MS,
   TaskBoardComponent,
 } from './task-board.component';
 
@@ -46,32 +52,6 @@ const COLUMNS = [
   column(STATUSES[2], [], false),
   column(STATUSES[3], []),
 ];
-
-/** Records what IntersectionObserver watches, and reports it on demand. */
-class FakeObserver {
-  static last: FakeObserver | undefined;
-  readonly watched = new Set<Element>();
-  constructor(private readonly callback: IntersectionObserverCallback) {
-    FakeObserver.last = this;
-  }
-  observe(el: Element): void {
-    this.watched.add(el);
-  }
-  disconnect(): void {
-    this.watched.clear();
-  }
-  report(el: Element): void {
-    this.callback(
-      [
-        {
-          target: el,
-          isIntersecting: true,
-        } as unknown as IntersectionObserverEntry,
-      ],
-      this as unknown as IntersectionObserver
-    );
-  }
-}
 
 function pointer(type: string, x = 10, y = 10): MouseEvent {
   const event = new MouseEvent(type, {
@@ -119,20 +99,27 @@ describe('TaskBoardComponent', () => {
     fixture.detectChanges();
   }
 
-  function moveOver(key: string, x = 100): void {
+  function moveOver(key: string, x = 100, y = 20): void {
     under = section(key);
-    document.dispatchEvent(pointer('pointermove', x, 20));
+    document.dispatchEvent(pointer('pointermove', x, y));
     fixture.detectChanges();
   }
 
-  function release(x = 100): void {
-    document.dispatchEvent(pointer('pointerup', x, 20));
+  function release(x = 100, y = 20): void {
+    document.dispatchEvent(pointer('pointerup', x, y));
     fixture.detectChanges();
+  }
+
+  /** Lays a card out from `top`, 100px tall. */
+  function layOut(id: string, top: number): void {
+    card(id).getBoundingClientRect = () =>
+      ({ top, bottom: top + 100, height: 100, left: 0, right: 296 }) as DOMRect;
   }
 
   beforeEach(async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    vi.stubGlobal('IntersectionObserver', FakeObserver);
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
+    });
     under = null;
     document.elementFromPoint = vi.fn(() => under);
     Object.defineProperty(document.documentElement, 'clientWidth', {
@@ -157,7 +144,6 @@ describe('TaskBoardComponent', () => {
   afterEach(() => {
     fixture.destroy();
     vi.useRealTimers();
-    vi.unstubAllGlobals();
   });
 
   it('shows a rail pill with its count, and a column, per status', () => {
@@ -210,20 +196,22 @@ describe('TaskBoardComponent', () => {
     expect(el.querySelectorAll('.skeleton-card')).toHaveLength(6);
   });
 
-  it('pages a column when its end comes into view, and retries it', () => {
-    render();
-    const sentinel = section('doing').querySelector('[data-more]')!;
-    expect(FakeObserver.last?.watched.has(sentinel)).toBe(true);
-
-    FakeObserver.last?.report(sentinel);
-    expect(loadMore).toEqual(['doing']);
+  it('shows skeleton cards until a column is whole, and Retry if it fails', () => {
+    const doing = column(
+      STATUSES[2],
+      [{ ...TASK, id: 't3', status: 'doing' }],
+      false
+    );
+    render({ columns: [COLUMNS[0], COLUMNS[1], doing, COLUMNS[3]] });
+    expect(section('doing').querySelectorAll('.skeleton-card')).toHaveLength(3);
+    expect(section('doing').querySelector('app-board-card')).toBeNull();
 
     render({ failed: new Set(['doing']) });
-    expect(section('doing').querySelector('[data-more]')).toBeNull();
+    expect(section('doing').querySelector('.skeleton-card')).toBeNull();
     section('doing')
       .querySelector<HTMLElement>('.more-error ion-button')!
       .click();
-    expect(loadMore).toEqual(['doing', 'doing']);
+    expect(loadMore).toEqual(['doing']);
   });
 
   describe('drag', () => {
@@ -239,7 +227,9 @@ describe('TaskBoardComponent', () => {
       expect(section('doing').classList).toContain('over');
       release();
 
-      expect(dropped).toEqual([{ task: TASK, status: STATUSES[2] }]);
+      expect(dropped).toEqual([
+        { task: TASK, status: STATUSES[2], index: undefined },
+      ]);
       expect(document.querySelector('.board-ghost')).toBeNull();
       expect(card().classList).not.toContain('picked');
       expect(blocks).toEqual([true, false]);
@@ -331,7 +321,9 @@ describe('TaskBoardComponent', () => {
       pickUp();
       under = null;
       release(360);
-      expect(dropped).toEqual([{ task: TASK, status: STATUSES[3] }]);
+      expect(dropped).toEqual([
+        { task: TASK, status: STATUSES[3], index: undefined },
+      ]);
 
       pickUp();
       under = null;
@@ -356,6 +348,144 @@ describe('TaskBoardComponent', () => {
       expect(scrollBy).toHaveBeenLastCalledWith({
         left: -308,
         behavior: 'smooth',
+      });
+    });
+
+    describe('reorder', () => {
+      const DOING = { ...TASK, id: 't3', taskKey: 'CHK-3', status: 'doing' };
+      const REORDERABLE = [
+        COLUMNS[0],
+        COLUMNS[1],
+        column(STATUSES[2], [DOING]),
+        COLUMNS[3],
+      ];
+
+      beforeEach(() => {
+        render({ columns: REORDERABLE, canReorder: true });
+        layOut('t1', 0);
+        layOut('t2', 110);
+        layOut('t3', 0);
+      });
+
+      const gaps = () =>
+        Array.from(el.querySelectorAll('.gap-before, .gap-after')).map(
+          (c) =>
+            `${c.getAttribute('data-task-id')} ${c.classList.contains('gap-before') ? 'before' : 'after'}`
+        );
+
+      it('closes up the held card and opens a gap where it already is', () => {
+        pickUp('t1');
+
+        expect(card('t1').classList).toContain('lifted');
+        expect(gaps()).toEqual(['t2 before']);
+        expect(scroller().style.getPropertyValue('--drop-gap')).toBe('100px');
+      });
+
+      it('slides the gap only once it has opened, and not as it closes', () => {
+        pickUp('t1');
+        expect(scroller().classList).not.toContain('gliding');
+
+        vi.advanceTimersByTime(GLIDE_AFTER_MS);
+        fixture.detectChanges();
+        expect(scroller().classList).toContain('gliding');
+
+        release();
+        expect(scroller().classList).not.toContain('gliding');
+
+        pickUp('t1');
+        expect(scroller().classList).not.toContain('gliding');
+      });
+
+      it('opens the gap where a card will land in its own column, and drops it there', () => {
+        pickUp('t1');
+        moveOver('todo', 100, 200);
+
+        expect(gaps()).toEqual(['t2 after']);
+        release(100, 200);
+
+        expect(dropped).toEqual([
+          { task: TASK, status: STATUSES[1], index: 1 },
+        ]);
+        expect(gaps()).toEqual([]);
+        expect(card('t1').classList).not.toContain('lifted');
+      });
+
+      it('drops nothing where the card already is', () => {
+        pickUp('t1');
+        moveOver('todo', 100, 20);
+        release(100, 20);
+
+        expect(dropped).toEqual([]);
+      });
+
+      it('gives the drop point in another column', () => {
+        pickUp('t2');
+        moveOver('doing', 100, 20);
+
+        expect(gaps()).toEqual(['t3 before']);
+        release(100, 20);
+
+        expect(dropped).toEqual([
+          { task: COLUMNS[1].loaded.tasks[1], status: STATUSES[2], index: 0 },
+        ]);
+      });
+
+      it('gives no drop point in a column still loading', () => {
+        render({ columns: COLUMNS });
+        pickUp('t1');
+        moveOver('doing');
+
+        expect(gaps()).toEqual([]);
+        release();
+
+        expect(dropped[0].index).toBeUndefined();
+      });
+
+      it('only moves across columns without the reorder role or with filters', () => {
+        render({ columns: REORDERABLE, canReorder: false });
+        pickUp('t1');
+        expect(card('t1').classList).toContain('picked');
+        expect(card('t1').classList).not.toContain('lifted');
+        moveOver('todo', 100, 200);
+        expect(gaps()).toEqual([]);
+        release(100, 200);
+        expect(dropped).toEqual([]);
+
+        pickUp('t1');
+        moveOver('doing', 100, 20);
+        expect(gaps()).toEqual([]);
+        release(100, 20);
+        expect(dropped).toEqual([
+          { task: TASK, status: STATUSES[2], index: undefined },
+        ]);
+      });
+
+      it('scrolls a column while the card is held at its top or bottom', () => {
+        const cards = section('todo').querySelector<HTMLElement>('.cards')!;
+        let scrollTop = 100;
+        Object.defineProperty(cards, 'scrollTop', {
+          get: () => scrollTop,
+          set: (value: number) => (scrollTop = value),
+        });
+        cards.getBoundingClientRect = () =>
+          ({ top: 50, bottom: 450, left: 0, right: 296 }) as DOMRect;
+        pickUp('t1');
+
+        moveOver('todo', 100, 440);
+        vi.advanceTimersByTime(COLUMN_SCROLL_MS * 3);
+        expect(scrollTop).toBe(100 + COLUMN_SCROLL_PX * 3);
+
+        moveOver('todo', 100, 200);
+        vi.advanceTimersByTime(COLUMN_SCROLL_MS * 3);
+        expect(scrollTop).toBe(100 + COLUMN_SCROLL_PX * 3);
+
+        moveOver('todo', 100, 60);
+        vi.advanceTimersByTime(COLUMN_SCROLL_MS);
+        expect(scrollTop).toBe(100 + COLUMN_SCROLL_PX * 2);
+
+        release(100, 60);
+        vi.advanceTimersByTime(COLUMN_SCROLL_MS * 3);
+        expect(scrollTop).toBe(100 + COLUMN_SCROLL_PX * 2);
       });
     });
 

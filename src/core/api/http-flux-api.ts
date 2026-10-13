@@ -21,6 +21,7 @@ import type {
   TaskComment,
   TaskCommentUpdate,
   TaskParentChange,
+  TaskReorder,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
@@ -117,6 +118,14 @@ export class HttpFluxApi implements FluxApi {
     change: TaskStatusChange
   ): Promise<Task> {
     return this.send('PATCH', `${taskPath(projectId, taskId)}/status`, change);
+  }
+
+  reorderTasks(projectId: string, reorder: TaskReorder): Promise<Task[]> {
+    return this.send(
+      'PATCH',
+      `/projects/${encodeURIComponent(projectId)}/tasks/reorder`,
+      reorder
+    );
   }
 
   archiveTask(projectId: string, taskId: string): Promise<Task> {

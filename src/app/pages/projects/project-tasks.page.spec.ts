@@ -10,6 +10,7 @@ import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import type { Pickup } from '../../board/task-board/board-drag';
 import { AuthService } from '../../auth/auth.service';
+import { TaskBoardComponent } from '../../board/task-board/task-board.component';
 import {
   TaskCalendarComponent,
   UNSCHEDULED,
@@ -943,7 +944,15 @@ describe('ProjectTasksPage', () => {
         pages(): PagerState;
         orderedStatuses(): WorkflowStatus[];
         chooseView(view: 'list' | 'board'): void;
-        dropped(drop: { task: Task; status: WorkflowStatus }): void;
+        dropped(drop: {
+          task: Task;
+          status: WorkflowStatus;
+          index: number | undefined;
+        }): void;
+        sheetMoved(
+          task: Task,
+          choice: { status: WorkflowStatus; resolution?: string }
+        ): void;
         filterOpen(): boolean;
         sheetOpen(): boolean;
         sheetExpand(): string | undefined;
@@ -973,6 +982,16 @@ describe('ProjectTasksPage', () => {
       return board()
         .orderedStatuses()
         .find((s) => s.slug === slug)!;
+    }
+
+    function boardComponent(): TaskBoardComponent {
+      return fixture.debugElement.query(By.directive(TaskBoardComponent))
+        .componentInstance as TaskBoardComponent;
+    }
+
+    /** In Progress: CHK-142, then `count` more (CHK-1000…), in that order. */
+    function inProgressApi(count: number): InMemoryFluxApi {
+      return boardApi().addProjectTasks('p1', count, 'in_progress');
     }
 
     it('shows the list by default, with the List/Board segment', async () => {
@@ -1080,10 +1099,15 @@ describe('ProjectTasksPage', () => {
       await create({ api: boardApi() });
       await settle();
 
-      board().dropped({ task: task('CHK-150'), status: status('in_progress') });
+      board().dropped({
+        task: task('CHK-150'),
+        status: status('in_progress'),
+        index: undefined,
+      });
       await settle();
 
-      expect(columns()).toContain('In Progress: CHK-150, CHK-142');
+      // No drop point (a filter is set): where its position puts it.
+      expect(columns()).toContain('In Progress: CHK-142, CHK-150');
       expect(columns()).toContain('To Do: ');
       expect(toast.create).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Moved to In Progress' })
@@ -1095,7 +1119,11 @@ describe('ProjectTasksPage', () => {
       await settle();
       const change = vi.spyOn(api, 'changeTaskStatus');
 
-      board().dropped({ task: task('CHK-142'), status: status('done') });
+      board().dropped({
+        task: task('CHK-142'),
+        status: status('done'),
+        index: undefined,
+      });
 
       expect(board().sheetOpen()).toBe(true);
       expect(board().sheetExpand()).toBe('done');
@@ -1113,7 +1141,192 @@ describe('ProjectTasksPage', () => {
       });
       await settle();
 
-      expect(columns()).toContain('In Progress: CHK-150, CHK-142');
+      expect(columns()).toContain('In Progress: CHK-142, CHK-150');
+    });
+
+    describe('order', () => {
+      it('loads every column whole, 100 a request, in board order', async () => {
+        const api = inProgressApi(120);
+        const extras = Array.from(
+          { length: 120 },
+          (_, i) => `p1-extra-in_progress-${i}`
+        );
+        await api.reorderTasks('p1', { taskIds: ['1', ...extras.reverse()] });
+        const list = vi.spyOn(api, 'listProjectTasks');
+        await create({ api });
+        await settle();
+        await vi.waitFor(() => {
+          fixture.detectChanges();
+          expect(
+            element().querySelectorAll(
+              'section[data-column="in_progress"] app-board-card'
+            )
+          ).toHaveLength(121);
+        });
+
+        expect(list).toHaveBeenCalledWith(
+          'p1',
+          expect.objectContaining({
+            status: 'in_progress',
+            page: 1,
+            size: 100,
+            sort: 'createdAt,desc',
+          })
+        );
+        expect(
+          texts('section[data-column="in_progress"] .key').slice(0, 3)
+        ).toEqual(['CHK-142', 'CHK-1119', 'CHK-1118']);
+      });
+
+      it('shows skeletons until a column is whole, and Retry if it fails', async () => {
+        const api = inProgressApi(120);
+        const listTasks = api.listProjectTasks.bind(api);
+        const list = vi
+          .spyOn(api, 'listProjectTasks')
+          .mockImplementation((projectId, query) =>
+            query?.page === 1
+              ? Promise.reject(new ApiError(0))
+              : listTasks(projectId, query)
+          );
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await create({ api });
+        await settle();
+        const column = () =>
+          element().querySelector('section[data-column="in_progress"]')!;
+        await vi.waitFor(() => {
+          fixture.detectChanges();
+          expect(column().querySelector('.more-error')).not.toBeNull();
+        });
+        expect(column().querySelector('app-board-card')).toBeNull();
+
+        list.mockImplementation(listTasks);
+        column().querySelector<HTMLElement>('.more-error ion-button')!.click();
+        fixture.detectChanges();
+        expect(column().querySelectorAll('.skeleton-card')).toHaveLength(3);
+        await vi.waitFor(() => {
+          fixture.detectChanges();
+          expect(column().querySelectorAll('app-board-card')).toHaveLength(121);
+        });
+      });
+
+      it('saves a card moved within its column', async () => {
+        await create({ api: inProgressApi(2) });
+        await settle();
+        const save = vi.spyOn(api, 'reorderTasks');
+
+        board().dropped({
+          task: task('CHK-142'),
+          status: status('in_progress'),
+          index: 2,
+        });
+        await settle();
+
+        expect(columns()).toContain('In Progress: CHK-1000, CHK-1001, CHK-142');
+        expect(save).toHaveBeenCalledWith('p1', {
+          taskIds: ['p1-extra-in_progress-0', 'p1-extra-in_progress-1', '1'],
+        });
+        expect((await api.getTask('p1', '1')).position).toBe(2);
+      });
+
+      it("puts the old order back with the server's message if the save fails", async () => {
+        await create({ api: inProgressApi(2) });
+        await settle();
+        vi.spyOn(api, 'reorderTasks').mockRejectedValue(
+          new ApiError(422, {
+            code: 'TASK_REORDER_MIXED_STATUS',
+            message: 'All tasks must be in the same status',
+          })
+        );
+
+        board().dropped({
+          task: task('CHK-1001'),
+          status: status('in_progress'),
+          index: 0,
+        });
+        fixture.detectChanges();
+        expect(columns()).toContain('In Progress: CHK-1001, CHK-142, CHK-1000');
+        await settle();
+
+        expect(columns()).toContain('In Progress: CHK-142, CHK-1000, CHK-1001');
+        expect(toast.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'All tasks must be in the same status',
+          })
+        );
+      });
+
+      it('lands a card dropped on another column where it was let go, then saves that column', async () => {
+        await create({ api: inProgressApi(1) });
+        await settle();
+        const save = vi.spyOn(api, 'reorderTasks');
+
+        board().dropped({
+          task: task('CHK-150'),
+          status: status('in_progress'),
+          index: 1,
+        });
+        fixture.detectChanges();
+        expect(columns()).toContain('In Progress: CHK-142, CHK-150, CHK-1000');
+
+        await vi.waitFor(() =>
+          expect(save).toHaveBeenCalledWith('p1', {
+            taskIds: ['1', '2', 'p1-extra-in_progress-0'],
+          })
+        );
+        expect((await api.getTask('p1', '2')).status).toBe('in_progress');
+        await settle();
+        expect(columns()).toContain('In Progress: CHK-142, CHK-150, CHK-1000');
+      });
+
+      it("doesn't save the order when the status change is refused", async () => {
+        await create({ api: inProgressApi(1) });
+        await settle();
+        vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(new ApiError(0));
+        const save = vi.spyOn(api, 'reorderTasks');
+
+        board().dropped({
+          task: task('CHK-150'),
+          status: status('in_progress'),
+          index: 0,
+        });
+        await settle();
+
+        expect(columns()).toContain('To Do: CHK-150');
+        expect(save).not.toHaveBeenCalled();
+      });
+
+      it('lands a card on a closed status at the drop point once resolved', async () => {
+        await create({ api: boardApi() });
+        await settle();
+        const save = vi.spyOn(api, 'reorderTasks');
+
+        board().dropped({
+          task: task('CHK-142'),
+          status: status('done'),
+          index: 0,
+        });
+        board().sheetMoved(task('CHK-142'), {
+          status: status('done'),
+          resolution: 'done',
+        });
+
+        await vi.waitFor(() =>
+          expect(save).toHaveBeenCalledWith('p1', { taskIds: ['1', '6'] })
+        );
+        await settle();
+        expect(columns()).toContain('Done: CHK-142, CHK-120');
+      });
+
+      it('turns reordering off while filters are set', async () => {
+        await create({ api: boardApi() });
+        await settle();
+        expect(boardComponent().canReorder()).toBe(true);
+
+        await applyFilters({ priorities: ['MEDIUM', 'CRITICAL'] });
+
+        expect(boardComponent().canReorder()).toBe(false);
+        expect(boardComponent().canMove()).toBe(true);
+      });
     });
 
     describe('Add task', () => {
@@ -1132,10 +1345,18 @@ describe('ProjectTasksPage', () => {
         const options = await addTo('in_progress');
         expect(options.status?.slug).toBe('in_progress');
 
-        options.created(await api.createTask('p1', { title: 'New one' }));
+        const save = vi.spyOn(api, 'reorderTasks');
+        const created = await api.createTask('p1', { title: 'New one' });
+        options.created(created);
+        await vi.waitFor(() =>
+          expect(save).toHaveBeenCalledWith('p1', {
+            taskIds: ['1', created.id],
+          })
+        );
         await settle();
 
-        expect(columns()).toContain('In Progress: CHK-161, CHK-142');
+        // Last, as the server puts a new task.
+        expect(columns()).toContain('In Progress: CHK-142, CHK-161');
         // Quietly: the created toast is the one showing.
         expect(toast.create).not.toHaveBeenCalledWith(
           expect.objectContaining({ message: 'Moved to In Progress' })
@@ -1152,7 +1373,7 @@ describe('ProjectTasksPage', () => {
         await settle();
 
         expect(change).not.toHaveBeenCalled();
-        expect(columns()).toContain('To Do: CHK-161, CHK-150');
+        expect(columns()).toContain('To Do: CHK-150, CHK-161');
       });
 
       it('has no Add task on a closed column', async () => {

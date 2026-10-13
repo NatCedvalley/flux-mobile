@@ -59,6 +59,11 @@ $flux-gray: (
 // Alpha neutrals: what borders and washes use. Row dividers use a3,
 // structural dividers a4, control outlines a4/a5.
 $flux-gray-alpha: (
+  // The calendar's weekend wash (3d); nothing in dark mode.
+  1: (
+      light: rgba(0, 0, 85, 0.012),
+      dark: rgba(0, 0, 0, 0),
+    ),
   2: (
     light: rgba(0, 0, 85, 0.024),
     dark: rgba(216, 244, 246, 0.03),
@@ -98,7 +103,7 @@ $flux-gray-alpha: (
   11: (
     light: rgba(0, 6, 20, 0.62),
     dark: rgba(240, 247, 254, 0.68),
-  ),
+  )
 ) !default;
 
 // Primary (Radix indigo). Dark mode's active tab uses 11, not 9.
@@ -346,7 +351,8 @@ $flux-font-mono:
   'CommitMono', ui-monospace, SFMono-Regular, Menlo, monospace !default;
 
 // Type scale. `line` is omitted where the handoff gives none; `mono: true`
-// uses $flux-font-mono. Minimum size is 10px (tab labels and badges only).
+// uses $flux-font-mono. Minimum size is 10px (tab labels and badges only),
+// except the calendar's 9.5px day pills, which the handoff fixes.
 $flux-type: (
   body: (
     size: 13px,
@@ -692,6 +698,40 @@ $flux-type: (
   add-task: (
     size: 13px,
     weight: 550,
+  ),
+  // Calendar (FM-38, 3d): the month title and the Today button, the
+  // weekday strip, a day's number (today's in bold) and its stripe pills
+  // and `+n more`, and the Unscheduled drawer's title.
+  calendar-month: (
+      size: 15px,
+      weight: 650,
+      tracking: -0.01em,
+    ),
+  calendar-button: (
+    size: 12.5px,
+    weight: 600,
+  ),
+  calendar-weekday: (
+    size: 10.5px,
+    weight: 650,
+    tracking: 0.04em,
+  ),
+  calendar-day: (
+    size: 11px,
+    weight: 450,
+  ),
+  calendar-today: (
+    size: 11px,
+    weight: 700,
+  ),
+  calendar-pill: (
+    size: 9.5px,
+    line: 15px,
+    weight: 600,
+  ),
+  drawer-title: (
+    size: 14px,
+    weight: 600,
   ),
 ) !default;
 

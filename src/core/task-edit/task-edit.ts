@@ -6,8 +6,8 @@ export const TITLE_MAX = 120;
 
 /**
  * What an edit changes. These fields keep their value on the server when
- * left out, so they are only sent when they change. A due date of
- * `undefined` clears it.
+ * left out, so they are only sent when they change. A due or planned date
+ * of `undefined` clears it.
  */
 export type TaskChange = Partial<
   Pick<
@@ -15,6 +15,8 @@ export type TaskChange = Partial<
     | 'description'
     | 'descriptionFormat'
     | 'dueDate'
+    | 'plannedEndDate'
+    | 'plannedStartDate'
     | 'priority'
     | 'title'
     | 'type'

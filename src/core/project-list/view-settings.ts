@@ -25,11 +25,8 @@ export function resolveGroupBy(
   return isGroupBy(accountDefault) ? accountDefault : 'status';
 }
 
-/**
- * How a project's tasks are shown, as flux-web writes `viewMode`. flux-web
- * also has `calendar`; it isn't built here yet, so it falls through.
- */
-export const VIEW_MODES = ['list', 'board'] as const;
+/** How a project's tasks are shown, as flux-web writes `viewMode`. */
+export const VIEW_MODES = ['list', 'board', 'calendar'] as const;
 export type ViewMode = (typeof VIEW_MODES)[number];
 
 function isViewMode(value: string | null | undefined): value is ViewMode {

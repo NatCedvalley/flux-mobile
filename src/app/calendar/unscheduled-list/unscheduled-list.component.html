@@ -1,0 +1,71 @@
+<button
+  type="button"
+  class="drawer-head"
+  [attr.aria-expanded]="expanded()"
+  (click)="toggled.emit()"
+>
+  <ion-icon
+    name="inbox"
+    aria-hidden="true"
+  ></ion-icon>
+  <span class="drawer-title">Unscheduled</span>
+  @if (loaded()) {
+    <span class="count">{{ rows().total }}</span>
+  }
+  <span class="spacer"></span>
+  @if (canEdit()) {
+    <span class="hint">Drag onto a day</span>
+  }
+  <ion-icon
+    class="chevron"
+    [name]="expanded() ? 'chevron-down' : 'chevron-up'"
+    aria-hidden="true"
+  ></ion-icon>
+</button>
+<ion-content>
+  @if (error()) {
+    <app-error-state
+      [error]="error()"
+      (retry)="retry.emit()"
+    />
+  } @else if (loaded() && !rows().items.length) {
+    <app-empty-state
+      icon="circle-check"
+      message="Everything is scheduled"
+    />
+  } @else {
+    <ion-list
+      lines="full"
+      [attr.data-column]="dragKey()"
+    >
+      @for (task of rows().items; track task.id) {
+        <app-project-task-row
+          [attr.data-task-id]="task.id"
+          [class.picked]="task.id === pickedId()"
+          [task]="task"
+          [today]="today()"
+        />
+      }
+    </ion-list>
+    @if (moreFailed()) {
+      <div
+        class="load-more-error"
+        role="alert"
+      >
+        <span>Couldn't load more tasks.</span>
+        <ion-button
+          fill="clear"
+          size="small"
+          (click)="retryMore.emit()"
+          >Retry</ion-button
+        >
+      </div>
+    }
+    <ion-infinite-scroll
+      [disabled]="rows().done || moreFailed()"
+      (ionInfinite)="loadMore.emit($event)"
+    >
+      <ion-infinite-scroll-content></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+  }
+</ion-content>

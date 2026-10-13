@@ -2,10 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import type { Label, ProjectMember, Task } from '@core/api';
 import { ApiError } from '@core/auth';
+import { scheduleOf } from '@core/calendar';
 import { type TaskChange, taskUpdateBody, withChange } from '@core/task-edit';
 import type { TaskView } from '../task-status/task-status.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskChangesService } from '../task-status/task-changes.service';
+import { UndoToastService } from '../task-status/undo-toast.service';
 
 const ERROR_MS = 3000;
 
@@ -22,6 +24,7 @@ export class TaskEditService {
   private readonly api = inject(FLUX_API);
   private readonly toasts = inject(ToastController);
   private readonly changes = inject(TaskChangesService);
+  private readonly undo = inject(UndoToastService);
 
   /** Saves `change` with PUT /tasks/{id}. Resolves with whether it was taken. */
   update(task: Task, change: TaskChange, view: TaskView): Promise<boolean> {
@@ -33,6 +36,37 @@ export class TaskEditService {
       (projectId, taskId) =>
         this.api.updateTask(projectId, taskId, taskUpdateBody(task, change))
     );
+  }
+
+  /**
+   * Moves a task's dates (a calendar drag) with the same PUT as `update()`,
+   * then offers Undo, which puts the old dates back. `undoable` is false for
+   * the Undo itself.
+   */
+  async reschedule(
+    task: Task,
+    change: TaskChange,
+    view: TaskView,
+    undoable = true
+  ): Promise<boolean> {
+    // The task as last shown, the server's copy once fetched, for Undo.
+    let moved = task;
+    const tracked: TaskView = {
+      anchor: view.anchor,
+      apply: (shown) => {
+        moved = shown;
+        view.apply(shown);
+      },
+    };
+    const ok = await this.update(task, change, tracked);
+    if (ok && undoable) {
+      await this.undo.offer(
+        `Rescheduled ${task.taskKey ?? 'the task'}`,
+        view.anchor,
+        () => this.reschedule(moved, scheduleOf(task), view, false)
+      );
+    }
+    return ok;
   }
 
   /**
@@ -171,6 +205,7 @@ export class TaskEditService {
     fallback: string,
     anchor: HTMLElement | string | undefined
   ): Promise<void> {
+    this.undo.dismiss();
     const toast = await this.toasts.create({
       message:
         error instanceof ApiError && error.body.message

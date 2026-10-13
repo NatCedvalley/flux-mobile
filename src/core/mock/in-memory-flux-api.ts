@@ -184,6 +184,7 @@ function fixtureTasks(today: string): FixtureTask[] {
       // Not shown on detail: an edit must still send them back.
       environment: 'Production',
       affectedVersion: 'v2.3.0',
+      fixVersion: 'v2.4.0',
       bugOccurredAt: '2026-09-28T08:15:00Z',
       affectedUser: 'shopper@example.com',
       linkedReleases: [
@@ -227,6 +228,9 @@ function fixtureTasks(today: string): FixtureTask[] {
       priority: 'LOW',
       ...STATUS_FIELDS.backlog,
       dueDate: due(5),
+      // The calendar places it on its planned range, not its due date.
+      plannedStartDate: due(4),
+      plannedEndDate: due(6),
       assignees: [BEN],
       parentTaskId: '6',
     },
@@ -696,9 +700,35 @@ export class InMemoryFluxApi implements FluxApi {
     projectId: string,
     query: ProjectTasksQuery = {}
   ): Promise<Page<Task>> {
+    const { dueDateFrom: from, dueDateTo: to } = query;
+    if (query.onlyUnscheduled && (from || to)) {
+      return Promise.reject(
+        badRequest(
+          'INVALID_REQUEST',
+          'onlyUnscheduled cannot be combined with a date range'
+        )
+      );
+    }
+    if (from && to && to < from) {
+      return Promise.reject(
+        badRequest('INVALID_DATE_RANGE', 'dueDateTo is before dueDateFrom')
+      );
+    }
     const assignees = csv(query.assigneeId);
     const rows = this.tasks
       .filter((t) => t.projectId === projectId && !t.isArchived)
+      // Like the server: a task is on its planned range, else its due date,
+      // and matches a window it overlaps.
+      .filter((t) => {
+        const start = t.plannedStartDate ?? t.dueDate;
+        const end = t.plannedEndDate ?? t.dueDate;
+        if (query.onlyUnscheduled) {
+          return !t.plannedStartDate && !t.dueDate;
+        }
+        return (
+          (!from || (!!end && end >= from)) && (!to || (!!start && start <= to))
+        );
+      })
       .filter((t) => inList(t.status, query.status))
       .filter((t) => inList(t.priority, query.priority))
       .filter((t) => inList(t.type, query.type))
@@ -714,8 +744,10 @@ export class InMemoryFluxApi implements FluxApi {
         (t) => !query.requireLabel || !!t.labels?.includes(query.requireLabel)
       )
       .filter((t) => matchesSearch(t, query.search));
+    // The server clamps a page to 1..100.
+    const size = Math.min(Math.max(query.size ?? 20, 1), 100);
     return Promise.resolve(
-      pageOf(sortTasks(rows, query.sort), query.page, query.size)
+      pageOf(sortTasks(rows, query.sort), query.page, size)
     );
   }
 
@@ -898,6 +930,18 @@ export class InMemoryFluxApi implements FluxApi {
     if (task.isArchived) {
       return Promise.reject(
         badRequest('TASK_ARCHIVED_READ_ONLY', 'Archived tasks can’t be edited')
+      );
+    }
+    if (
+      !update.plannedStartDate !== !update.plannedEndDate ||
+      (!!update.plannedEndDate &&
+        update.plannedEndDate < (update.plannedStartDate ?? ''))
+    ) {
+      return Promise.reject(
+        badRequest(
+          'INVALID_PLANNED_DATE_RANGE',
+          'Planned start and end dates must both be set, with the end on or after the start'
+        )
       );
     }
     const type = update.type ?? task.type;

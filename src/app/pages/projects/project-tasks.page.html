@@ -37,7 +37,7 @@
             aria-hidden="true"
           ></ion-icon>
         </ion-button>
-        @if (pendingView() === 'board' && listValue()) {
+        @if (pendingView() !== 'list' && listValue()) {
           <ion-button
             class="icon-button filters"
             aria-haspopup="dialog"
@@ -74,7 +74,7 @@
       />
     </ion-toolbar>
   }
-  @if (title() && listValue() && pendingView() !== 'board') {
+  @if (title() && listValue() && pendingView() === 'list') {
     <div class="strip">
       <button
         type="button"
@@ -101,10 +101,7 @@
   }
 </ion-header>
 
-<ion-content
-  [class.has-fab]="showFab()"
-  [class.board]="pendingView() === 'board'"
->
+<ion-content [class.has-fab]="showFab()">
   <ion-refresher
     slot="fixed"
     [disabled]="refreshBlocked()"
@@ -137,6 +134,16 @@
     <app-error-state
       [error]="list.error()"
       (retry)="retry()"
+    />
+  } @else if (pendingView() === 'calendar' && currentId(); as projectId) {
+    <app-task-calendar
+      [projectId]="projectId"
+      [query]="calendarQuery()"
+      [statuses]="orderedStatuses()"
+      [today]="today()"
+      [canEdit]="canEdit()"
+      [(month)]="calendarMonth"
+      (blocksRefresh)="refreshBlocked.set($event)"
     />
   } @else if (!list.hasValue()) {
     @if (pendingView() === 'board') {

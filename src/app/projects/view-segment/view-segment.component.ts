@@ -9,7 +9,7 @@ import {
 import type { ViewMode } from '@core/project-list';
 
 /**
- * The Projects tab's List / Board switch (handoff 3b, 3c): a 36px
+ * The Projects tab's List / Board / Calendar switch (handoff 3b–3d): a 36px
  * segmented control like My Work's, an icon before each label.
  */
 @Component({

@@ -33,7 +33,14 @@ import {
   type ItemSlidingCustomEvent,
   type RefresherCustomEvent,
 } from '@ionic/angular';
-import type { MyProject, ProjectMember, Task, WorkflowStatus } from '@core/api';
+import type {
+  MyProject,
+  ProjectMember,
+  ProjectTasksQuery,
+  Task,
+  WorkflowStatus,
+} from '@core/api';
+import { monthOf, monthTitle } from '@core/calendar';
 import { localIsoDate } from '@core/my-work';
 import { can } from '@core/permissions';
 import {
@@ -57,6 +64,7 @@ import {
   type TaskFilters,
   activeFilterCount,
   assigneeOptions,
+  filterQuery,
   filteredGroups,
 } from '@core/task-filters';
 import { dropAction, nextStatus, workflowOrder } from '@core/task-status';
@@ -67,6 +75,7 @@ import {
   type BoardDrop,
   TaskBoardComponent,
 } from '../../board/task-board/task-board.component';
+import { TaskCalendarComponent } from '../../calendar/task-calendar/task-calendar.component';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
@@ -99,15 +108,18 @@ const GROUP_BY_LABELS: Record<GroupBy, string> = {
 };
 
 /**
- * The loaded view (list or board), how the list is grouped (the board is
- * always by status), the filter sheet's status chips, and the workflow in
- * order (for the swipe actions, the board's columns and the status sheet).
+ * The loaded view (list, board or calendar), how the list is grouped (the
+ * board is always by status), the filter sheet's status chips, the
+ * workflow in order (for the swipe actions, the board's columns, the
+ * calendar's pills and the status sheet), and the project's AI filter.
  */
 type ListView = {
+  projectId: string;
   view: ViewMode;
   groupBy: GroupBy;
   statusOptions: ChipOption[];
   statuses: WorkflowStatus[];
+  aiQuery: ProjectTasksQuery;
 };
 
 /** The tab bar's id: toasts sit above it. */
@@ -123,7 +135,9 @@ const TAB_BAR = 'tab-bar';
  * next status (or opens the status sheet from More), the start side
  * archives a done task. The List/Board segment switches to the board (3c),
  * saved as the project's `viewMode` override like the group-by; there a
- * card dragged to another column changes its status.
+ * card dragged to another column changes its status. The calendar (3d)
+ * shows the month's tasks by date, and a task dragged to another day
+ * moves its dates.
  */
 @Component({
   selector: 'app-project-tasks',
@@ -157,6 +171,7 @@ const TAB_BAR = 'tab-bar';
     SkeletonRowsComponent,
     StatusSheetComponent,
     TaskBoardComponent,
+    TaskCalendarComponent,
     TaskFilterSheetComponent,
     ViewOptionsSheetComponent,
     ViewSegmentComponent,
@@ -174,9 +189,12 @@ export class ProjectTasksPage {
   private readonly route = inject(ActivatedRoute);
   private readonly content = viewChild.required(IonContent);
   private readonly board = viewChild(TaskBoardComponent);
+  private readonly calendar = viewChild(TaskCalendarComponent);
 
   /** The local day. Read again on refresh, so due dates roll over. */
   protected readonly today = signal(localIsoDate(new Date()));
+  /** The calendar's month, kept for the session across projects. */
+  protected readonly calendarMonth = signal(monthOf(this.today()));
 
   /** The user's projects, and which one to open first. */
   protected readonly projects = resource({
@@ -222,9 +240,11 @@ export class ProjectTasksPage {
           name: current.project?.name ?? '',
           initials: projectInitials(current.project),
           subline:
-            this.view() === 'board' && can(current.role, 'changeStatus')
-              ? 'Board · drag to move'
-              : projectSubline(current),
+            this.view() === 'calendar'
+              ? `Calendar · ${monthTitle(this.calendarMonth())}`
+              : this.view() === 'board' && can(current.role, 'changeStatus')
+                ? 'Board · drag to move'
+                : projectSubline(current),
           colors: projectTint(current.project?.id ?? ''),
         }
       : undefined;
@@ -301,17 +321,23 @@ export class ProjectTasksPage {
         taskGroups(grouping, statuses, categoryPositions),
         filters
       );
-      this.columnsFailed.set(new Set());
-      await this.pager.start(projectId, filtered.groups, {
-        ...aiFilterQuery(settings.aiTaskFilter),
-        ...filtered.query,
-        sort,
-      });
+      const aiQuery = aiFilterQuery(settings.aiTaskFilter);
+      // The calendar loads its own tasks, by date.
+      if (view !== 'calendar') {
+        this.columnsFailed.set(new Set());
+        await this.pager.start(projectId, filtered.groups, {
+          ...aiQuery,
+          ...filtered.query,
+          sort,
+        });
+      }
       return {
+        projectId,
         view,
         groupBy,
         statusOptions: statusChipOptions(statuses, categoryPositions),
         statuses: workflowOrder(statuses, categoryPositions),
+        aiQuery,
       };
     },
   });
@@ -364,9 +390,25 @@ export class ProjectTasksPage {
   protected readonly canCreate = computed(() =>
     can(this.current()?.role, 'create')
   );
-  /** The board has no create button: each column has Add task instead. */
+  /**
+   * Only the list has a create button: each board column has Add task, and
+   * the calendar has none.
+   */
   protected readonly showFab = computed(
-    () => this.canCreate() && this.pendingView() !== 'board'
+    () => this.canCreate() && this.pendingView() === 'list'
+  );
+  /** The calendar's query: the filters, with the project's AI filter. */
+  protected readonly calendarQuery = computed<ProjectTasksQuery | undefined>(
+    () => {
+      const loaded = this.listValue();
+      return loaded?.projectId === this.currentId()
+        ? { ...loaded?.aiQuery, ...filterQuery(this.filters()) }
+        : undefined;
+    }
+  );
+  /** Calendar drags change dates, which needs an EDITOR+. */
+  protected readonly canEdit = computed(() =>
+    can(this.current()?.role, 'edit')
   );
   /** The board's columns: every status group, empty ones included. */
   protected readonly boardColumns = computed<BoardColumn[]>(() => {
@@ -417,7 +459,10 @@ export class ProjectTasksPage {
 
   protected readonly hueColors = groupHueColors;
 
-  /** The board holds a card, or a touch started in a scrolled column. */
+  /**
+   * The board or calendar holds a task, or a touch started in a scrolled
+   * board column.
+   */
   protected readonly refreshBlocked = signal(false);
 
   /** The pull-to-refresh in progress, completed once its reloads settle. */
@@ -460,11 +505,29 @@ export class ProjectTasksPage {
 
     effect(() => {
       const refresher = this.refresher();
-      if (refresher && !this.projects.isLoading() && !this.list.isLoading()) {
+      if (
+        refresher &&
+        !this.projects.isLoading() &&
+        !this.list.isLoading() &&
+        !this.calendar()?.loading()
+      ) {
         void refresher.complete();
         this.refresher.set(undefined);
       }
     });
+  }
+
+  /**
+   * Ionic keeps the page under task detail (and behind other tabs), where
+   * the calendar's drawer and day sheet, presented over everything, mustn't
+   * stay.
+   */
+  ionViewWillEnter(): void {
+    this.calendar()?.enter();
+  }
+
+  ionViewWillLeave(): void {
+    this.calendar()?.leave();
   }
 
   protected choose(project: MyProject): void {
@@ -544,7 +607,10 @@ export class ProjectTasksPage {
       );
   }
 
-  /** Switches List/Board, and saves the choice as the project's override. */
+  /**
+   * Switches List/Board/Calendar, and saves the choice as the project's
+   * override.
+   */
   protected chooseView(view: ViewMode): void {
     const projectId = this.currentId();
     if (!projectId || view === this.view()) {
@@ -700,13 +766,15 @@ export class ProjectTasksPage {
     this.myProjects.invalidate();
     this.projects.reload();
     this.list.reload();
+    this.calendar()?.reload();
     // Set after the reloads start, so the effect sees them loading.
     this.refresher.set(event.target);
   }
 
-  /** A pull started: a card press on the board can't become a drag. */
+  /** A pull started: a card press can't become a drag. */
   protected refreshStarted(): void {
     this.board()?.cancelPress();
+    this.calendar()?.cancelPress();
   }
 
   protected retry(): void {

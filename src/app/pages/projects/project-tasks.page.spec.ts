@@ -8,7 +8,12 @@ import type { GroupBy, PagerState } from '@core/project-list';
 import type { TaskFilters } from '@core/task-filters';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import type { Pickup } from '../../board/task-board/board-drag';
 import { AuthService } from '../../auth/auth.service';
+import {
+  TaskCalendarComponent,
+  UNSCHEDULED,
+} from '../../calendar/task-calendar/task-calendar.component';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import {
@@ -1158,6 +1163,129 @@ describe('ProjectTasksPage', () => {
           element().querySelector('section[data-column="done"] .add')
         ).toBeNull();
       });
+    });
+  });
+
+  describe('calendar', () => {
+    // A fixed day, so the fixtures' dates sit in a known month: CHK-142 is
+    // due 12 Oct, CHK-150 13 Oct, and CHK-160 (an AI candidate) has none.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 13, 9, 0));
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    const calendarApi = () =>
+      new InMemoryFluxApi().setTaskViewSettings('p1', {
+        viewMode: 'calendar',
+      });
+
+    function calendar() {
+      return fixture.debugElement.query(By.directive(TaskCalendarComponent))
+        ?.componentInstance as
+        | {
+            drop(pickup: Pickup, key: string | undefined): void;
+            rows(): { items: Task[] };
+          }
+        | undefined;
+    }
+
+    function page() {
+      return fixture.componentInstance as unknown as {
+        chooseView(view: 'list' | 'board' | 'calendar'): void;
+        filters: { set(filters: TaskFilters): void };
+      };
+    }
+
+    const keysOn = (iso: string) =>
+      texts(`app-task-calendar .day[data-column="${iso}"] .pill`);
+
+    it("opens on the calendar from the project's override", async () => {
+      await create({ api: calendarApi() });
+      await settle();
+
+      expect(
+        element().querySelector<HTMLIonSegmentElement>('ion-segment')?.value
+      ).toBe('calendar');
+      expect(keysOn('2026-10-12')).toEqual(['CHK-142']);
+      expect(keysOn('2026-10-13')).toEqual(['CHK-150']);
+      expect(element().querySelector('.strip')).toBeNull();
+      expect(element().querySelector('app-create-task-fab')).toBeNull();
+      expect(element().querySelector('.icon-button.filters')).not.toBeNull();
+      expect(texts('.project-subline')).toEqual(['Calendar · October 2026']);
+    });
+
+    it('switches to the calendar and saves it as the override', async () => {
+      await create();
+      await settle();
+      const save = vi.spyOn(api, 'updateTaskViewSettings');
+
+      page().chooseView('calendar');
+      await settle();
+
+      expect(save).toHaveBeenCalledWith('p1', { viewMode: 'calendar' });
+      expect(keysOn('2026-10-13')).toEqual(['CHK-150']);
+    });
+
+    it("keeps the project's AI filter and applies the filters", async () => {
+      await create({ api: calendarApi() });
+      await settle();
+      expect(calendar()?.rows().items).toEqual([]);
+
+      page().filters.set({
+        statuses: [],
+        priorities: ['CRITICAL'],
+        assigneeIds: [],
+      });
+      await settle();
+
+      expect(keysOn('2026-10-12')).toEqual(['CHK-142']);
+      expect(keysOn('2026-10-13')).toEqual([]);
+    });
+
+    it('keeps labels, versions and every other field through a drag', async () => {
+      await create({ api: calendarApi() });
+      await settle();
+      const before = await api.getTask('p1', '1');
+
+      calendar()!.drop({ taskId: '1', columnKey: '2026-10-12' }, '2026-10-20');
+      await vi.waitFor(async () =>
+        expect((await api.getTask('p1', '1')).dueDate).toBe('2026-10-20')
+      );
+      await settle();
+
+      expect(keysOn('2026-10-20')).toEqual(['CHK-142']);
+      const after = await api.getTask('p1', '1');
+      for (const field of [
+        'labels',
+        'environment',
+        'affectedVersion',
+        'fixVersion',
+        'bugOccurredAt',
+        'affectedUser',
+        'plannedStartDate',
+        'plannedEndDate',
+        'title',
+        'description',
+        'type',
+        'priority',
+      ] as const) {
+        expect(after[field], field).toEqual(before[field]);
+      }
+      expect(after.labels).toHaveLength(3);
+      expect(after.fixVersion).toBe('v2.4.0');
+    });
+
+    it('ignores a drop back on the drawer', async () => {
+      await create({ api: calendarApi() });
+      await settle();
+      const update = vi.spyOn(api, 'updateTask');
+
+      calendar()!.drop({ taskId: '1', columnKey: '2026-10-12' }, UNSCHEDULED);
+      await settle();
+
+      expect(update).not.toHaveBeenCalled();
     });
   });
 });

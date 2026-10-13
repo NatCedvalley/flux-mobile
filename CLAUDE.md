@@ -43,7 +43,8 @@ src/
               project list with the caller's roles (projects/), the
               create sheet and its button (task-create/), attachment
               upload, opening and the file sources (attachments/), the
-              project board and its drag (board/), and the providers
+              project board and its drag (board/), the project calendar
+              and its Unscheduled drawer (calendar/), and the providers
               that bridge into src/core
 ```
 
@@ -153,11 +154,10 @@ pages the first group that isn't complete yet, and a later group is only
 shown once every group above it is complete. Rows are `app-project-task-row`
 (key, priority, due date and the assignee's avatar).
 
-A List/Board segment sits under the header. The view resolves like the
-group-by (`resolveViewMode()`): the project's `viewMode`, then the account's
-`defaultView`, then the list. The values are flux-web's lowercase `list`
-and `board`. `calendar` falls through until the calendar is built (FM-38).
-A tap saves the project's override with `PUT {viewMode}` without waiting,
+A List/Board/Calendar segment sits under the header. The view resolves
+like the group-by (`resolveViewMode()`): the project's `viewMode`, then the
+account's `defaultView`, then the list. The values are flux-web's lowercase
+`list`, `board` and `calendar`. A tap saves the project's override with `PUT {viewMode}` without waiting,
 and only a tap does: flux-web also re-saves it on every load.
 
 The strip under the header has two buttons, each opening a bottom sheet
@@ -270,6 +270,75 @@ create button.
     (`move(…, undoable = false)`), because the create POST has no status.
     That status change can run the status's `assignmentRule` on the server.
 
+### Calendar
+
+The calendar (handoff 3d, `src/app/calendar/`, `app-task-calendar`) shows
+the project's tasks by date, month scope only. Like the board, it swaps the
+strip for the header's Filters button and has no create button. The
+subtitle reads `Calendar · October 2026`.
+
+- **Month.** `‹ October 2026 ›` and Today sit over a Monday-first grid
+  (`monthGrid()`, `src/core/calendar/`), 4 to 6 weeks as the month needs.
+  - Days from the months either side and weekends get a dimmer number, and
+    weekends get the `--na1` wash.
+  - Today has the indigo wash, a 1.5 px ring and the number in a filled
+    circle.
+  - The page keeps the month (`calendarMonth`) for the session, across
+    projects and filter changes.
+- **Loading.** Every month change loads its whole window: `dueDateFrom` and
+  `dueDateTo` are the grid's first and last day (`monthWindow()`), with the
+  filters and AI filter, every page of 100 (`allPages()`). The server
+  returns a task whose span overlaps the window. The span is
+  `plannedStartDate`…`plannedEndDate` when the task has them, else its
+  `dueDate` (`taskSpan()`), so a ranged task shows on every day of it.
+- **Pills.** A day shows two lines (`dayLines()`): two stripe pills, or one
+  and `+n more`.
+  - A pill is 15 px, with a 3 px stripe in its status's hue on that hue's
+    wash (`groupHueColors()`), or red once the span has ended on an open
+    task (`isOverdueSpan()`).
+  - Tapping a pill opens task detail on the Projects stack.
+  - `+n more`, or a tap elsewhere on a day with tasks, opens the day sheet:
+    that day's rows.
+  - Releases aren't drawn: they stay display-only. Only the `stripe` pill
+    style exists (`calendarPillStyle` isn't read).
+- **Unscheduled drawer.** An inline `ion-modal` that is always open. Its
+  handle row and rows are `app-unscheduled-list`.
+  - Breakpoints are `[0.08, 0.5, 1]` with `backdropBreakpoint: 0.5`, so the
+    calendar stays usable behind the 0.08 handle row. There's no 0 stop
+    and no backdrop dismiss, so nothing closes it, and Android's Back
+    passes it by.
+  - Its rows are `onlyUnscheduled=true` (no due date and no planned start),
+    50 a page, and the head shows the count.
+  - Ionic presents an inline modal from `ion-app`, over the whole screen.
+    So the drawer stands on the tab bar (`--drawer-bottom`, the bar's
+    height, measured with a ResizeObserver), which makes 0.08 the 59 px
+    handle row. The grid keeps that much free at its bottom.
+  - Ionic stops checking a page's bindings once it has left, so the page's
+    `ionViewWillLeave`/`ionViewWillEnter` call the calendar's `leave()` and
+    `enter()`. They dismiss and present the drawer, and close the day
+    sheet, so neither stays over task detail or another tab.
+- **Drag** (EDITOR+, `can(role, 'edit')`) reuses `BoardDrag`, with days as
+  its columns (`data-column="<date>"`):
+  - Pills and drawer rows (`elsewhere`, since the drawer is outside the
+    calendar) can be picked up. The ghost is a pill-sized copy of the key,
+    floating above the finger.
+  - `isolate` stops a held task's `touchmove` and `mousemove` at the window
+    in the capture phase, so Ionic's sheet gesture can't move the drawer
+    along with it. A pickup from the drawer collapses it to 0.08.
+  - The day under the finger lights up. A drop on the drawer or outside
+    the grid does nothing: there's no unscheduling.
+  - `rescheduleChange()` decides the write, as flux-web does. A task with
+    both planned dates moves both by the days dragged, keeping its length,
+    and its due date stays. Anything else, or a task from the drawer, gets
+    that day as its due date.
+  - `TaskEditService.reschedule()` writes it through `update()` (the PUT
+    that sends every field back), then offers Undo. Undo puts the old dates
+    back, so a drawer task returns to the drawer.
+  - The Undo toast sits above the drawer's handle row.
+  - Haptics: light on pickup, medium on the drop.
+- A change made on task detail moves or drops a task here too
+  (`TaskChangesService`). Pull-to-refresh reloads the month and the drawer.
+
 ### Task detail
 
 Task detail (handoff 3e–3g, `src/app/pages/tasks/`) has a header block
@@ -374,7 +443,9 @@ EDITOR+), the docked bar and the list's swipe actions.
   2. It sends `PATCH .../status`.
   3. It fetches the task again (`GET`), because the response has
      `assignees: []` and no joined fields.
-  4. It offers a 4 s Undo toast, above the tab bar or the docked bar.
+  4. It offers a 4 s Undo toast, above the tab bar or the docked bar. That
+     toast is `UndoToastService`, shared with archiving and calendar
+     reschedules, so only one Undo is on screen.
 
   If the server refuses, the task is put back and the server's message
   shown.
@@ -584,7 +655,11 @@ list's filters (comma lists, assignee, labels, search) and sort, so page
 specs use it (`addProjectTasks()` adds rows to page through). Its creates,
 status changes, archiving and edits follow the backend's rules and error codes
 (a PUT clears what it leaves out, as above), `done` is the closed
-status and `todo` the default one. A created task is reported by Ada and
+status and `todo` the default one. A project's task list also takes the
+calendar's `dueDateFrom`/`dueDateTo` window (on the planned range, else the
+due date) and `onlyUnscheduled`, with the server's 400s and its 100-row
+page cap, and a PUT refuses a half or inverted planned range. CHK-131 is
+planned for the three days around its due date. A created task is reported by Ada and
 numbered after its project's highest key. CHK-142 has two attachments,
 and uploads are Ada's, under the backend's default limits and 422s. Comments are written as Ada (`a1`, the page specs' account): only
 she edits or deletes hers, a comment with replies can't be deleted, and

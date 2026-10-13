@@ -39,6 +39,7 @@ const CHANGES: TaskChange[] = [
   { type: 'TASK' },
   { description: 'New', descriptionFormat: 'MARKDOWN' },
   { dueDate: '2026-11-01' },
+  { plannedStartDate: '2026-10-03', plannedEndDate: '2026-11-02' },
 ];
 
 describe('taskUpdateBody', () => {

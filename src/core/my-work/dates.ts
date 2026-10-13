@@ -32,6 +32,19 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 /**
+ * How many calendar days `to` is after `from` (negative when before). The
+ * days are counted on their date parts alone, so a daylight-saving change
+ * between them can't make a day 23 or 25 hours long.
+ */
+export function daysBetween(from: string, to: string): number {
+  const utc = (isoDate: string) => {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
+/**
  * `Thu 17 Sep`, with the year added when it isn't `today`'s year
  * (`Thu 17 Sep 2027`).
  */

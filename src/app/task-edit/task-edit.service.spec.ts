@@ -16,7 +16,9 @@ describe('TaskEditService', () => {
 
   beforeEach(() => {
     api = new InMemoryFluxApi();
-    toast = { create: vi.fn().mockResolvedValue({ present: vi.fn() }) };
+    toast = {
+      create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: FLUX_API, useValue: api },
@@ -97,5 +99,84 @@ describe('TaskEditService', () => {
       expect.objectContaining({ message: 'Couldn’t delete the task' })
     );
     expect(TestBed.inject(TaskChangesService).changed()).toBeUndefined();
+  });
+
+  describe('reschedule', () => {
+    /** The Undo button's handler from the last toast. */
+    const undo = () => {
+      const options = toast.create.mock.lastCall?.[0] as {
+        buttons: { handler: () => void }[];
+      };
+      options.buttons[0].handler();
+    };
+
+    it('moves the dates, keeping every other field, and offers Undo', async () => {
+      const task = await api.getTask('p1', '1');
+      await expect(
+        service.reschedule(task, { dueDate: '2030-01-02' }, view)
+      ).resolves.toBe(true);
+
+      const saved = await api.getTask('p1', '1');
+      expect(saved.dueDate).toBe('2030-01-02');
+      expect(saved).toMatchObject({
+        labels: task.labels,
+        environment: task.environment,
+        affectedVersion: task.affectedVersion,
+        fixVersion: task.fixVersion,
+        bugOccurredAt: task.bugOccurredAt,
+        affectedUser: task.affectedUser,
+      });
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Rescheduled CHK-142' })
+      );
+    });
+
+    it('puts the old dates back on Undo, without offering Undo again', async () => {
+      const task = await api.getTask('p1', '4');
+      await service.reschedule(
+        task,
+        { plannedStartDate: '2030-01-02', plannedEndDate: '2030-01-04' },
+        view
+      );
+
+      undo();
+      await vi.waitFor(async () =>
+        expect((await api.getTask('p1', '4')).plannedStartDate).toBe(
+          task.plannedStartDate
+        )
+      );
+      const restored = await api.getTask('p1', '4');
+      expect(restored.plannedEndDate).toBe(task.plannedEndDate);
+      expect(restored.dueDate).toBe(task.dueDate);
+      expect(toast.create).toHaveBeenCalledOnce();
+      expect(shown.at(-1)?.plannedStartDate).toBe(task.plannedStartDate);
+    });
+
+    it('unschedules again on Undo of a first date', async () => {
+      const task = await api.getTask('p1', '8');
+      await service.reschedule(task, { dueDate: '2030-01-02' }, view);
+
+      undo();
+      await vi.waitFor(async () =>
+        expect((await api.getTask('p1', '8')).dueDate).toBeUndefined()
+      );
+    });
+
+    it('puts the task back and offers no Undo when the server refuses', async () => {
+      const task = await api.getTask('p1', '1');
+      vi.spyOn(api, 'updateTask').mockRejectedValue(
+        new ApiError(400, { message: 'Nope' })
+      );
+
+      await expect(
+        service.reschedule(task, { dueDate: '2030-01-02' }, view)
+      ).resolves.toBe(false);
+
+      expect(shown.at(-1)).toBe(task);
+      expect(toast.create).toHaveBeenCalledOnce();
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Nope' })
+      );
+    });
   });
 });

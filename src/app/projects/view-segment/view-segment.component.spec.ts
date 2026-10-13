@@ -19,7 +19,7 @@ describe('ViewSegmentComponent', () => {
     return { segment, changes, pick };
   }
 
-  it('shows the view and offers List and Board', () => {
+  it('shows the view and offers List, Board and Calendar', () => {
     const { segment } = create('board');
 
     expect((segment as HTMLIonSegmentElement).value).toBe('board');
@@ -27,7 +27,7 @@ describe('ViewSegmentComponent', () => {
       Array.from(segment.querySelectorAll('ion-segment-button')).map(
         (b) => (b as HTMLIonSegmentButtonElement).value
       )
-    ).toEqual(['list', 'board']);
+    ).toEqual(['list', 'board', 'calendar']);
   });
 
   it('reports a different view only', () => {

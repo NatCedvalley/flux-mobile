@@ -1,0 +1,207 @@
+// Handoff 3d: the month toolbar, the weekday strip and a Monday-first grid
+// filling the rest of the content, above the Unscheduled drawer's handle
+// row.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// 42px: ‹ month › on the start side, Today on the end, over the `--na4` rule.
+.month-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 42px;
+  padding: 0 var(--flux-space-12) 0 var(--flux-space-4);
+  border-bottom: 1px solid var(--flux-na4);
+}
+
+.icon-button {
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-na11);
+  width: 44px;
+  height: 44px;
+  margin: 0;
+
+  ion-icon {
+    font-size: 20px;
+  }
+}
+
+.month-title {
+  margin: 0;
+  font: var(--flux-font-calendar-month);
+  letter-spacing: var(--flux-tracking-calendar-month);
+  color: var(--flux-n12);
+  white-space: nowrap;
+}
+
+.today-button {
+  height: 30px;
+  margin-inline-start: auto;
+  padding: 0 var(--flux-space-11);
+  border: 1px solid var(--flux-na5);
+  border-radius: var(--flux-radius-chip);
+  background: transparent;
+  font: var(--flux-font-calendar-button);
+  color: var(--flux-n12);
+}
+
+.weekdays {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  padding: var(--flux-space-8) var(--flux-space-8) var(--flux-space-4);
+  text-align: center;
+  font: var(--flux-font-calendar-weekday);
+  letter-spacing: var(--flux-tracking-calendar-weekday);
+  color: var(--flux-na10);
+}
+
+// Seven columns, the weeks sharing the height; only each day's top rule
+// divides them.
+.grid {
+  display: grid;
+  flex: auto;
+  min-height: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 1px;
+  padding: 0 var(--flux-space-8) var(--flux-space-8);
+  overflow: hidden;
+}
+
+.week {
+  display: contents;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--flux-space-4) var(--flux-space-3);
+  overflow: hidden;
+  border-top: 1px solid var(--flux-na3);
+  -webkit-tap-highlight-color: transparent;
+
+  &.weekend {
+    background: var(--flux-na1);
+  }
+
+  &.outside .number,
+  &.weekend .number {
+    color: var(--flux-na8);
+  }
+
+  // Today: the indigo wash and a 1.5px ring, the number in a filled circle.
+  &.today {
+    border-radius: var(--flux-radius-code);
+    background: var(--flux-pa2);
+    box-shadow: inset 0 0 0 1.5px var(--flux-p9);
+
+    .number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: flex-start;
+      min-width: 18px;
+      height: 18px;
+      border-radius: var(--flux-radius-pill);
+      background: var(--flux-p9);
+      font: var(--flux-font-calendar-today);
+      color: var(--ion-color-primary-contrast);
+    }
+  }
+
+  // The day a held task would land on.
+  &.over {
+    border-radius: var(--flux-radius-code);
+    background: var(--flux-pa3);
+    box-shadow: inset 0 0 0 1.5px var(--flux-p9);
+  }
+}
+
+.number {
+  font: var(--flux-font-calendar-day);
+  color: var(--flux-na10);
+}
+
+// Stripe pills: 15px, the status's 9 as a 3px stripe on its wash.
+.pill {
+  display: block;
+  flex: none;
+  height: 15px;
+  margin-top: var(--flux-space-3);
+  padding-inline-start: var(--flux-space-3);
+  overflow: hidden;
+  border-left: 3px solid var(--group-dot);
+  border-radius: 3px;
+  background: var(--group-wash);
+  white-space: nowrap;
+  text-decoration: none;
+  font: var(--flux-font-calendar-pill);
+  line-height: 15px;
+  color: var(--flux-n12);
+  -webkit-touch-callout: none;
+  user-select: none;
+
+  & + & {
+    margin-top: var(--flux-space-2);
+  }
+
+  &.overdue {
+    color: var(--flux-red11);
+  }
+
+  &.picked {
+    opacity: 0.4;
+  }
+}
+
+.more {
+  flex: none;
+  margin-top: var(--flux-space-2);
+  padding: 0 0 0 var(--flux-space-3);
+  border: 0;
+  background: transparent;
+  text-align: start;
+  white-space: nowrap;
+  font: var(--flux-font-calendar-pill);
+  color: var(--flux-na10);
+}
+
+.grid-error {
+  flex: auto;
+}
+
+// The Unscheduled drawer (its contents are `app-unscheduled-list`). Ionic
+// presents it from `ion-app`, over the whole screen. It stands on the
+// tab bar instead (`--drawer-bottom`, the bar's measured height), so its
+// stops are fractions of the screen above it: 0.08 is the 59px handle row.
+ion-modal.unscheduled-drawer {
+  --background: var(--flux-surface);
+  --height: 100%;
+  bottom: var(--drawer-bottom, 0px);
+  height: auto;
+}
+
+// The day sheet: the date as its title over the day's rows.
+.day-sheet {
+  padding-bottom: var(--ion-safe-area-bottom);
+  background: var(--flux-bg);
+}
+
+.day-sheet-title {
+  margin: 0;
+  padding: var(--flux-space-24) var(--flux-space-16) var(--flux-space-8);
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.day-sheet ion-list {
+  padding: 0;
+}

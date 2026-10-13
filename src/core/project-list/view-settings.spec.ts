@@ -38,9 +38,13 @@ describe('resolveViewMode', () => {
     expect(resolveViewMode(undefined, undefined)).toBe('list');
   });
 
-  it('skips the calendar, which is not built yet', () => {
-    expect(resolveViewMode('calendar', 'board')).toBe('board');
-    expect(resolveViewMode('calendar', 'calendar')).toBe('list');
+  it('resolves the calendar at either tier', () => {
+    expect(resolveViewMode('calendar', 'board')).toBe('calendar');
+    expect(resolveViewMode(null, 'calendar')).toBe('calendar');
+  });
+
+  it('skips a view it has no screen for', () => {
+    expect(resolveViewMode('timeline', 'board')).toBe('board');
   });
 });
 

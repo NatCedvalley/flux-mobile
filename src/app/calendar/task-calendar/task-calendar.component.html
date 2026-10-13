@@ -1,0 +1,171 @@
+<div class="month-bar">
+  <ion-button
+    class="icon-button"
+    fill="clear"
+    aria-label="Previous month"
+    (click)="go(-1)"
+  >
+    <ion-icon
+      slot="icon-only"
+      name="chevron-left"
+      aria-hidden="true"
+    ></ion-icon>
+  </ion-button>
+  <h2
+    class="month-title"
+    aria-live="polite"
+  >
+    {{ title() }}
+  </h2>
+  <ion-button
+    class="icon-button"
+    fill="clear"
+    aria-label="Next month"
+    (click)="go(1)"
+  >
+    <ion-icon
+      slot="icon-only"
+      name="chevron-right"
+      aria-hidden="true"
+    ></ion-icon>
+  </ion-button>
+  <button
+    type="button"
+    class="today-button"
+    (click)="goToday()"
+  >
+    Today
+  </button>
+</div>
+
+<div
+  class="weekdays"
+  aria-hidden="true"
+>
+  @for (weekday of weekdays; track weekday) {
+    <span>{{ weekday }}</span>
+  }
+</div>
+
+@if (tasks.error() && !tasks.isLoading()) {
+  <app-error-state
+    class="grid-error"
+    [error]="tasks.error()"
+    (retry)="tasks.reload()"
+  />
+} @else {
+  <div
+    class="grid"
+    role="grid"
+    [attr.aria-label]="title()"
+    [attr.aria-busy]="tasks.isLoading()"
+    [class.dragging]="drag.dragging()"
+  >
+    @for (week of weeks(); track week[0].iso) {
+      <div
+        class="week"
+        role="row"
+      >
+        @for (day of week; track day.iso) {
+          @let line = lines(day);
+          <div
+            class="day"
+            role="gridcell"
+            [attr.data-column]="day.iso"
+            [class.outside]="!day.inMonth"
+            [class.weekend]="day.weekend"
+            [class.today]="day.today"
+            [class.over]="isOver(day)"
+            [attr.tabindex]="hasTasks(day) ? 0 : -1"
+            [attr.aria-label]="dayLabel(day)"
+            (click)="openDay(day, $event)"
+            (keydown.enter)="openDay(day, $event)"
+          >
+            <span class="number">{{ day.day }}</span>
+            @for (task of line.pills; track task.id) {
+              <a
+                class="pill"
+                draggable="false"
+                [attr.data-task-id]="task.id"
+                [attr.aria-label]="task.taskKey + ': ' + task.title"
+                [class.overdue]="overdue(task)"
+                [class.picked]="isPicked(task)"
+                [style]="pillColors(task)"
+                [routerLink]="['tasks', task.projectId, task.id]"
+                [state]="{ task }"
+                >{{ task.taskKey }}</a
+              >
+            }
+            @if (line.more) {
+              <button
+                type="button"
+                class="more"
+                [attr.aria-label]="'Show all of ' + dayLabel(day)"
+                (click)="openSheet(day.iso)"
+              >
+                +{{ line.more }} more
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!--
+  The Unscheduled drawer, collapsed to its handle row. With no 0 stop and no
+  backdrop dismiss, only the page hides it, and Android's Back passes it by.
+-->
+<ion-modal
+  #drawer
+  class="flux-sheet unscheduled-drawer"
+  [isOpen]="true"
+  [breakpoints]="breakpoints"
+  [initialBreakpoint]="collapsed"
+  [backdropBreakpoint]="0.5"
+  [backdropDismiss]="false"
+  (ionBreakpointDidChange)="breakpointChanged($event)"
+>
+  <ng-template>
+    <app-unscheduled-list
+      [rows]="rows()"
+      [loaded]="unscheduled.hasValue()"
+      [error]="unscheduled.isLoading() ? undefined : unscheduled.error()"
+      [moreFailed]="moreFailed()"
+      [today]="today()"
+      [expanded]="expanded()"
+      [canEdit]="canEdit()"
+      [pickedId]="drag.dragging()?.taskId"
+      [dragKey]="unscheduledKey"
+      (toggled)="toggleDrawer()"
+      (retry)="unscheduled.reload()"
+      (retryMore)="retryMore()"
+      (loadMore)="loadMore($event)"
+    />
+  </ng-template>
+</ion-modal>
+
+<!-- A day's tasks: from `+n more`, or a tap on the day. -->
+<ion-modal
+  #daySheet
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="sheetOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="sheetOpen.set(false)"
+>
+  <ng-template>
+    <div class="day-sheet">
+      <h2 class="day-sheet-title">{{ sheetTitle() }}</h2>
+      <ion-list lines="full">
+        @for (task of sheetTasks(); track task.id) {
+          <app-project-task-row
+            [task]="task"
+            [today]="today()"
+          />
+        }
+      </ion-list>
+    </div>
+  </ng-template>
+</ion-modal>

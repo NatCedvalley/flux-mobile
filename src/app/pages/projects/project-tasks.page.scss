@@ -152,10 +152,11 @@ ion-list {
   padding: 0;
 }
 
-// The board fills the content and scrolls inside its columns. On iOS it is
-// 1px taller, so the content can bounce and Ionic's native pull-to-refresh
-// (which reads that bounce) still starts from the rail and column heads.
-:host-context(.plt-ios) ion-content.board app-task-board {
+// The board and the calendar fill the content (the board scrolls inside
+// its columns). On iOS they are 1px taller, so the content can bounce and
+// Ionic's native pull-to-refresh (which reads that bounce) still starts
+// from the rail and column heads, or the calendar's month bar.
+:host-context(.plt-ios) :is(app-task-board, app-task-calendar) {
   height: calc(100% + 1px);
 }
 

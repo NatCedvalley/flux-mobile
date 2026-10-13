@@ -1,5 +1,11 @@
 // Public surface of the My Work rules. Import from '@core/my-work'.
-export { addDays, dayMonth, localIsoDate, shortDate } from './dates';
+export {
+  addDays,
+  dayMonth,
+  daysBetween,
+  localIsoDate,
+  shortDate,
+} from './dates';
 export {
   FOCUS_DAYS,
   PROJECT_HUES,

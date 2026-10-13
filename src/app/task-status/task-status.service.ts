@@ -5,9 +5,8 @@ import { ApiError } from '@core/auth';
 import { withStatus } from '@core/task-status';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskChangesService } from './task-changes.service';
+import { UndoToastService } from './undo-toast.service';
 
-/** How long Undo is offered (handoff: a 4 s toast). */
-const UNDO_MS = 4000;
 const ERROR_MS = 3000;
 /** `reason` is required to unarchive; this one says what happened. */
 const UNDO_ARCHIVE_REASON = 'Archive undone in Flux Mobile';
@@ -39,7 +38,7 @@ export class TaskStatusService {
   private readonly api = inject(FLUX_API);
   private readonly toasts = inject(ToastController);
   private readonly changes = inject(TaskChangesService);
-  private undoToast: HTMLIonToastElement | undefined;
+  private readonly undo = inject(UndoToastService);
 
   /**
    * Moves `task` to `to`, with a resolution when `to` is closed. Resolves
@@ -78,7 +77,7 @@ export class TaskStatusService {
         isClosed: task.isClosedStatus,
       };
       const moved = fresh ?? withStatus(task, to, resolution);
-      await this.offerUndo(`Moved to ${to.name ?? to.slug}`, view.anchor, () =>
+      await this.undo.offer(`Moved to ${to.name ?? to.slug}`, view.anchor, () =>
         this.move(moved, previous, task.resolution, view, false)
       );
     }
@@ -100,7 +99,7 @@ export class TaskStatusService {
       await this.error(error, 'Couldn’t archive the task', view.anchor);
       return false;
     }
-    await this.offerUndo(
+    await this.undo.offer(
       `Archived ${task.taskKey ?? 'the task'}`,
       view.anchor,
       () => this.unarchive(task, view)
@@ -135,30 +134,12 @@ export class TaskStatusService {
     }
   }
 
-  /** A toast with Undo, replacing any Undo still on screen. */
-  private async offerUndo(
-    message: string,
-    anchor: HTMLElement | string | undefined,
-    undo: () => Promise<unknown>
-  ): Promise<void> {
-    void this.undoToast?.dismiss();
-    const toast = await this.toasts.create({
-      message,
-      duration: UNDO_MS,
-      position: 'bottom',
-      positionAnchor: anchor,
-      buttons: [{ text: 'Undo', handler: () => void undo() }],
-    });
-    this.undoToast = toast;
-    await toast.present();
-  }
-
   private async error(
     error: unknown,
     fallback: string,
     anchor: HTMLElement | string | undefined
   ): Promise<void> {
-    void this.undoToast?.dismiss();
+    this.undo.dismiss();
     const toast = await this.toasts.create({
       message:
         error instanceof ApiError && error.body.message

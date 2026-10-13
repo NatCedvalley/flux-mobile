@@ -9,11 +9,14 @@ export const EDGE_PX = 40;
 /** …after resting there this long, and again for as long as it stays. */
 export const EDGE_DWELL_MS = 500;
 
+/** How far a drawn ghost floats above the finger. */
+const GHOST_LIFT_PX = 16;
+
 /** The card being dragged, and the column it came from. */
 export type Pickup = { taskId: string; columnKey: string };
 
 export type BoardDragOptions = {
-  /** The horizontal column scroller, which the edge advances. */
+  /** The horizontal column scroller, which the edge advances (none: no advance). */
   scroller: () => HTMLElement | undefined;
   /** One column's width plus the gap: how far an edge advance scrolls. */
   step: number;
@@ -22,6 +25,24 @@ export type BoardDragOptions = {
   picked: (pickup: Pickup) => void;
   /** The card was let go over `columnKey` (undefined: outside any column). */
   dropped: (pickup: Pickup, columnKey: string | undefined) => void;
+  /**
+   * Draws the ghost for a card, instead of a copy of it (the calendar's
+   * drawer rows are far wider than the days they drop on). It is centred
+   * above the finger.
+   */
+  ghost?: (card: HTMLElement) => HTMLElement;
+  /**
+   * Keeps a held card's touch and mouse moves from everything else on the
+   * page, such as an `ion-modal` sheet's drag gesture, which would
+   * otherwise move the sheet along with the card.
+   */
+  isolate?: boolean;
+  /**
+   * Places outside the host whose cards can be picked up too, and whose
+   * columns take a drop: the calendar's drawer, which Ionic presents from
+   * `ion-app`.
+   */
+  elsewhere?: () => readonly (Element | undefined)[];
 };
 
 type Press = {
@@ -63,20 +84,33 @@ export class BoardDrag {
   /** Starts listening; returns the function that stops it. */
   attach(): () => void {
     const doc = this.host.ownerDocument;
+    // Isolated, a held card's moves are stopped before anything else sees
+    // them: at the window, in the capture phase.
+    const moves: [EventTarget, AddEventListenerOptions] = this.options.isolate
+      ? [doc.defaultView ?? doc, { passive: false, capture: true }]
+      : [doc, { passive: false }];
     const listeners: [
       EventTarget,
       string,
       EventListener,
       AddEventListenerOptions?,
     ][] = [
-      [this.host, 'pointerdown', (e) => this.down(e as PointerEvent)],
+      [doc, 'pointerdown', (e) => this.down(e as PointerEvent)],
       [doc, 'pointermove', (e) => this.move(e as PointerEvent)],
       [doc, 'pointerup', (e) => this.up(e as PointerEvent)],
       [doc, 'pointercancel', (e) => this.cancel(e as PointerEvent)],
-      [doc, 'touchmove', (e) => this.touchMove(e), { passive: false }],
-      [this.host, 'contextmenu', (e) => this.contextMenu(e)],
-      [this.host, 'click', (e) => this.click(e), { capture: true }],
+      [moves[0], 'touchmove', (e) => this.touchMove(e), moves[1]],
+      [doc, 'contextmenu', (e) => this.contextMenu(e)],
+      [doc, 'click', (e) => this.click(e), { capture: true }],
     ];
+    if (this.options.isolate) {
+      listeners.push([
+        moves[0],
+        'mousemove',
+        (e) => this.isolated(e),
+        moves[1],
+      ]);
+    }
     for (const [target, type, listener, opts] of listeners) {
       target.addEventListener(type, listener, opts);
     }
@@ -100,6 +134,9 @@ export class BoardDrag {
       return;
     }
     const target = event.target as Element | null;
+    if (!this.within(target)) {
+      return;
+    }
     const card = target?.closest<HTMLElement>('[data-task-id]');
     const column = card?.closest<HTMLElement>('[data-column]');
     const taskId = card?.dataset['taskId'];
@@ -125,21 +162,31 @@ export class BoardDrag {
     const rect = press.card.getBoundingClientRect();
     this.grab = { x: press.x - rect.left, y: press.y - rect.top };
     this.last = { x: press.x, y: press.y };
-    const ghost = press.card.cloneNode(true) as HTMLElement;
+    const drawn = this.options.ghost?.(press.card);
+    const ghost = drawn ?? (press.card.cloneNode(true) as HTMLElement);
     ghost.removeAttribute('data-task-id');
     ghost.classList.add('board-ghost');
     Object.assign(ghost.style, {
       position: 'fixed',
       left: '0',
       top: '0',
-      width: `${rect.width}px`,
       margin: '0',
       zIndex: '1000',
       pointerEvents: 'none',
-      borderRadius: 'var(--flux-radius-card-lg)',
       boxShadow: 'var(--flux-shadow-lifted)',
     });
+    if (!drawn) {
+      Object.assign(ghost.style, {
+        width: `${rect.width}px`,
+        borderRadius: 'var(--flux-radius-card-lg)',
+      });
+    }
     this.host.ownerDocument.body.appendChild(ghost);
+    if (drawn) {
+      // Centred above the finger, which would hide a small ghost.
+      const size = ghost.getBoundingClientRect();
+      this.grab = { x: size.width / 2, y: size.height + GHOST_LIFT_PX };
+    }
     this.ghost = ghost;
     this.place();
     this.dragging.set(press.pickup);
@@ -193,10 +240,17 @@ export class BoardDrag {
     if (this.dragging() && event.cancelable) {
       event.preventDefault();
     }
+    this.isolated(event);
+  }
+
+  private isolated(event: Event): void {
+    if (this.dragging() && this.options.isolate) {
+      event.stopPropagation();
+    }
   }
 
   private contextMenu(event: Event): void {
-    if (this.press || this.dragging()) {
+    if ((this.press || this.dragging()) && this.within(event.target)) {
       event.preventDefault();
     }
   }
@@ -226,7 +280,7 @@ export class BoardDrag {
   private columnAt(x: number, y: number): string | undefined {
     const element = this.host.ownerDocument.elementFromPoint(x, y);
     const column = element?.closest<HTMLElement>('[data-column]');
-    if (column && this.host.contains(column)) {
+    if (column && this.within(column)) {
       return column.dataset['column'];
     }
     let nearest: { key: string | undefined; distance: number } | undefined;
@@ -243,6 +297,15 @@ export class BoardDrag {
       }
     }
     return nearest?.key;
+  }
+
+  /** Whether `target` is in the host or one of the places `elsewhere`. */
+  private within(target: EventTarget | null): boolean {
+    return (
+      target instanceof Node &&
+      (this.host.contains(target) ||
+        !!this.options.elsewhere?.().some((area) => area?.contains(target)))
+    );
   }
 
   /** Arms the edge advance while the finger rests near a side. */

@@ -126,6 +126,58 @@ describe('InMemoryFluxApi', () => {
     expect((await keys('priority,desc'))?.slice(0, 1)).toEqual(['CHK-142']);
   });
 
+  describe('calendar windows', () => {
+    // Today is 1 Oct: CHK-120 is due 21 Sep, CHK-142 30 Sep, CHK-150 1 Oct,
+    // and CHK-131 is planned 5–7 Oct (due 6 Oct). CHK-160 has no dates.
+    const keys = async (query: object) =>
+      (await api.listProjectTasks('p1', query)).content?.map((t) => t.taskKey);
+    const code = (promise: Promise<unknown>) =>
+      promise.catch((e: ApiError) => e.body.code);
+
+    it('lists the tasks whose dates overlap the window', async () => {
+      expect(
+        await keys({ dueDateFrom: '2026-09-30', dueDateTo: '2026-10-05' })
+      ).toEqual(['CHK-142', 'CHK-150', 'CHK-131']);
+      expect(
+        await keys({ dueDateFrom: '2026-10-07', dueDateTo: '2026-10-31' })
+      ).toEqual(['CHK-131']);
+      expect(
+        await keys({ dueDateFrom: '2026-10-08', dueDateTo: '2026-10-31' })
+      ).toEqual([]);
+    });
+
+    it('lists the unscheduled tasks', async () => {
+      expect(await keys({ onlyUnscheduled: true })).toEqual(['CHK-160']);
+    });
+
+    it('refuses an inverted window, or a window with onlyUnscheduled', async () => {
+      expect(
+        await code(
+          api.listProjectTasks('p1', {
+            dueDateFrom: '2026-10-02',
+            dueDateTo: '2026-10-01',
+          })
+        )
+      ).toBe('INVALID_DATE_RANGE');
+      expect(
+        await code(
+          api.listProjectTasks('p1', {
+            onlyUnscheduled: true,
+            dueDateFrom: '2026-10-01',
+          })
+        )
+      ).toBe('INVALID_REQUEST');
+    });
+
+    it('caps a page at 100, like the server', async () => {
+      api.addProjectTasks('p1', 120);
+      const page = await api.listProjectTasks('p1', { size: 500 });
+      expect(page.size).toBe(100);
+      expect(page.content).toHaveLength(100);
+      expect(page.last).toBe(false);
+    });
+  });
+
   it('filters my tasks by status, priority and search', async () => {
     const keys = async (query: object) =>
       (await api.listMyTasks(query)).content?.map((t) => t.taskKey);
@@ -552,6 +604,22 @@ describe('InMemoryFluxApi', () => {
       expect(task.dueDate).toBeUndefined();
       expect(task.labels).toBeUndefined();
       expect(task.bugOccurredAt).toBeUndefined();
+    });
+
+    it('refuses a half or inverted planned range', async () => {
+      expect(
+        await code(
+          api.updateTask('p1', '2', { plannedStartDate: '2026-10-05' })
+        )
+      ).toBe('INVALID_PLANNED_DATE_RANGE');
+      expect(
+        await code(
+          api.updateTask('p1', '2', {
+            plannedStartDate: '2026-10-05',
+            plannedEndDate: '2026-10-04',
+          })
+        )
+      ).toBe('INVALID_PLANNED_DATE_RANGE');
     });
 
     it('answers a PUT without assignees, like the server', async () => {

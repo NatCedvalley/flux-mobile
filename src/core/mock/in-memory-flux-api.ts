@@ -21,6 +21,7 @@ import type {
   TaskComment,
   TaskCommentUpdate,
   TaskParentChange,
+  TaskReorder,
   TaskResolution,
   TaskStatusChange,
   TaskSubscription,
@@ -616,7 +617,9 @@ function isContainer(type: Task['type']): boolean {
  * author edits or deletes one, a comment with replies can't be deleted,
  * and a reaction toggles the caller's own. A created task is reported by
  * Ada, numbered after the project's highest key, and starts in the status
- * `startingStatus` picks (`todo` is the default status). Attachments are
+ * `startingStatus` picks (`todo` is the default status), last in its board
+ * column. `reorderTasks` sets positions (a missing one counts as 0) with the
+ * server's rules and 422 codes. Attachments are
  * uploaded by Ada too, under the backend's default size, extension and
  * count limits and with its 422 codes and messages.
  */
@@ -846,6 +849,16 @@ export class InMemoryFluxApi implements FluxApi {
         status: parent.status,
       },
       notMine: assignee?.accountId !== ADA.accountId,
+      // Last in its board column, as the server does.
+      position:
+        Math.max(
+          -1,
+          ...this.tasks
+            .filter(
+              (t) => t.projectId === projectId && t.status === status?.slug
+            )
+            .map((t) => t.position ?? 0)
+        ) + 1,
     };
     this.tasks.push(task);
     // The server subscribes the reporter.
@@ -916,6 +929,47 @@ export class InMemoryFluxApi implements FluxApi {
       assignees: [],
       parentTask: undefined,
     });
+  }
+
+  reorderTasks(projectId: string, reorder: TaskReorder): Promise<Task[]> {
+    const ids = reorder.taskIds;
+    if (!ids.length) {
+      return Promise.reject(
+        badRequest('VALIDATION_ERROR', 'taskIds must not be empty')
+      );
+    }
+    if (new Set(ids).size !== ids.length) {
+      return Promise.reject(
+        new ApiError(422, {
+          code: 'TASK_REORDER_DUPLICATE_IDS',
+          message: 'Task ids must be unique',
+        })
+      );
+    }
+    const tasks: FixtureTask[] = [];
+    for (const id of ids) {
+      const task = this.find(projectId, id);
+      if (!task) {
+        return Promise.reject(notFound(projectId, id));
+      }
+      tasks.push(task);
+    }
+    if (new Set(tasks.map((t) => t.status)).size > 1) {
+      return Promise.reject(
+        new ApiError(422, {
+          code: 'TASK_REORDER_MIXED_STATUS',
+          message: 'All tasks must be in the same status',
+        })
+      );
+    }
+    // Only the ids given are renumbered; the rest of the status keeps its
+    // positions.
+    const reordered = tasks.map((task, position) =>
+      this.replace({ ...task, position })
+    );
+    return Promise.resolve(
+      reordered.map((t) => ({ ...t, assignees: [], parentTask: undefined }))
+    );
   }
 
   updateTask(

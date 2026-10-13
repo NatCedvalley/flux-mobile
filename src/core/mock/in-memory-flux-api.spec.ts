@@ -541,6 +541,12 @@ describe('InMemoryFluxApi', () => {
       });
     });
 
+    it('puts the task last in its board column', async () => {
+      await api.reorderTasks('p1', { taskIds: ['8', '2'] });
+      const task = await api.createTask('p1', { title: 'Last' });
+      expect(task.position).toBe(2);
+    });
+
     it('starts a container in planning', async () => {
       const task = await api.createTask('p1', { title: 'Epic', type: 'EPIC' });
       expect(task.status).toBe('backlog');
@@ -585,6 +591,42 @@ describe('InMemoryFluxApi', () => {
           })
         )
       ).toBe('INVALID_CHILD_TYPE');
+    });
+  });
+
+  describe('reorder', () => {
+    const code = (promise: Promise<unknown>) =>
+      promise.catch((e: ApiError) => e.body?.code ?? 'NOT_FOUND');
+
+    it('sets each task’s position to its index, without joined fields', async () => {
+      const saved = await api.reorderTasks('p1', { taskIds: ['8', '2'] });
+      expect(saved.map((t) => [t.id, t.position, t.assignees])).toEqual([
+        ['8', 0, []],
+        ['2', 1, []],
+      ]);
+      expect((await api.getTask('p1', '2')).assignees?.length).toBe(1);
+      expect((await api.getTask('p1', '2')).position).toBe(1);
+    });
+
+    it('leaves out the tasks it isn’t given', async () => {
+      await api.reorderTasks('p1', { taskIds: ['8', '2'] });
+      await api.reorderTasks('p1', { taskIds: ['2'] });
+      expect((await api.getTask('p1', '8')).position).toBe(0);
+    });
+
+    it('rejects what the backend rejects, with its codes', async () => {
+      expect(await code(api.reorderTasks('p1', { taskIds: [] }))).toBe(
+        'VALIDATION_ERROR'
+      );
+      expect(await code(api.reorderTasks('p1', { taskIds: ['2', '2'] }))).toBe(
+        'TASK_REORDER_DUPLICATE_IDS'
+      );
+      expect(await code(api.reorderTasks('p1', { taskIds: ['2', '1'] }))).toBe(
+        'TASK_REORDER_MIXED_STATUS'
+      );
+      expect(await code(api.reorderTasks('p1', { taskIds: ['2', '3'] }))).toBe(
+        'NOT_FOUND'
+      );
     });
   });
 

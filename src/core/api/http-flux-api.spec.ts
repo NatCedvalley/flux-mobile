@@ -270,6 +270,16 @@ describe('HttpFluxApi', () => {
     });
   });
 
+  it('saves a column’s order with a PATCH', async () => {
+    const { api, url, init } = setup([{ id: 't2' }, { id: 't1' }]);
+    await expect(
+      api.reorderTasks('p 1', { taskIds: ['t2', 't1'] })
+    ).resolves.toEqual([{ id: 't2' }, { id: 't1' }]);
+    expect(url()).toBe(`${BASE_URL}/projects/p%201/tasks/reorder`);
+    expect(init().method).toBe('PATCH');
+    expect(JSON.parse(init().body)).toEqual({ taskIds: ['t2', 't1'] });
+  });
+
   it('archives a task with a POST and no body', async () => {
     const { api, url, init } = setup({ id: 't1' });
     await api.archiveTask('p1', 't1');

@@ -210,8 +210,7 @@ The page wraps each row, so project search rows don't swipe.
 
 The board (handoff 3c, `src/app/board/`) shows the project's statuses as
 columns, whatever the list's group-by, through the same `GroupedTaskPager`.
-`state.columns` lists every group, empty ones included, and
-`loadMoreIn(key)` pages one of them. The header's `sliders-horizontal`
+`state.columns` lists every group, empty ones included. The header's `sliders-horizontal`
 button opens the Filters sheet (with a dot while filters are set) in place
 of the strip, and a status filter narrows the columns. The board has no
 create button.
@@ -226,8 +225,14 @@ create button.
     308 px step.
   - The board fills the content: each column's head stays put while its
     cards scroll.
-  - An IntersectionObserver sentinel (a skeleton card) at a column's end
-    loads its next page. A failed page shows Retry in that column.
+  - Each column loads whole: the page starts the pager with 100 rows a
+    request (`BOARD_PAGE_SIZE`) and `createdAt,desc` whatever the list's
+    sort, then `loadAllIn(key)` fetches the rest of every column. A column
+    shows skeleton cards until it is whole, and Retry if a page fails.
+  - Cards are in board order (`boardOrder()`, `src/core/board/`): position,
+    then newest first, as on flux-web. The server can't sort by position
+    (it isn't in its sort whitelist), so the pager sorts a group once it's
+    complete (`start`'s `order` option).
 - **Cards** (`app-board-card`) are plain divs:
   - type icon, key and priority, then the title;
   - up to two chips, the first release (violet) then labels;
@@ -246,13 +251,42 @@ create button.
   - Once a card is up, `touchmove` is cancelled so the browser can't start
     a scroll (which would fire `pointercancel`). The click after a drop is
     swallowed.
+  - `slot` is where the held card would go among the column's other cards
+    (how many have their middle above the finger), and `dropped` gets it.
+    Holding within 40 px of a column's top or bottom scrolls it 8 px every
+    16 ms (`columnScroller`), so a card reaches anywhere in a long column.
   - A column the type can't use (`blockedReason()`) dims and gives the
     reason, and refuses the drop.
   - `dropAction()` (`src/core/task-status/`) decides the drop: a closed
     status opens the status sheet with its resolution picker; anything
-    else goes through `TaskStatusService.move()` with Undo. The card lands
-    at the top of its new column. Reordering within a column is FM-40.
+    else goes through `TaskStatusService.move()` with Undo.
   - Haptics: light on pickup, medium on the drop.
+- **Order** (FM-40). A column can be reordered when it is loaded whole
+  and no status, priority or assignee filter is set (`canReorder`): the
+  server renumbers only the ids it's sent, so a partial column would
+  collide. The AI filter doesn't count, as on flux-web.
+  - While a card is held, its place closes up (`lifted`) and the cards
+    slide apart to open a card-sized gap where it will land, also where it
+    already is. The gap is a margin (`--drop-gap`), not a transform, so
+    the cards' measured positions include it and the drop point doesn't
+    flicker at its edges. It slides as it moves (`gliding`, from 100 ms
+    after the pickup), but opens and closes at once: the held card's
+    place closes instantly, so a sliding gap made the cards under it jump
+    up and back. A first try with a 2 px line was hidden under
+    the ghost, which follows the finger where the card was grabbed.
+    Under filters the held card dims in place as before, with no gap.
+  - A drop in its own column rearranges it at once (`GroupedTaskPager.reorder()`)
+    and `BoardOrderService` saves the whole column with
+    `PATCH /projects/{p}/tasks/reorder`. If that fails, the old order comes
+    back with the server's message. The response (no assignees) isn't used.
+  - A drop on another column lands at the drop point (`placeTask(…, index)`),
+    and once the status change succeeds the destination column's order is
+    saved, because a status change keeps the task's old position. A closed
+    status keeps the drop point until the sheet's resolution is picked.
+  - Without a drop point (filters set, or a column still loading), and for
+    Undo or a change from task detail, a card goes where its position puts
+    it (`boardIndex()`). Undo doesn't save the old column's order, and a
+    reorder has no Undo, as on flux-web.
 - **Pull-to-refresh.** Ionic's gesture refresher (Android, web) only
   checks that the page is at its top. So the board turns it off
   (`blocksRefresh`) while a card is held, and for a touch that starts in a
@@ -269,6 +303,8 @@ create button.
   - After the create, the page moves the task there quietly
     (`move(…, undoable = false)`), because the create POST has no status.
     That status change can run the status's `assignmentRule` on the server.
+  - The task goes last in the column, as the server puts a new task in its
+    starting status, and the column's order is saved as after a drop.
 
 ### Calendar
 
@@ -632,7 +668,8 @@ pad their bottom so it never covers the last row. It opens the create sheet
 (Promise-based, not RxJS, so it stays portable) over flux-operations: my
 tasks, a project's tasks, one task, its create, update (PUT), parent,
 assignees and delete, a status change, archive and unarchive, its
-children, activities, comments (list, post, edit, delete and toggle a
+children, a board column's order, activities, comments (list, post, edit,
+delete and toggle a
 reaction), attachments (list and upload) and subscription (read,
 subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
@@ -655,7 +692,11 @@ list's filters (comma lists, assignee, labels, search) and sort, so page
 specs use it (`addProjectTasks()` adds rows to page through). Its creates,
 status changes, archiving and edits follow the backend's rules and error codes
 (a PUT clears what it leaves out, as above), `done` is the closed
-status and `todo` the default one. A project's task list also takes the
+status and `todo` the default one. A created task is last in its board
+column (position max + 1; a missing position counts as 0), and
+`reorderTasks` follows the server's rules (400 when empty, 422
+`TASK_REORDER_DUPLICATE_IDS` and `TASK_REORDER_MIXED_STATUS`) and renumbers
+only the ids it's given. A project's task list also takes the
 calendar's `dueDateFrom`/`dueDateTo` window (on the planned range, else the
 due date) and `onlyUnscheduled`, with the server's 400s and its 100-row
 page cap, and a PUT refuses a half or inverted planned range. CHK-131 is

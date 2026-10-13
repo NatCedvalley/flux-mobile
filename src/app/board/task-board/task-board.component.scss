@@ -158,14 +158,40 @@ app-board-card {
   flex: none;
   transition: opacity 150ms ease-out;
 
+  // The gap slides as it moves, but opens and closes at once (`gliding`).
+  .gliding & {
+    transition:
+      opacity 150ms ease-out,
+      margin 150ms ease-out;
+  }
+
   // The card's place while its ghost is held.
   &.picked {
     opacity: 0.4;
   }
+
+  // Where cards can be reordered, its place closes up instead (taking the
+  // column's gap after it too), and a gap opens where it will land. A
+  // margin rather than a transform, so the cards' measured positions
+  // include it and the drop point doesn't flicker at its edges.
+  &.lifted {
+    height: 0;
+    margin-bottom: calc(var(--flux-space-10) * -1);
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  &.gap-before {
+    margin-top: calc(var(--drop-gap) + var(--flux-space-10));
+  }
+
+  &.gap-after {
+    margin-bottom: calc(var(--drop-gap) + var(--flux-space-10));
+  }
 }
 
 // A card's outline in `--na3` blocks: the board's first load, and a
-// column's next page.
+// column still loading.
 .skeleton-card {
   flex: none;
   padding: var(--flux-space-12);

@@ -15,6 +15,7 @@ export {
   GroupedTaskPager,
   PROJECT_PAGE_SIZE,
   type LoadedGroup,
+  type PagerOptions,
   type PagerState,
 } from './grouped-task-pager';
 export {

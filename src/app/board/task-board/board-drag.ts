@@ -9,6 +9,11 @@ export const EDGE_PX = 40;
 /** …after resting there this long, and again for as long as it stays. */
 export const EDGE_DWELL_MS = 500;
 
+/** How far a column scrolls per tick while a card is held at its top or bottom. */
+export const COLUMN_SCROLL_PX = 8;
+/** One tick of that scroll: about a frame. */
+export const COLUMN_SCROLL_MS = 16;
+
 /** How far a drawn ghost floats above the finger. */
 const GHOST_LIFT_PX = 16;
 
@@ -23,8 +28,15 @@ export type BoardDragOptions = {
   /** Whether cards may be picked up at all (EDITOR+). */
   enabled: () => boolean;
   picked: (pickup: Pickup) => void;
-  /** The card was let go over `columnKey` (undefined: outside any column). */
-  dropped: (pickup: Pickup, columnKey: string | undefined) => void;
+  /**
+   * The card was let go over `columnKey` (undefined: outside any column),
+   * at `slot`: the index it would take among that column's other cards.
+   */
+  dropped: (
+    pickup: Pickup,
+    columnKey: string | undefined,
+    slot: number | undefined
+  ) => void;
   /**
    * Draws the ghost for a card, instead of a copy of it (the calendar's
    * drawer rows are far wider than the days they drop on). It is centred
@@ -43,6 +55,11 @@ export type BoardDragOptions = {
    * `ion-app`.
    */
   elsewhere?: () => readonly (Element | undefined)[];
+  /**
+   * A column's own vertical scroller. Holding a card within `EDGE_PX` of
+   * its top or bottom scrolls it that way (none: columns don't scroll).
+   */
+  columnScroller?: (columnKey: string) => HTMLElement | undefined;
 };
 
 type Press = {
@@ -58,8 +75,10 @@ type Press = {
  * The board's cross-column drag (handoff 3c), on pointer events, since
  * `ion-reorder-group` only reorders vertically. A long press picks a card
  * up (`[data-task-id]` inside a `[data-column]`); a ghost copy then follows
- * the finger, `over` names the column under it, and resting at a screen
- * edge scrolls one column that way. Once a card is up, `touchmove` is
+ * the finger, `over` names the column under it and `slot` where among its
+ * cards the finger is, resting at a screen edge scrolls one column that
+ * way, and holding at a column's top or bottom scrolls that column. Once a
+ * card is up, `touchmove` is
  * cancelled so the browser never starts its own scroll (which would cancel
  * the pointer). The click that follows a drop is swallowed, so the card's
  * link doesn't open.
@@ -67,6 +86,11 @@ type Press = {
 export class BoardDrag {
   readonly dragging = signal<Pickup | undefined>(undefined);
   readonly over = signal<string | undefined>(undefined);
+  /**
+   * Where the held card would go in the `over` column: how many of its
+   * other cards are above the finger.
+   */
+  readonly slot = signal<number | undefined>(undefined);
 
   private press: Press | undefined;
   private ghost: HTMLElement | undefined;
@@ -74,6 +98,13 @@ export class BoardDrag {
   private last = { x: 0, y: 0 };
   private edge:
     { dir: number; timer: ReturnType<typeof setTimeout> } | undefined;
+  private vertical:
+    | {
+        dir: number;
+        scroller: HTMLElement;
+        timer: ReturnType<typeof setInterval>;
+      }
+    | undefined;
   private swallowClick = false;
 
   constructor(
@@ -125,7 +156,7 @@ export class BoardDrag {
   /** The scroller moved under a held card: the column under it changed. */
   scrolled(): void {
     if (this.dragging()) {
-      this.over.set(this.columnAt(this.last.x, this.last.y));
+      this.track();
     }
   }
 
@@ -191,6 +222,7 @@ export class BoardDrag {
     this.place();
     this.dragging.set(press.pickup);
     this.over.set(press.pickup.columnKey);
+    this.slot.set(this.slotIn(press.pickup.columnKey, press.y));
     this.options.picked(press.pickup);
   }
 
@@ -209,8 +241,16 @@ export class BoardDrag {
     }
     this.last = { x: event.clientX, y: event.clientY };
     this.place();
-    this.over.set(this.columnAt(event.clientX, event.clientY));
+    this.track();
     this.watchEdge(event.clientX);
+    this.watchColumnEdge();
+  }
+
+  /** Updates `over` and `slot` for the finger's last position. */
+  private track(): void {
+    const over = this.columnAt(this.last.x, this.last.y);
+    this.over.set(over);
+    this.slot.set(this.slotIn(over, this.last.y));
   }
 
   private up(event: PointerEvent): void {
@@ -220,13 +260,14 @@ export class BoardDrag {
     }
     const pickup = this.dragging();
     const over = this.columnAt(event.clientX, event.clientY);
+    const slot = this.slotIn(over, event.clientY);
     this.reset();
     if (pickup) {
       this.swallowClick = true;
       // A click that never comes (the finger left the card) mustn't
       // swallow the next tap.
       setTimeout(() => (this.swallowClick = false), 400);
-      this.options.dropped(pickup, over);
+      this.options.dropped(pickup, over, slot);
     }
   }
 
@@ -299,6 +340,43 @@ export class BoardDrag {
     return nearest?.key;
   }
 
+  /**
+   * How many of the column's cards, other than the held one, have their
+   * middle above `y`.
+   */
+  private slotIn(columnKey: string | undefined, y: number): number | undefined {
+    const column = this.column(columnKey);
+    if (!column) {
+      return undefined;
+    }
+    const held = this.dragging()?.taskId ?? this.press?.pickup.taskId;
+    let slot = 0;
+    for (const card of column.querySelectorAll<HTMLElement>('[data-task-id]')) {
+      const rect = card.getBoundingClientRect();
+      if (card.dataset['taskId'] !== held && rect.top + rect.height / 2 < y) {
+        slot++;
+      }
+    }
+    return slot;
+  }
+
+  private column(columnKey: string | undefined): HTMLElement | undefined {
+    if (columnKey === undefined) {
+      return undefined;
+    }
+    const areas = [this.host, ...(this.options.elsewhere?.() ?? [])];
+    for (const area of areas) {
+      for (const column of area?.querySelectorAll<HTMLElement>(
+        '[data-column]'
+      ) ?? []) {
+        if (column.dataset['column'] === columnKey) {
+          return column;
+        }
+      }
+    }
+    return undefined;
+  }
+
   /** Whether `target` is in the host or one of the places `elsewhere`. */
   private within(target: EventTarget | null): boolean {
     return (
@@ -341,6 +419,43 @@ export class BoardDrag {
     }
   }
 
+  /** Scrolls the column under the finger while it's near its top or bottom. */
+  private watchColumnEdge(): void {
+    const over = this.over();
+    const scroller =
+      over === undefined ? undefined : this.options.columnScroller?.(over);
+    let dir = 0;
+    if (scroller) {
+      const rect = scroller.getBoundingClientRect();
+      const y = this.last.y;
+      dir = y < rect.top + EDGE_PX ? -1 : y > rect.bottom - EDGE_PX ? 1 : 0;
+    }
+    if (
+      dir === (this.vertical?.dir ?? 0) &&
+      scroller === this.vertical?.scroller
+    ) {
+      return;
+    }
+    this.stopColumnEdge();
+    if (scroller && dir) {
+      this.vertical = {
+        dir,
+        scroller,
+        timer: setInterval(() => {
+          scroller.scrollTop += dir * COLUMN_SCROLL_PX;
+          this.track();
+        }, COLUMN_SCROLL_MS),
+      };
+    }
+  }
+
+  private stopColumnEdge(): void {
+    if (this.vertical) {
+      clearInterval(this.vertical.timer);
+      this.vertical = undefined;
+    }
+  }
+
   /**
    * Drops a press that hasn't picked its card up yet, e.g. because the
    * pull-to-refresh took the gesture. A card already held stays held.
@@ -357,9 +472,11 @@ export class BoardDrag {
       this.press = undefined;
     }
     this.stopEdge();
+    this.stopColumnEdge();
     this.ghost?.remove();
     this.ghost = undefined;
     this.dragging.set(undefined);
     this.over.set(undefined);
+    this.slot.set(undefined);
   }
 }

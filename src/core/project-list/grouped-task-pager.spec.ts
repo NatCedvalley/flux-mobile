@@ -276,6 +276,100 @@ describe('GroupedTaskPager', () => {
         expect.objectContaining({ status: 'doing', page: 1 })
       );
     });
+
+    it('starts with its own page size, and orders a group once complete', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      const order = (tasks: readonly Task[]) => [...tasks].reverse();
+
+      await pager.start('p1', GROUPS, {}, { size: 3, order });
+
+      expect(listProjectTasks).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ status: 'todo', size: 3 })
+      );
+      const ids = (i: number) => pager.state.columns[i].tasks.map((t) => t.id);
+      expect(ids(0)).toEqual(['todo-2', 'todo-1', 'todo-0']);
+      // Not complete yet: the server's order until the rest lands.
+      expect(ids(1)).toEqual(['doing-0', 'doing-1', 'doing-2']);
+
+      await pager.loadMoreIn('doing');
+
+      expect(listProjectTasks).toHaveBeenLastCalledWith(
+        'p1',
+        expect.objectContaining({ status: 'doing', page: 1, size: 3 })
+      );
+      expect(ids(1)).toEqual([
+        'doing-4',
+        'doing-3',
+        'doing-2',
+        'doing-1',
+        'doing-0',
+      ]);
+    });
+
+    it('loads a whole column with loadAllIn', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks.mockClear();
+
+      await pager.loadAllIn('doing');
+
+      expect(listProjectTasks).toHaveBeenCalledTimes(2);
+      expect(columns(pager.state)[1]).toEqual(['doing', 5, 5]);
+      expect(pager.state.columns[1].complete).toBe(true);
+    });
+
+    it('stops loadAllIn at a failure, and resumes from there', async () => {
+      const { api, listProjectTasks } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 2);
+      await pager.start('p1', GROUPS);
+      listProjectTasks
+        .mockImplementationOnce(listProjectTasks.getMockImplementation()!)
+        .mockRejectedValueOnce(new Error('offline'));
+
+      await expect(pager.loadAllIn('doing')).rejects.toThrow('offline');
+      expect(columns(pager.state)[1]).toEqual(['doing', 4, 5]);
+
+      await pager.loadAllIn('doing');
+      expect(columns(pager.state)[1]).toEqual(['doing', 5, 5]);
+    });
+  });
+
+  describe('reorder', () => {
+    it('rearranges one group’s rows, keeping its count', async () => {
+      const { api } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 10);
+      await pager.start('p1', GROUPS);
+      const listener = vi.fn();
+      pager.onChange(listener);
+
+      pager.reorder('todo', ['todo-2', 'todo-0', 'todo-1']);
+
+      const todo = pager.state.columns[0];
+      expect(todo.tasks.map((t) => t.id)).toEqual([
+        'todo-2',
+        'todo-0',
+        'todo-1',
+      ]);
+      expect(todo.total).toBe(3);
+      expect(listener).toHaveBeenCalledWith(pager.state);
+    });
+
+    it('puts rows missing from the order last, and ignores unknown ids', async () => {
+      const { api } = fakeApi(rows);
+      const pager = new GroupedTaskPager(api, 10);
+      await pager.start('p1', GROUPS);
+
+      pager.reorder('todo', ['nope', 'todo-1']);
+
+      expect(pager.state.columns[0].tasks.map((t) => t.id)).toEqual([
+        'todo-1',
+        'todo-0',
+        'todo-2',
+      ]);
+    });
   });
 
   describe('placeTask', () => {
@@ -300,6 +394,21 @@ describe('GroupedTaskPager', () => {
         id: 'todo-1',
         status: 'done',
       });
+    });
+
+    it('moves a row to an index in another group', async () => {
+      const pager = await loaded();
+
+      pager.placeTask({ id: 'todo-1', status: 'doing' }, 'doing', 2);
+
+      expect(pager.state.groups[1].tasks.map((t) => t.id)).toEqual([
+        'doing-0',
+        'doing-1',
+        'todo-1',
+        'doing-2',
+        'doing-3',
+        'doing-4',
+      ]);
     });
 
     it('moves a row into a group that was empty', async () => {

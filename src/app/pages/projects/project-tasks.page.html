@@ -173,6 +173,7 @@
       [columns]="boardColumns()"
       [today]="today()"
       [canMove]="canMove()"
+      [canReorder]="canReorder()"
       [canCreate]="canCreate()"
       [failed]="columnsFailed()"
       (loadMore)="loadColumn($event)"
@@ -352,7 +353,7 @@
         [statuses]="orderedStatuses()"
         [projectName]="current()?.project?.name"
         [expand]="sheetExpand()"
-        (moved)="move(task, $event)"
+        (moved)="sheetMoved(task, $event)"
         (done)="sheetOpen.set(false)"
       />
     }

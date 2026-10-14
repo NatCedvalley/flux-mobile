@@ -51,6 +51,7 @@ export class AuthSession {
   /** The refresh in flight, shared by every caller that needs one. */
   private refreshing: Promise<void> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  private beforeLogout: (() => Promise<void>) | null = null;
 
   constructor(
     private readonly client: AuthClient,
@@ -73,6 +74,15 @@ export class AuthSession {
   onChange(listener: (state: AuthState) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Runs `hook` during `logout()`, while the access token is still live and
+   * before the server ends the session (push unregisters the device here).
+   * A hook that rejects doesn't stop the logout.
+   */
+  setBeforeLogout(hook: (() => Promise<void>) | null): void {
+    this.beforeLogout = hook;
   }
 
   /** Signs in and persists the tokens. Rejects with `ApiError` on failure. */
@@ -182,6 +192,10 @@ export class AuthSession {
       // The server only accepts a live access token.
       if (this.expiresSoon()) {
         await this.refresh(false);
+      }
+      if (this.session && this.beforeLogout) {
+        // Its failure is its own business: the logout goes on.
+        await this.beforeLogout().catch(() => undefined);
       }
       const current = this.session;
       if (current) {

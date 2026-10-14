@@ -58,6 +58,11 @@ export class AuthService {
     return this.session.logout();
   }
 
+  /** See `AuthSession.setBeforeLogout`. */
+  setBeforeLogout(hook: (() => Promise<void>) | null): void {
+    this.session.setBeforeLogout(hook);
+  }
+
   /** See `AuthSession.withAccessToken`: the base for authenticated calls. */
   withAccessToken<T>(call: (accessToken: string) => Promise<T>): Promise<T> {
     return this.session.withAccessToken(call);

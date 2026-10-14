@@ -7,8 +7,12 @@
 // Anything shipped in a mobile bundle can be extracted by a determined user,
 // so this is only for client-side keys (e.g. a Sentry DSN) — never real
 // server secrets.
+//
+// `push` records which Firebase config files are present. The push plugin
+// crashes the app when asked for a token without one, so the app keeps push
+// off on a platform whose file was missing at build time.
 import { execSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import pkg from '../package.json' with { type: 'json' };
@@ -27,6 +31,13 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
+const exists = (path) =>
+  existsSync(fileURLToPath(new URL(`../${path}`, import.meta.url)));
+const push = {
+  android: exists('android/app/google-services.json'),
+  ios: exists('ios/App/App/GoogleService-Info.plist'),
+};
+
 const outFile = fileURLToPath(
   new URL('../src/environments/build-info.ts', import.meta.url)
 );
@@ -41,6 +52,7 @@ export const buildInfo = {
   version: ${JSON.stringify(pkg.version)},
   commit: ${JSON.stringify(commit)},
   secrets: ${JSON.stringify(secrets, null, 2)} as Record<string, string>,
+  push: ${JSON.stringify(push)},
 };
 `
 );

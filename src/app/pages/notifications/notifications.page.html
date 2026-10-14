@@ -5,6 +5,9 @@
 </ion-header>
 
 <ion-content>
+  @if (push.showCard()) {
+    <app-push-card />
+  }
   @if (notifications.isLoading()) {
     <div class="ion-text-center ion-padding">
       <ion-spinner name="crescent"></ion-spinner>

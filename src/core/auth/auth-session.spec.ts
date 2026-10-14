@@ -487,6 +487,53 @@ describe('AuthSession', () => {
       expect(await store.load()).toBeNull();
     });
 
+    it('runs the before-logout hook after the refresh, before the server logout', async () => {
+      await signedInWith(120_000);
+      clock = NOW + 100_000;
+      const order: string[] = [];
+      client.refresh.mockImplementation(async () => {
+        order.push('refresh');
+        return FRESH_TOKENS;
+      });
+      client.logout.mockImplementation(async () => {
+        order.push('logout');
+      });
+      session.setBeforeLogout(async () => {
+        order.push('hook');
+        expect(session.state.isSignedIn).toBe(true);
+      });
+
+      await session.logout();
+
+      expect(order).toEqual(['refresh', 'hook', 'logout']);
+    });
+
+    it('still logs out when the before-logout hook rejects', async () => {
+      await signedInWith(120_000);
+      session.setBeforeLogout(() => Promise.reject(new ApiError(0)));
+
+      await session.logout();
+
+      expect(client.logout).toHaveBeenCalledWith('a1', 'r1');
+      expect(session.state.isSignedIn).toBe(false);
+      expect(await store.load()).toBeNull();
+    });
+
+    it('skips the before-logout hook without a live token', async () => {
+      const hook = vi.fn().mockResolvedValue(undefined);
+      session.setBeforeLogout(hook);
+
+      await session.logout();
+      expect(hook).not.toHaveBeenCalled();
+
+      await signedInWith(120_000);
+      clock = NOW + 100_000;
+      client.refresh.mockRejectedValue(new ApiError(0));
+
+      await session.logout();
+      expect(hook).not.toHaveBeenCalled();
+    });
+
     it('clears without calling the server when the refresh fails', async () => {
       await signedInWith(120_000);
       clock = NOW + 100_000;

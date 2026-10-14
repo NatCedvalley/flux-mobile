@@ -2,6 +2,7 @@ import type {
   AppNotification,
   Attachment,
   CommentReaction,
+  DeviceRegistration,
   Label,
   MyProject,
   MyProjectsQuery,
@@ -272,4 +273,13 @@ export type FluxApi = {
 
   /** GET /notifications */
   listNotifications(query?: NotificationsQuery): Promise<Page<AppNotification>>;
+
+  /** PUT /push/devices: registers the token for the caller (an upsert). */
+  registerDevice(device: DeviceRegistration): Promise<void>;
+
+  /**
+   * POST /push/devices/unregister. 404 `DEVICE_TOKEN_NOT_FOUND` when the
+   * token isn't registered to the caller.
+   */
+  unregisterDevice(token: string): Promise<void>;
 };

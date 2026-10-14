@@ -21,6 +21,17 @@ const config: CapacitorConfig = {
       resizeOnFullScreen: true,
     },
   },
+  experimental: {
+    ios: {
+      spm: {
+        // The push plugin's SPM package needs this to avoid a package
+        // identity collision (its README; Capacitor CLI 8.4+).
+        packageOptions: {
+          '@capacitor-firebase/messaging': { symlink: true },
+        },
+      },
+    },
+  },
 };
 
 export default config;

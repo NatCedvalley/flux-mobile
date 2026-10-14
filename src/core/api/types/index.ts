@@ -25,6 +25,7 @@ import type {
   MyTaskResponse,
   NotificationResponse,
   ProjectMemberResponse,
+  RegisterDeviceTokenRequest,
   ReorderTasksRequest,
   TaskActivityResponse,
   TaskCommentResponse,
@@ -54,6 +55,12 @@ export type TaskViewSettingsUpdate = UpdateTaskViewSettingsRequest;
 /** A project member, as the assignee pickers list them. */
 export type ProjectMember = ProjectMemberResponse;
 export type AppNotification = NotificationResponse;
+/**
+ * A device's FCM token for push. Registering upserts on the token and moves
+ * it to the caller, so a handed-over phone follows its new user.
+ */
+export type DeviceRegistration = RegisterDeviceTokenRequest;
+export type DevicePlatform = DeviceRegistration['platform'];
 /** One entry of a task's activity timeline. */
 export type TaskActivity = TaskActivityResponse;
 /** A top-level comment carries its replies in `replies`. */

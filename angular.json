@@ -40,7 +40,8 @@
               "src/app/shared/rich-text/rich-text.scss"
             ],
             "scripts": [],
-            "browser": "src/main.ts"
+            "browser": "src/main.ts",
+            "externalDependencies": ["firebase/messaging"]
           },
           "configurations": {
             "production": {

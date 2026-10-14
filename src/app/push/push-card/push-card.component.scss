@@ -1,0 +1,47 @@
+// Styled as the handoff's callouts: a tinted card, radius 12.
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--flux-space-10);
+  margin: var(--flux-space-8) var(--flux-space-16) var(--flux-space-12);
+  padding: var(--flux-space-12) var(--flux-space-4) var(--flux-space-12)
+    var(--flux-space-12);
+  border-radius: var(--flux-radius-card);
+  background: var(--flux-pa3);
+}
+
+.bell {
+  flex: none;
+  margin-top: 2px;
+  font-size: 18px;
+  color: var(--flux-p11);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+h2 {
+  margin: 0 0 var(--flux-space-4);
+  font: var(--flux-font-card-title);
+  letter-spacing: var(--flux-tracking-card-title);
+  color: var(--flux-n12);
+}
+
+p {
+  margin: 0 0 var(--flux-space-10);
+  font: var(--flux-font-callout);
+  letter-spacing: var(--flux-tracking-callout);
+  color: var(--flux-n11);
+}
+
+.enable {
+  margin: 0;
+}
+
+.dismiss {
+  flex: none;
+  margin: calc(-1 * var(--flux-space-6)) 0 0;
+  --color: var(--flux-n11);
+}

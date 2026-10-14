@@ -87,3 +87,8 @@ key.properties
 *.cer
 *.mobileprovision
 *.p8
+
+# Firebase app config: kept out of the repo, and a build without it runs
+# with push off (see CLAUDE.md, Push)
+google-services.json
+GoogleService-Info.plist

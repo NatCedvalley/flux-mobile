@@ -3,6 +3,7 @@ import type {
   AppNotification,
   Attachment,
   CommentReaction,
+  DeviceRegistration,
   Label,
   MyProject,
   MyProjectsQuery,
@@ -314,6 +315,14 @@ export class HttpFluxApi implements FluxApi {
     query?: NotificationsQuery
   ): Promise<Page<AppNotification>> {
     return this.get('/notifications', query);
+  }
+
+  async registerDevice(device: DeviceRegistration): Promise<void> {
+    await this.send('PUT', '/push/devices', device);
+  }
+
+  async unregisterDevice(token: string): Promise<void> {
+    await this.send('POST', '/push/devices/unregister', { token });
   }
 
   private get<T>(path: string, query?: QueryParams): Promise<T> {

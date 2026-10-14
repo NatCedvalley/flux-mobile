@@ -20,6 +20,7 @@ import { AppLockService } from './app/lock/app-lock.service';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
+import { PushService } from './app/push/push.service';
 import { StatusBarService } from './app/status-bar/status-bar.service';
 import { environment } from './environments/environment';
 
@@ -61,5 +62,7 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(AppLockService).init()),
     provideAppInitializer(() => inject(StatusBarService).init()),
     provideAppInitializer(() => inject(BackButtonService).init()),
+    // Not awaited: push setup mustn't hold up the first screen.
+    provideAppInitializer(() => void inject(PushService).init()),
   ],
 });

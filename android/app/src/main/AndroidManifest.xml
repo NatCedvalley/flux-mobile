@@ -33,6 +33,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Pushes go to the "Task updates" channel, which PushService
+             creates. POST_NOTIFICATIONS comes from the push plugin's manifest. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="task_updates" />
     </application>
 
     <!-- Permissions -->

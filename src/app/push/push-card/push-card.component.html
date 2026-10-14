@@ -1,0 +1,37 @@
+<section
+  class="card"
+  aria-labelledby="push-card-title"
+>
+  <ion-icon
+    class="bell"
+    name="bell"
+    aria-hidden="true"
+  ></ion-icon>
+  <div class="text">
+    <h2 id="push-card-title">Get notified on your phone</h2>
+    <p>
+      Flux tells you when you're assigned a task or mentioned, and when tasks
+      you watch get comments or changes.
+    </p>
+    <ion-button
+      class="enable"
+      size="small"
+      (click)="push.enable()"
+    >
+      Turn on notifications
+    </ion-button>
+  </div>
+  <ion-button
+    class="dismiss"
+    fill="clear"
+    size="small"
+    aria-label="Dismiss"
+    (click)="push.dismissCard()"
+  >
+    <ion-icon
+      slot="icon-only"
+      name="x"
+      aria-hidden="true"
+    ></ion-icon>
+  </ion-button>
+</section>

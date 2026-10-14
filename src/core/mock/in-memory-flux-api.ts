@@ -2,6 +2,7 @@ import type {
   AppNotification,
   Attachment,
   CommentReaction,
+  DeviceRegistration,
   FluxApi,
   Label,
   MyProject,
@@ -634,6 +635,8 @@ export class InMemoryFluxApi implements FluxApi {
   private tasksAdded = 0;
   /** Task ids the caller is subscribed to: the watched ones to start with. */
   private readonly subscribed: Set<string>;
+  /** Push tokens registered to the caller. */
+  private readonly devices = new Set<string>();
 
   constructor(today: Date = new Date()) {
     this.tasks = fixtureTasks(localIsoDate(today));
@@ -1482,6 +1485,23 @@ export class InMemoryFluxApi implements FluxApi {
       (n) => query.isRead === undefined || n.isRead === query.isRead
     );
     return Promise.resolve(pageOf(rows, query.page, query.size));
+  }
+
+  registerDevice(device: DeviceRegistration): Promise<void> {
+    this.devices.add(device.token);
+    return Promise.resolve();
+  }
+
+  unregisterDevice(token: string): Promise<void> {
+    if (!this.devices.delete(token)) {
+      return Promise.reject(
+        new ApiError(404, {
+          code: 'DEVICE_TOKEN_NOT_FOUND',
+          message: 'Device token not found',
+        })
+      );
+    }
+    return Promise.resolve();
   }
 
   private find(projectId: string, taskId: string): FixtureTask | undefined {

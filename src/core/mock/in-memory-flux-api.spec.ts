@@ -594,6 +594,15 @@ describe('InMemoryFluxApi', () => {
     });
   });
 
+  it('registers a push device, and unregisters it once', async () => {
+    await api.registerDevice({ token: 't1', platform: 'ANDROID' });
+    await api.unregisterDevice('t1');
+    await expect(api.unregisterDevice('t1')).rejects.toMatchObject({
+      status: 404,
+      body: { code: 'DEVICE_TOKEN_NOT_FOUND' },
+    });
+  });
+
   describe('reorder', () => {
     const code = (promise: Promise<unknown>) =>
       promise.catch((e: ApiError) => e.body?.code ?? 'NOT_FOUND');

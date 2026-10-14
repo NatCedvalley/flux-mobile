@@ -44,7 +44,8 @@ src/
               create sheet and its button (task-create/), attachment
               upload, opening and the file sources (attachments/), the
               project board and its drag (board/), the project calendar
-              and its Unscheduled drawer (calendar/), and the providers
+              and its Unscheduled drawer (calendar/), push and the
+              Inbox's permission card (push/), and the providers
               that bridge into src/core
 ```
 
@@ -673,7 +674,8 @@ delete and toggle a
 reaction), attachments (list and upload) and subscription (read,
 subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
-assignable members and notifications. The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+assignable members, notifications, and push device registration (register
+and unregister). The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -702,7 +704,9 @@ due date) and `onlyUnscheduled`, with the server's 400s and its 100-row
 page cap, and a PUT refuses a half or inverted planned range. CHK-131 is
 planned for the three days around its due date. A created task is reported by Ada and
 numbered after its project's highest key. CHK-142 has two attachments,
-and uploads are Ada's, under the backend's default limits and 422s. Comments are written as Ada (`a1`, the page specs' account): only
+and uploads are Ada's, under the backend's default limits and 422s. A push
+token registers to Ada, and unregistering one it doesn't hold is a 404
+`DEVICE_TOKEN_NOT_FOUND`. Comments are written as Ada (`a1`, the page specs' account): only
 she edits or deletes hers, a comment with replies can't be deleted, and
 reactions toggle hers. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
@@ -742,7 +746,9 @@ logic is plain TypeScript in `src/core/auth/`:
   with the tokens kept, and a failed request is never replayed.
 - `logout()` refreshes first if the access token has expired (flux-iam's
   `POST /auth/logout` needs a live one), calls it, then clears the store,
-  even when the server call fails.
+  even when the server call fails. Between the refresh and that call it
+  runs the hook set with `setBeforeLogout()`, if the session is still live
+  (push unregisters the device there); a hook that fails doesn't stop it.
 
 `src/app/auth/` wraps this for Angular: `AuthService` exposes the state as
 signals, opens `/login` whenever the session ends, and forwards Capacitor's
@@ -794,6 +800,65 @@ biometrics-only prompt. "Sign in with password" is `AuthService.logout()`.
 - Native only. On web the lock is never available and the plugins are never
   called.
 - iOS needs `NSFaceIDUsageDescription` in `Info.plist` (present).
+
+### Push
+
+Push uses `@capacitor-firebase/messaging`, not
+`@capacitor/push-notifications`: the backend sends through FCM for iOS too,
+so iOS needs an FCM token rather than the raw APNs one. `PushService`
+(`src/app/push/`, started from an app initializer) drives it.
+
+- **Config files.** `google-services.json` (in `android/app/`) and
+  `GoogleService-Info.plist` (in `ios/App/App/`) stay out of the repo
+  (gitignored). `write-build-info.mjs` records which were present
+  (`buildInfo.push`), and push is off on a platform built without its
+  file, as on web: the plugin is never called. Without the file the
+  plugin's token calls fail, and the card would ask for a permission that
+  can't deliver anything. Adding or removing a file takes a web rebuild
+  (`npm run android`/`ios` do one). The Gradle google-services plugin is
+  applied only when the json exists, and iOS copies the plist into the app
+  in a build phase ("Copy GoogleService-Info.plist if present"), because a
+  Resources entry for a missing file fails the build. The local backend
+  sends pushes only with `flux.push.fcm.service-account-base64` set.
+- **Permission** is never asked at launch. The Inbox shows a "Get notified
+  on your phone" card (`app-push-card`) while the OS would still prompt
+  (`prompt`/`prompt-with-rationale`) and the card hasn't been dismissed.
+  Only its button calls `requestPermissions()`. The dismissal is kept in
+  `@capacitor/preferences` (`push.cardDismissed`) across logouts. Once
+  permission is granted or denied the card is gone (Android 12 and lower
+  grant without asking), and it's checked again on resume, for a change
+  made in the OS settings.
+- **Registration** follows `PushRegistration` (`src/core/push/`). Once
+  there's a token and a signed-in account it sends `PUT /push/devices`
+  (`platform`, `appVersion` = the package version, cut to 32), and again
+  for a new token (`tokenReceived`), another account, or a new launch. The
+  server moves a token to whoever registered it last. A failure is retried
+  on the next of those, and calls run one at a time.
+- **Logout** unregisters (`POST /push/devices/unregister`) through
+  `AuthSession.setBeforeLogout()`, before flux-iam's logout, which revokes
+  the access token at once and leaves device tokens alone. A 404
+  `DEVICE_TOKEN_NOT_FOUND` or no response is ignored. A session the server
+  ends can't unregister; FCM's pruning and the next sign-in's registration
+  cover that.
+- **Android.** Pushes go to the "Task updates" channel (`task_updates`,
+  default importance), which `PushService` creates and `AndroidManifest.xml`
+  names as FCM's default. `POST_NOTIFICATIONS` comes from the plugin's
+  manifest. There's no monochrome notification icon yet, so the status bar
+  draws the launcher icon.
+- **iOS.** `AppDelegate` forwards the APNs token and background pushes to
+  the plugin, `Info.plist` has `UIBackgroundModes` `remote-notification`,
+  and `App/App.entitlements` (`aps-environment` development) is set on the
+  Debug config only: Release signs with the "Flux App Store" profile, which
+  has no Push capability yet. The SPM package needs `symlink: true`
+  (`capacitor.config.ts`). `cap sync` then creates the gitignored
+  `CapApp-SPM/symlinks/`, which fails on Windows without Developer Mode
+  (EPERM), so edit `Package.swift` by hand there.
+- The plugin's web implementation imports the optional `firebase` package,
+  which isn't installed: `angular.json` lists `firebase/messaging` in
+  `externalDependencies`, and that lazy chunk never loads, since push never
+  calls the plugin on web.
+- Not handled yet: tapping a push, showing one in the foreground, and push
+  in release builds (their workflows have no config files).
 
 ### Regenerating API types
 
@@ -878,8 +943,8 @@ Staging URLs are still `example.com` placeholders, mirroring the same gap in
 the `flux-web` repo.
 
 `scripts/write-build-info.mjs` generates a gitignored
-`src/environments/build-info.ts` (app version, short git commit, and any
-`FLUX_*` environment variable) before every build/serve/test — see the
+`src/environments/build-info.ts` (app version, short git commit, any
+`FLUX_*` environment variable, and which Firebase config files exist) before every build/serve/test — see the
 `ionic:build:before` / `ionic:serve:before` / `pre*` scripts in
 `package.json`. This is the only place environment-specific values are
 injected; nothing is hardcoded and nothing here is committed. Since anything
@@ -1170,6 +1235,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-push notifications
-(FM-7 also unregisters the device token in `AuthSession.logout()`), offline
-caching, app store assets, and Play Store upload.
+opening a task from a push, foreground pushes, notification settings and iOS
+push in release builds (FM-7's later slices), offline caching, app store
+assets, and Play Store upload.

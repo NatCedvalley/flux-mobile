@@ -8,6 +8,10 @@ xcuserdata
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
 
+# Created by `cap sync` for SPM packages with `symlink` set
+# (capacitor.config.ts); they point into this machine's node_modules
+App/CapApp-SPM/symlinks
+
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml

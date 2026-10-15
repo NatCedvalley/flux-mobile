@@ -1,0 +1,157 @@
+// Title block (handoff 3l): title, then the unread and mention counts, with
+// Mark all read at the end.
+.flux-screen-title {
+  padding-bottom: 0;
+}
+
+.subtitle {
+  margin: 0;
+  padding: 0 var(--flux-space-16) var(--flux-space-10);
+  font: var(--flux-font-screen-subtitle);
+  letter-spacing: var(--flux-tracking-screen-subtitle);
+  color: var(--flux-na11);
+}
+
+// A 34px outline button: `check-check` and 12.5/600 in indigo.
+.mark-all {
+  --border-color: var(--flux-na6);
+  --border-radius: var(--flux-radius-button);
+  --border-width: 1px;
+  --color: var(--flux-pa11);
+  --padding-start: var(--flux-space-10);
+  --padding-end: var(--flux-space-10);
+  height: 34px;
+  margin-inline-end: var(--flux-space-16);
+  font: var(--flux-font-inbox-action);
+  letter-spacing: var(--flux-tracking-inbox-action);
+
+  ion-icon {
+    margin-inline-end: var(--flux-space-6);
+    font-size: 15px;
+  }
+}
+
+// All / Mentions / Assigned, as My Work's segments: a 36px track in
+// `--na3`, the active chip in `--n1` (dark `--n5`) with a small shadow.
+.segment-bar {
+  --padding-start: var(--flux-space-16);
+  --padding-end: var(--flux-space-16);
+  --padding-bottom: var(--flux-space-12);
+  --min-height: 0;
+}
+
+// Full width: in a toolbar, Ionic sizes the segment to its labels, so it
+// would shrink when the Mentions count goes.
+ion-segment {
+  --background: var(--flux-na3);
+  width: 100%;
+  min-height: 36px;
+  border-radius: var(--flux-radius-segmented);
+}
+
+ion-segment-button {
+  --indicator-color: var(--flux-n1);
+  --indicator-box-shadow: var(--flux-shadow-segmented);
+  --border-radius: var(--flux-radius-segmented);
+  --color: var(--flux-na11);
+  --color-checked: var(--flux-n12);
+  min-height: 36px;
+  font: var(--flux-font-segment-label);
+  letter-spacing: var(--flux-tracking-segment-label);
+
+  &.segment-button-checked {
+    font: var(--flux-font-segment-label-active);
+    letter-spacing: var(--flux-tracking-segment-label-active);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  ion-segment-button {
+    --indicator-color: var(--flux-n5);
+  }
+}
+
+// The Mentions count: a red pill beside the label.
+.count {
+  display: inline-block;
+  min-width: 16px;
+  height: 16px;
+  margin-inline-start: var(--flux-space-4);
+  padding: 0 var(--flux-space-4);
+  border-radius: var(--flux-radius-pill);
+  background: var(--flux-red9);
+  color: var(--ion-color-danger-contrast);
+  font: var(--flux-font-badge);
+  text-align: center;
+  vertical-align: 1px;
+}
+
+ion-list {
+  padding: 0;
+}
+
+// Today / Earlier: 32px uppercase headers on `--na2`, over the row
+// background so rows don't show through a sticky header.
+ion-item-divider {
+  --background:
+    linear-gradient(var(--flux-na2), var(--flux-na2)),
+    var(--ion-item-background);
+  --color: var(--flux-na11);
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  min-height: 32px;
+  border-bottom: 1px solid var(--flux-na3);
+  text-transform: uppercase;
+  font: var(--flux-font-section-header);
+  letter-spacing: var(--flux-tracking-section-header);
+}
+
+// Swipe actions, both at the end: Mark read in indigo (a full swipe
+// commits it) and Mute in gray.
+ion-item-option {
+  font: var(--flux-font-meta-strong);
+
+  ion-icon {
+    margin-bottom: var(--flux-space-3);
+    font-size: 19px;
+  }
+
+  &.read {
+    --background: var(--flux-p9);
+    --color: var(--ion-color-primary-contrast);
+    min-width: 92px;
+  }
+
+  &.mute {
+    --background: var(--flux-n6);
+    --color: var(--flux-n12);
+    min-width: 72px;
+  }
+}
+
+// Under the last row when the next page failed: what happened, and Retry.
+.load-more-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-space-4);
+  padding: var(--flux-space-12) var(--flux-space-16);
+  font: var(--flux-font-body);
+  color: var(--flux-na11);
+
+  ion-button {
+    --color: var(--flux-pa11);
+    margin: 0;
+    font: var(--flux-font-sheet-action);
+  }
+}
+
+// The footer hint once every page is loaded.
+.hint {
+  margin: 0;
+  padding: var(--flux-space-16) var(--flux-space-24) var(--flux-space-24);
+  text-align: center;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+}

@@ -35,6 +35,13 @@
         name="bell"
       ></ion-icon>
       <ion-label>Inbox</ion-label>
+      @if (unread(); as unread) {
+        <ion-badge
+          color="danger"
+          [attr.aria-label]="unread + ' unread'"
+          >{{ unread > 99 ? '99+' : unread }}</ion-badge
+        >
+      }
     </ion-tab-button>
   </ion-tab-bar>
 </ion-tabs>

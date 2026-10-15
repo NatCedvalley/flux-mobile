@@ -167,6 +167,10 @@ function route(method, path, query) {
   if (path === '/notifications') {
     return [200, page([])];
   }
+  // The Inbox tab's badge, loaded on sign-in.
+  if (path === '/notifications/unread-count') {
+    return [200, { unreadCount: 0 }];
+  }
   return null;
 }
 

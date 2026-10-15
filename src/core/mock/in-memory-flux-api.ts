@@ -5,6 +5,7 @@ import type {
   DeviceRegistration,
   FluxApi,
   Label,
+  MarkedAllRead,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -30,6 +31,7 @@ import type {
   TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
+  UnreadCount,
   WorkflowStatus,
 } from '../api';
 import { ApiError } from '../auth/api-error';
@@ -110,18 +112,13 @@ const STATUSES: WorkflowStatus[] = [
 
 const ADA = { accountId: 'a1', firstName: 'Ada', lastName: 'Rahman' };
 const BEN = { accountId: 'a2', firstName: 'Ben', lastName: 'Tan' };
+const CHEN = { accountId: 'a3', firstName: 'Chen', lastName: 'Wei' };
 
 /** Every project's assignable members, in no particular order. */
 const MEMBERS: ProjectMember[] = [
   { ...BEN, email: 'ben@flux.test', role: 'EDITOR' },
   { ...ADA, email: 'ada@flux.test', role: 'EDITOR' },
-  {
-    accountId: 'a3',
-    firstName: 'Chen',
-    lastName: 'Wei',
-    email: 'chen@flux.test',
-    role: 'LEAD',
-  },
+  { ...CHEN, email: 'chen@flux.test', role: 'LEAD' },
 ];
 
 /** Each project's labels; CHK-142 carries the first three. */
@@ -391,32 +388,143 @@ const RESOLUTIONS: TaskResolution[] = [
   { id: 'res3', name: 'Duplicate', slug: 'duplicate', position: 2 },
 ];
 
-const NOTIFICATIONS: AppNotification[] = [
-  {
-    id: '1',
-    title: 'Task assigned to you',
-    message: "You were assigned 'Fix 3DS redirect on Safari'.",
-    createdAt: '2026-09-12T09:00:00.000Z',
-    isRead: false,
-    entityId: '1',
-  },
-  {
-    id: '2',
-    title: 'Comment on your task',
-    message: "New comment on 'Review pull request #482'.",
-    createdAt: '2026-09-11T16:00:00.000Z',
-    isRead: false,
-    entityId: '2',
-  },
-  {
-    id: '3',
-    title: 'Task completed',
-    message: "'Migrate saved cards' was marked done.",
-    createdAt: '2026-09-08T17:45:00.000Z',
-    isRead: true,
-    entityId: '6',
-  },
+/** Every notification type the server knows, for its 400 on any other. */
+const NOTIFICATION_TYPES = [
+  'ASSIGNMENT',
+  'TASK_UPDATED',
+  'COMMENT',
+  'MENTION',
+  'DESCRIPTION_MENTION',
+  'TASK_CREATED',
+  'TASK_DELETED',
+  'TASK_ARCHIVED',
+  'TASK_RESTORED',
+  'RELEASE_CREATED',
+  'REACTION',
 ];
+
+/** `minutes` before `now`. */
+function ago(now: Date, minutes: number): string {
+  return new Date(now.getTime() - minutes * 60_000).toISOString();
+}
+
+/**
+ * Ada's notifications, newest first: four unread (one a mention). Each one
+ * names its actor, task key and project, as the server does since FM-42,
+ * except the oldest, written before it.
+ */
+function fixtureNotifications(now: Date): AppNotification[] {
+  const checkout = { projectId: 'p1', projectName: 'Checkout' };
+  const task = (entityId: string, taskKey: string) => ({
+    entityType: 'TASK',
+    entityId,
+    taskKey,
+    ...checkout,
+  });
+  const by = (person: typeof BEN) => ({
+    actorId: person.accountId,
+    actorFirstName: person.firstName,
+    actorLastName: person.lastName,
+  });
+  return [
+    {
+      id: 'n1',
+      type: 'MENTION',
+      title: 'You were mentioned',
+      message: 'Ben Tan mentioned you in: Fix 3DS redirect on Safari',
+      ...task('1', 'CHK-142'),
+      ...by(BEN),
+      isRead: false,
+      createdAt: ago(now, 5),
+    },
+    {
+      id: 'n2',
+      type: 'ASSIGNMENT',
+      title: 'You were assigned to a task',
+      message: 'Chen Wei assigned you to: Review pull request #482',
+      ...task('2', 'CHK-150'),
+      ...by(CHEN),
+      isRead: false,
+      createdAt: ago(now, 2 * 60),
+    },
+    {
+      id: 'n3',
+      type: 'REACTION',
+      title: 'New reaction to your comment',
+      message:
+        'Ben Tan and 1 other reacted to your comment on: Fix 3DS redirect on Safari',
+      ...task('1', 'CHK-142'),
+      ...by(BEN),
+      isRead: true,
+      createdAt: ago(now, 3 * 60),
+    },
+    {
+      id: 'n4',
+      type: 'COMMENT',
+      title: 'New comment',
+      message: 'Chen Wei commented on: Speed up the order summary query',
+      ...task('4', 'CHK-131'),
+      ...by(CHEN),
+      isRead: false,
+      createdAt: at(now, 1, 16, 20),
+    },
+    {
+      id: 'n5',
+      type: 'DESCRIPTION_MENTION',
+      title: 'You were mentioned',
+      message:
+        'Ben Tan mentioned you in the description of: Migrate saved cards',
+      ...task('6', 'CHK-120'),
+      ...by(BEN),
+      isRead: true,
+      createdAt: at(now, 1, 11, 5),
+    },
+    {
+      id: 'n6',
+      type: 'TASK_UPDATED',
+      title: 'A task you follow was updated',
+      message:
+        'Chen Wei updated the description of: Speed up the order summary query',
+      ...task('4', 'CHK-131'),
+      ...by(CHEN),
+      isRead: true,
+      createdAt: at(now, 2, 9, 40),
+    },
+    {
+      id: 'n7',
+      type: 'RELEASE_CREATED',
+      title: 'New release',
+      message: 'Chen Wei created a release: v2.4.0',
+      entityType: 'RELEASE',
+      entityId: 'r1',
+      ...checkout,
+      ...by(CHEN),
+      isRead: false,
+      createdAt: at(now, 3, 15, 0),
+    },
+    {
+      id: 'n8',
+      type: 'TASK_DELETED',
+      title: 'A task was deleted',
+      message: 'Ben Tan deleted a task: Old checkout banner',
+      ...task('gone', 'CHK-99'),
+      ...by(BEN),
+      isRead: true,
+      createdAt: at(now, 4, 10, 30),
+    },
+    {
+      id: 'n9',
+      type: 'ASSIGNMENT',
+      title: 'You were assigned to a task',
+      message: 'Ben Tan assigned you to: Prorate plan upgrades',
+      entityType: 'TASK',
+      entityId: '3',
+      projectId: 'p2',
+      isRead: true,
+      createdAt: at(now, 12, 8, 0),
+    },
+  ];
+}
 
 /** Attachments by task id, newest first. */
 function fixtureAttachments(now: Date): Record<string, Attachment[]> {
@@ -588,6 +696,18 @@ function inList(value: string | undefined, filter: string | undefined) {
   return !values.length || values.includes(value ?? '');
 }
 
+/** A `type` filter's values, or the server's 400 for an unknown one. */
+function notificationTypes(type: string | undefined): string[] | ApiError {
+  const types = csv(type).filter(Boolean);
+  const unknown = types.find((t) => !NOTIFICATION_TYPES.includes(t));
+  return unknown
+    ? badRequest(
+        'INVALID_NOTIFICATION_TYPE',
+        `Invalid notification type: ${unknown}`
+      )
+    : types;
+}
+
 function notFound(projectId: string, taskId: string): Error {
   return new Error(`Task not found: ${projectId}/${taskId}`);
 }
@@ -622,7 +742,11 @@ function isContainer(type: Task['type']): boolean {
  * column. `reorderTasks` sets positions (a missing one counts as 0) with the
  * server's rules and 422 codes. Attachments are
  * uploaded by Ada too, under the backend's default size, extension and
- * count limits and with its 422 codes and messages.
+ * count limits and with its 422 codes and messages. Notifications are
+ * Ada's, dated relative to today: they filter by read state and `type` (a
+ * comma list; an unknown type is a 400 `INVALID_NOTIFICATION_TYPE`), and
+ * marking one read (a 404 `NOTIFICATION_NOT_FOUND` for an unknown id) or
+ * all of them changes the instance's list.
  */
 export class InMemoryFluxApi implements FluxApi {
   private readonly tasks: FixtureTask[];
@@ -637,12 +761,15 @@ export class InMemoryFluxApi implements FluxApi {
   private readonly subscribed: Set<string>;
   /** Push tokens registered to the caller. */
   private readonly devices = new Set<string>();
+  /** The caller's notifications, newest first. */
+  private readonly notifications: AppNotification[];
 
   constructor(today: Date = new Date()) {
     this.tasks = fixtureTasks(localIsoDate(today));
     this.comments = fixtureComments(today);
     this.activities = fixtureActivities(today);
     this.attachments = fixtureAttachments(today);
+    this.notifications = fixtureNotifications(today);
     this.subscribed = new Set(
       this.tasks.filter((t) => t.watching).map((t) => t.id ?? '')
     );
@@ -1481,10 +1608,56 @@ export class InMemoryFluxApi implements FluxApi {
   listNotifications(
     query: NotificationsQuery = {}
   ): Promise<Page<AppNotification>> {
-    const rows = NOTIFICATIONS.filter(
-      (n) => query.isRead === undefined || n.isRead === query.isRead
-    );
+    const types = notificationTypes(query.type);
+    if (types instanceof ApiError) {
+      return Promise.reject(types);
+    }
+    const rows = this.notifications
+      .filter((n) => query.isRead === undefined || n.isRead === query.isRead)
+      .filter((n) => !types.length || types.includes(n.type ?? ''));
     return Promise.resolve(pageOf(rows, query.page, query.size));
+  }
+
+  notificationUnreadCount(type?: string): Promise<UnreadCount> {
+    const types = notificationTypes(type);
+    if (types instanceof ApiError) {
+      return Promise.reject(types);
+    }
+    const unreadCount = this.notifications.filter(
+      (n) => !n.isRead && (!types.length || types.includes(n.type ?? ''))
+    ).length;
+    return Promise.resolve({ unreadCount });
+  }
+
+  markNotificationRead(id: string): Promise<AppNotification> {
+    const i = this.notifications.findIndex((n) => n.id === id);
+    if (i < 0) {
+      return Promise.reject(
+        new ApiError(404, {
+          code: 'NOTIFICATION_NOT_FOUND',
+          message: 'Notification not found',
+        })
+      );
+    }
+    const read = {
+      ...this.notifications[i],
+      isRead: true,
+      readAt: new Date().toISOString(),
+    };
+    this.notifications[i] = read;
+    return Promise.resolve({ ...read });
+  }
+
+  markAllNotificationsRead(): Promise<MarkedAllRead> {
+    let markedAsRead = 0;
+    const readAt = new Date().toISOString();
+    this.notifications.forEach((n, i) => {
+      if (!n.isRead) {
+        this.notifications[i] = { ...n, isRead: true, readAt };
+        markedAsRead++;
+      }
+    });
+    return Promise.resolve({ markedAsRead });
   }
 
   registerDevice(device: DeviceRegistration): Promise<void> {

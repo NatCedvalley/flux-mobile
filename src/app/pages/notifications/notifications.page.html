@@ -1,28 +1,154 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
-    <h1 class="flux-screen-title">Inbox</h1>
+    <div class="title-block">
+      <h1 class="flux-screen-title">Inbox</h1>
+      @if (inbox.unread() !== undefined && inbox.mentions() !== undefined) {
+        <p class="subtitle">
+          {{ inbox.unread() }} unread · {{ inbox.mentions() }}
+          {{ inbox.mentions() === 1 ? 'mention' : 'mentions' }}
+        </p>
+      }
+    </div>
+    <ion-buttons slot="end">
+      <ion-button
+        class="mark-all"
+        fill="outline"
+        [disabled]="inbox.unread() === 0"
+        (click)="markAllRead()"
+      >
+        <ion-icon
+          slot="start"
+          name="check-check"
+          aria-hidden="true"
+        ></ion-icon>
+        Mark all read
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar class="segment-bar">
+    <ion-segment
+      [value]="segment()"
+      (ionChange)="select($event)"
+    >
+      @for (s of segments; track s.key) {
+        <ion-segment-button [value]="s.key">
+          <ion-label>
+            {{ s.label }}
+            @if (s.key === 'mentions' && inbox.mentions()) {
+              <span
+                class="count"
+                [attr.aria-label]="inbox.mentions() + ' unread'"
+                >{{ inbox.mentions() }}</span
+              >
+            }
+          </ion-label>
+        </ion-segment-button>
+      }
+    </ion-segment>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
+  <ion-refresher
+    slot="fixed"
+    (ionRefresh)="refresh($event)"
+  >
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
   @if (push.showCard()) {
     <app-push-card />
   }
-  @if (notifications.isLoading()) {
-    <div class="ion-text-center ion-padding">
-      <ion-spinner name="crescent"></ion-spinner>
-    </div>
+
+  @let results = current().results;
+  @if (results.error() && !results.isLoading()) {
+    <app-error-state
+      [error]="results.error()"
+      (retry)="results.reload()"
+    />
+  } @else if (!results.hasValue()) {
+    <app-skeleton-rows />
+  } @else if (rows().items.length === 0) {
+    <app-empty-state
+      icon="check-check"
+      message="You're all caught up"
+    />
   } @else {
-    <ion-list>
-      @for (n of notifications.value(); track n.id) {
-        <ion-item>
-          <ion-label>
-            <h2>{{ n.title }}</h2>
-            <p>{{ n.message }}</p>
-          </ion-label>
-          <ion-note slot="end">{{ n.createdAt | date: 'short' }}</ion-note>
-        </ion-item>
+    <ion-list lines="full">
+      @for (group of groups(); track group.key) {
+        <ion-item-group>
+          <ion-item-divider sticky="true">{{ group.label }}</ion-item-divider>
+          @for (n of group.items; track n.id) {
+            <ion-item-sliding
+              #sliding
+              [disabled]="n.isRead && !opensTask(n)"
+              (ionDrag)="dragged($event)"
+            >
+              <app-notification-row
+                [notification]="n"
+                [now]="now()"
+                (opened)="open(n)"
+              />
+              <ion-item-options
+                side="end"
+                (ionSwipe)="swipeRead(n, sliding)"
+              >
+                @if (!n.isRead) {
+                  <ion-item-option
+                    class="read"
+                    expandable="true"
+                    (click)="swipeRead(n, sliding)"
+                  >
+                    <ion-icon
+                      slot="top"
+                      name="check"
+                      aria-hidden="true"
+                    ></ion-icon>
+                    Mark read
+                  </ion-item-option>
+                }
+                @if (opensTask(n)) {
+                  <ion-item-option
+                    class="mute"
+                    (click)="mute(n, sliding)"
+                  >
+                    <ion-icon
+                      slot="top"
+                      name="bell-off"
+                      aria-hidden="true"
+                    ></ion-icon>
+                    Mute
+                  </ion-item-option>
+                }
+              </ion-item-options>
+            </ion-item-sliding>
+          }
+        </ion-item-group>
       }
     </ion-list>
+    @if (moreFailed()) {
+      <div
+        class="load-more-error"
+        role="alert"
+      >
+        <span>Couldn't load more notifications.</span>
+        <ion-button
+          fill="clear"
+          size="small"
+          [disabled]="retryingMore()"
+          (click)="retryMore()"
+          >Retry</ion-button
+        >
+      </div>
+    }
+    <ion-infinite-scroll
+      [disabled]="rows().done || moreFailed()"
+      (ionInfinite)="loadMore($event)"
+    >
+      <ion-infinite-scroll-content></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+    @if (rows().done) {
+      <p class="hint">Swipe a notification to mark read or mute the task</p>
+    }
   }
 </ion-content>

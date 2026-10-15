@@ -166,6 +166,13 @@ export type CommentReactionResponse = {
     emoji?: string;
     count?: number;
     reactedByMe?: boolean;
+    reactors?: Array<CommentReactorResponse>;
+};
+
+export type CommentReactorResponse = {
+    accountId?: string;
+    firstName?: string;
+    lastName?: string;
 };
 
 export type TaskCommentResponse = {
@@ -936,7 +943,7 @@ export type CreateAnnouncementRequest = {
 };
 
 export type PushPreferenceItem = {
-    type: 'ASSIGNMENT' | 'TASK_UPDATED' | 'COMMENT' | 'MENTION' | 'DESCRIPTION_MENTION' | 'TASK_CREATED' | 'TASK_DELETED' | 'TASK_ARCHIVED' | 'TASK_RESTORED' | 'RELEASE_CREATED';
+    type: 'ASSIGNMENT' | 'TASK_UPDATED' | 'COMMENT' | 'MENTION' | 'DESCRIPTION_MENTION' | 'TASK_CREATED' | 'TASK_DELETED' | 'TASK_ARCHIVED' | 'TASK_RESTORED' | 'RELEASE_CREATED' | 'REACTION';
     enabled: boolean;
 };
 
@@ -998,6 +1005,11 @@ export type NotificationResponse = {
     readAt?: string;
     createdAt?: string;
     updatedAt?: string;
+    actorId?: string;
+    actorFirstName?: string;
+    actorLastName?: string;
+    taskKey?: string;
+    projectName?: string;
 };
 
 export type MarkSeenResponse = {
@@ -5728,16 +5740,29 @@ export type List2Data = {
          */
         isRead?: boolean;
         /**
+         * Comma list of notification types to include, e.g. MENTION,DESCRIPTION_MENTION. Omit for every type. An unknown type is a 400 INVALID_NOTIFICATION_TYPE.
+         */
+        type?: string;
+        /**
          * Page number (zero-based)
          */
         page?: number;
         /**
-         * Page size
+         * Page size (at most 100)
          */
         size?: number;
     };
     url: '/api/v1/notifications';
 };
+
+export type List2Errors = {
+    /**
+     * Unknown notification type (INVALID_NOTIFICATION_TYPE)
+     */
+    400: PagedResponseNotificationResponse;
+};
+
+export type List2Error = List2Errors[keyof List2Errors];
 
 export type List2Responses = {
     /**
@@ -5767,9 +5792,25 @@ export type GetUnseenCountResponse = GetUnseenCountResponses[keyof GetUnseenCoun
 export type GetUnreadCountData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Comma list of notification types to include, e.g. MENTION,DESCRIPTION_MENTION. Omit for every type. An unknown type is a 400 INVALID_NOTIFICATION_TYPE.
+         */
+        type?: string;
+    };
     url: '/api/v1/notifications/unread-count';
 };
+
+export type GetUnreadCountErrors = {
+    /**
+     * Unknown notification type (INVALID_NOTIFICATION_TYPE)
+     */
+    400: {
+        [key: string]: number;
+    };
+};
+
+export type GetUnreadCountError = GetUnreadCountErrors[keyof GetUnreadCountErrors];
 
 export type GetUnreadCountResponses = {
     /**

@@ -1,0 +1,47 @@
+<ion-item
+  button="true"
+  detail="false"
+  [class.unread]="!notification().isRead"
+  (click)="opened.emit()"
+>
+  @if (avatar(); as avatar) {
+    <span
+      slot="start"
+      class="leading avatar"
+      aria-hidden="true"
+      [style.background]="avatar.fill"
+      >{{ avatar.initials }}</span
+    >
+  } @else if (glyph(); as glyph) {
+    <span
+      slot="start"
+      class="leading glyph"
+      aria-hidden="true"
+      [attr.data-tone]="glyph.tone"
+    >
+      <ion-icon [name]="glyph.icon"></ion-icon>
+    </span>
+  }
+  <div class="body">
+    <div class="head">
+      <span class="who">
+        <span class="lead">{{ view().lead }}</span>
+        @if (view().verb) {
+          <span class="verb"> {{ view().verb }}</span>
+        }
+      </span>
+      <span class="age">{{ age() }}</span>
+    </div>
+    @if (view().subject) {
+      <div class="subject">{{ view().subject }}</div>
+    }
+    @if (view().taskKey) {
+      <div class="context">
+        <span class="key">{{ view().taskKey }}</span>
+        @if (view().projectName) {
+          <span class="project">{{ view().projectName }}</span>
+        }
+      </div>
+    }
+  </div>
+</ion-item>

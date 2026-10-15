@@ -1,0 +1,143 @@
+// Handoff 3l row: 12/16 padding, an 11px gap from the 32px leading element,
+// a `--na3` bottom border. Unread rows get a 3px `--p9` rail at the left
+// edge (on the item's own surface, so it slides with a swipe) and a 700
+// lead; read ones 600.
+:host {
+  display: block;
+}
+
+ion-item {
+  --padding-start: var(--flux-space-16);
+  --inner-padding-end: var(--flux-space-16);
+  --border-color: var(--flux-na3);
+
+  &.unread::part(native) {
+    box-shadow: inset 3px 0 0 var(--flux-p9);
+  }
+}
+
+.leading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 32px;
+  height: 32px;
+  margin: var(--flux-space-12) var(--flux-space-11) 0 0;
+  border-radius: var(--flux-radius-pill);
+}
+
+.avatar {
+  color: var(--flux-avatar-text);
+  font: var(--flux-font-comment-avatar);
+  letter-spacing: var(--flux-tracking-comment-avatar);
+}
+
+// A glyph circle in its event's tint, as Activity draws the same events.
+.glyph {
+  background: var(--flux-na3);
+  color: var(--flux-na11);
+  font-size: 16px;
+
+  &[data-tone='amber'] {
+    background: var(--flux-ambera3);
+    color: var(--flux-amber11);
+  }
+
+  &[data-tone='green'] {
+    background: var(--flux-greena3);
+    color: var(--flux-green11);
+  }
+
+  &[data-tone='red'] {
+    background: var(--flux-reda3);
+    color: var(--flux-red11);
+  }
+
+  &[data-tone='violet'] {
+    background: var(--flux-violeta3);
+    color: var(--flux-violet11);
+  }
+}
+
+.body {
+  flex: auto;
+  min-width: 0;
+  padding: var(--flux-space-12) 0;
+}
+
+// The actor and verb wrap together; the age stays at the far end.
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--flux-space-8);
+}
+
+.who {
+  flex: auto;
+  min-width: 0;
+  color: var(--flux-n12);
+}
+
+.lead {
+  font: var(--flux-font-inbox-lead-read);
+  letter-spacing: var(--flux-tracking-inbox-lead-read);
+
+  .unread & {
+    font: var(--flux-font-inbox-lead);
+    letter-spacing: var(--flux-tracking-inbox-lead);
+  }
+}
+
+.verb {
+  font: var(--flux-font-inbox-verb);
+  letter-spacing: var(--flux-tracking-inbox-verb);
+  color: var(--flux-na11);
+}
+
+.age {
+  flex: none;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+}
+
+.subject {
+  margin-top: var(--flux-space-2);
+  font: var(--flux-font-inbox-subject);
+  letter-spacing: var(--flux-tracking-inbox-subject);
+  color: var(--flux-n12);
+  overflow-wrap: anywhere;
+}
+
+// `KEY · Project`, the separator drawn before the project only.
+.context {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-7);
+  min-width: 0;
+  margin-top: var(--flux-space-4);
+  overflow: hidden;
+  white-space: nowrap;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na11);
+
+  > * + *::before {
+    content: '·' / '';
+    margin-inline-end: var(--flux-space-7);
+    color: var(--flux-na7);
+  }
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+  color: var(--flux-pa11);
+}
+
+.project {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

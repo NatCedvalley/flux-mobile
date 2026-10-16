@@ -10,10 +10,16 @@ import { FirebaseMessaging, Importance } from '@capacitor-firebase/messaging';
 import { App } from '@capacitor/app';
 import { Capacitor, type PermissionState } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import {
+  AndroidSettings,
+  IOSSettings,
+  NativeSettings,
+} from 'capacitor-native-settings';
 import { PushRegistration } from '@core/push';
 import { buildInfo } from '../../environments/build-info';
 import { AuthService } from '../auth/auth.service';
 import { FLUX_API } from '../providers/flux-api.token';
+import { NotificationState } from './notification-state';
 
 /** Set once the Inbox card is dismissed. Kept across logouts. */
 const CARD_DISMISSED_KEY = 'push.cardDismissed';
@@ -38,15 +44,24 @@ export class PushService {
     Capacitor.getPlatform() === 'ios' ? 'IOS' : 'ANDROID',
     buildInfo.version
   );
-  private readonly permission = signal<PermissionState | null>(null);
+  private readonly permissionState = signal<PermissionState | null>(null);
   private readonly dismissed = signal(false);
+
+  /** False on web and in a build without the platform's Firebase file. */
+  readonly available = isAvailable();
+
+  /**
+   * The OS permission for notifications, re-checked on resume. Null until
+   * it's known, and always null where push isn't available.
+   */
+  readonly permission = this.permissionState.asReadonly();
 
   /**
    * Whether the Inbox shows the card: only while the OS would still prompt.
    * Once allowed or denied, the card has nothing left to offer.
    */
   readonly showCard = computed(() => {
-    const permission = this.permission();
+    const permission = this.permissionState();
     return (
       (permission === 'prompt' || permission === 'prompt-with-rationale') &&
       !this.dismissed()
@@ -55,7 +70,7 @@ export class PushService {
 
   /** Runs once at startup. Never rejects: a failure leaves push off. */
   async init(): Promise<void> {
-    if (!isAvailable()) {
+    if (!this.available) {
       return;
     }
     try {
@@ -70,7 +85,7 @@ export class PushService {
         FirebaseMessaging.checkPermissions(),
         Preferences.get({ key: CARD_DISMISSED_KEY }),
       ]);
-      this.permission.set(receive);
+      this.permissionState.set(await withAppSwitch(receive));
       this.dismissed.set(value === 'true');
     } catch (error) {
       console.error('Setting up push failed', error);
@@ -100,11 +115,14 @@ export class PushService {
     await this.fetchToken();
   }
 
-  /** The card's button: the only place the OS permission prompt appears. */
+  /**
+   * The Inbox card's and the Notifications page's Turn on: the only places
+   * the OS permission prompt appears.
+   */
   async enable(): Promise<void> {
     try {
       const { receive } = await FirebaseMessaging.requestPermissions();
-      this.permission.set(receive);
+      this.permissionState.set(await withAppSwitch(receive));
     } catch (error) {
       console.error('Requesting push permission failed', error);
       return;
@@ -121,10 +139,25 @@ export class PushService {
     }
   }
 
+  /**
+   * Opens the app's notification settings, once the OS won't prompt again.
+   * The resume check picks up a change made there.
+   */
+  async openSettings(): Promise<void> {
+    try {
+      await NativeSettings.open({
+        optionAndroid: AndroidSettings.AppNotification,
+        optionIOS: IOSSettings.AppNotification,
+      });
+    } catch (error) {
+      console.error('Opening notification settings failed', error);
+    }
+  }
+
   private async refreshPermission(): Promise<void> {
     try {
       const { receive } = await FirebaseMessaging.checkPermissions();
-      this.permission.set(receive);
+      this.permissionState.set(await withAppSwitch(receive));
     } catch (error) {
       console.error('Checking push permission failed', error);
       return;
@@ -134,7 +167,7 @@ export class PushService {
 
   /** Asks FCM for the token once permission is granted, and registers it. */
   private async fetchToken(): Promise<void> {
-    if (this.permission() !== 'granted') {
+    if (this.permissionState() !== 'granted') {
       return;
     }
     try {
@@ -144,6 +177,21 @@ export class PushService {
       console.error('Getting the push token failed', error);
     }
   }
+}
+
+/**
+ * The messaging plugin answers "granted" on Android 12 and lower without
+ * checking, so a user who turned notifications off in Settings would still
+ * read as allowed. Android's own switch for the app decides there.
+ */
+async function withAppSwitch(
+  receive: PermissionState
+): Promise<PermissionState> {
+  if (receive !== 'granted' || Capacitor.getPlatform() !== 'android') {
+    return receive;
+  }
+  const { enabled } = await NotificationState.check();
+  return enabled ? 'granted' : 'denied';
 }
 
 function isAvailable(): boolean {

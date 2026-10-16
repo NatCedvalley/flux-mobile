@@ -652,6 +652,30 @@ describe('InMemoryFluxApi', () => {
     });
   });
 
+  it('lists every push type as on until it is changed', async () => {
+    const preferences = await api.pushPreferences();
+    expect(preferences).toHaveLength(11);
+    expect(preferences[0]).toEqual({ type: 'ASSIGNMENT', enabled: true });
+    expect(preferences.every((p) => p.enabled)).toBe(true);
+  });
+
+  it('changes only the push types it is sent, and returns them all', async () => {
+    const preferences = await api.updatePushPreferences([
+      { type: 'MENTION', enabled: false },
+    ]);
+    expect(preferences).toHaveLength(11);
+    expect(preferences.filter((p) => !p.enabled)).toEqual([
+      { type: 'MENTION', enabled: false },
+    ]);
+    expect(await api.pushPreferences()).toEqual(preferences);
+  });
+
+  it('refuses an empty push preference change', async () => {
+    await expect(api.updatePushPreferences([])).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+
   describe('reorder', () => {
     const code = (promise: Promise<unknown>) =>
       promise.catch((e: ApiError) => e.body?.code ?? 'NOT_FOUND');

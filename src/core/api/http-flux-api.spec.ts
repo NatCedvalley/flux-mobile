@@ -378,6 +378,30 @@ describe('HttpFluxApi', () => {
     expect(url()).toBe(`${BASE_URL}/notifications?isRead=false`);
   });
 
+  it('gets the push preferences', async () => {
+    const preferences = [{ type: 'MENTION', enabled: false }];
+    const { api, url } = setup({ preferences });
+    await expect(api.pushPreferences()).resolves.toEqual(preferences);
+    expect(url()).toBe(`${BASE_URL}/push/preferences`);
+  });
+
+  it('PATCHes push preferences and returns the full list', async () => {
+    const preferences = [
+      { type: 'ASSIGNMENT', enabled: true },
+      { type: 'MENTION', enabled: false },
+    ];
+    const { api, url, init } = setup({ preferences });
+    await expect(
+      api.updatePushPreferences([{ type: 'MENTION', enabled: false }])
+    ).resolves.toEqual(preferences);
+
+    expect(url()).toBe(`${BASE_URL}/push/preferences`);
+    expect(init().method).toBe('PATCH');
+    expect(JSON.parse(init().body)).toEqual({
+      preferences: [{ type: 'MENTION', enabled: false }],
+    });
+  });
+
   it('lists notifications of some types', async () => {
     const { api, url } = setup({ content: [] });
     await api.listNotifications({ type: 'MENTION,DESCRIPTION_MENTION' });

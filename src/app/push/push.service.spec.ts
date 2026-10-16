@@ -5,15 +5,22 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { NativeSettings } from 'capacitor-native-settings';
 import type { Account, FluxApi } from '@core/api';
 import { buildInfo } from '../../environments/build-info';
 import { AuthService } from '../auth/auth.service';
 import { FLUX_API } from '../providers/flux-api.token';
+import { NotificationState } from './notification-state';
 import { PushService, TASK_UPDATES_CHANNEL } from './push.service';
 
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn() } }));
 vi.mock('@capacitor/preferences', () => ({
   Preferences: { get: vi.fn(), set: vi.fn() },
+}));
+vi.mock('capacitor-native-settings', () => ({
+  AndroidSettings: { AppNotification: 'app_notification' },
+  IOSSettings: { AppNotification: 'appNotification' },
+  NativeSettings: { open: vi.fn() },
 }));
 vi.mock('@capacitor-firebase/messaging', () => ({
   Importance: { Default: 3 },
@@ -55,6 +62,7 @@ describe('PushService', () => {
       receive: 'granted',
     });
     vi.mocked(FirebaseMessaging.getToken).mockResolvedValue({ token: 't1' });
+    vi.spyOn(NotificationState, 'check').mockResolvedValue({ enabled: true });
     vi.mocked(Preferences.get).mockResolvedValue({ value: null });
     vi.mocked(Preferences.set).mockResolvedValue(undefined);
     listeners = {};
@@ -117,6 +125,8 @@ describe('PushService', () => {
     expect(FirebaseMessaging.getToken).not.toHaveBeenCalled();
     expect(setBeforeLogout).not.toHaveBeenCalled();
     expect(service.showCard()).toBe(false);
+    expect(service.available).toBe(false);
+    expect(service.permission()).toBeNull();
   });
 
   it('creates the Task updates channel on Android', async () => {
@@ -211,7 +221,26 @@ describe('PushService', () => {
     await settle();
 
     expect(service.showCard()).toBe(false);
+    expect(service.permission()).toBe('granted');
     expect(api.registerDevice).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the permission it read', async () => {
+    await create().init();
+
+    expect(service.available).toBe(true);
+    expect(service.permission()).toBe('prompt');
+  });
+
+  it('opens the app’s notification settings', async () => {
+    vi.mocked(NativeSettings.open).mockResolvedValue({ status: true });
+
+    await create().openSettings();
+
+    expect(NativeSettings.open).toHaveBeenCalledWith({
+      optionAndroid: 'app_notification',
+      optionIOS: 'appNotification',
+    });
   });
 
   describe('with permission granted', () => {
@@ -219,6 +248,38 @@ describe('PushService', () => {
       vi.mocked(FirebaseMessaging.checkPermissions).mockResolvedValue({
         receive: 'granted',
       });
+    });
+
+    it('reads notifications switched off for the app as denied on Android', async () => {
+      vi.mocked(NotificationState.check).mockResolvedValue({ enabled: false });
+
+      await create().init();
+      await settle();
+
+      expect(service.permission()).toBe('denied');
+      expect(FirebaseMessaging.getToken).not.toHaveBeenCalled();
+    });
+
+    it('reads them as allowed again once switched back on', async () => {
+      vi.mocked(NotificationState.check).mockResolvedValue({ enabled: false });
+      await create().init();
+      await settle();
+      vi.mocked(NotificationState.check).mockResolvedValue({ enabled: true });
+
+      listeners['resume']();
+      await settle();
+
+      expect(service.permission()).toBe('granted');
+      expect(api.registerDevice).toHaveBeenCalledTimes(1);
+    });
+
+    it('doesn’t ask Android’s switch on an iPhone', async () => {
+      platform = 'ios';
+
+      await create().init();
+
+      expect(NotificationState.check).not.toHaveBeenCalled();
+      expect(service.permission()).toBe('granted');
     });
 
     it('registers on launch, as IOS on an iPhone', async () => {

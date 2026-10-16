@@ -49,6 +49,13 @@ export const routes: Routes = [
                 (m) => m.SettingsPage
               ),
           },
+          {
+            path: 'settings/notifications',
+            loadComponent: () =>
+              import('../pages/notification-settings/notification-settings.page').then(
+                (m) => m.NotificationSettingsPage
+              ),
+          },
         ],
       },
       {

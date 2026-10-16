@@ -17,6 +17,8 @@ import type {
   ProjectMember,
   PageQuery,
   ProjectTasksQuery,
+  PushNotificationType,
+  PushPreference,
   Task,
   TaskActivity,
   TaskAssign,
@@ -712,6 +714,21 @@ function notFound(projectId: string, taskId: string): Error {
   return new Error(`Task not found: ${projectId}/${taskId}`);
 }
 
+/** flux's PushNotificationTypeEnum, in its order. */
+const PUSH_NOTIFICATION_TYPES: PushNotificationType[] = [
+  'ASSIGNMENT',
+  'TASK_UPDATED',
+  'COMMENT',
+  'MENTION',
+  'DESCRIPTION_MENTION',
+  'TASK_CREATED',
+  'TASK_DELETED',
+  'TASK_ARCHIVED',
+  'TASK_RESTORED',
+  'RELEASE_CREATED',
+  'REACTION',
+];
+
 function badRequest(code: string, message: string): ApiError {
   return new ApiError(400, { code, message });
 }
@@ -761,6 +778,8 @@ export class InMemoryFluxApi implements FluxApi {
   private readonly subscribed: Set<string>;
   /** Push tokens registered to the caller. */
   private readonly devices = new Set<string>();
+  /** Ada's stored push overrides. A type with none is on. */
+  private readonly pushOverrides = new Map<PushNotificationType, boolean>();
   /** The caller's notifications, newest first. */
   private readonly notifications: AppNotification[];
 
@@ -1675,6 +1694,31 @@ export class InMemoryFluxApi implements FluxApi {
       );
     }
     return Promise.resolve();
+  }
+
+  pushPreferences(): Promise<PushPreference[]> {
+    return Promise.resolve(this.pushPreferenceList());
+  }
+
+  updatePushPreferences(
+    preferences: PushPreference[]
+  ): Promise<PushPreference[]> {
+    if (!preferences.length) {
+      return Promise.reject(
+        badRequest('VALIDATION_ERROR', 'preferences must not be empty')
+      );
+    }
+    for (const { type, enabled } of preferences) {
+      this.pushOverrides.set(type, enabled);
+    }
+    return Promise.resolve(this.pushPreferenceList());
+  }
+
+  private pushPreferenceList(): PushPreference[] {
+    return PUSH_NOTIFICATION_TYPES.map((type) => ({
+      type,
+      enabled: this.pushOverrides.get(type) ?? true,
+    }));
   }
 
   private find(projectId: string, taskId: string): FixtureTask | undefined {

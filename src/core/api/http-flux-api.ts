@@ -17,6 +17,8 @@ import type {
   PageQuery,
   ProjectMember,
   ProjectTasksQuery,
+  PushPreference,
+  PushPreferences,
   Task,
   TaskActivity,
   TaskAssign,
@@ -337,6 +339,23 @@ export class HttpFluxApi implements FluxApi {
 
   async unregisterDevice(token: string): Promise<void> {
     await this.send('POST', '/push/devices/unregister', { token });
+  }
+
+  async pushPreferences(): Promise<PushPreference[]> {
+    const { preferences } =
+      await this.get<PushPreferences>('/push/preferences');
+    return preferences ?? [];
+  }
+
+  async updatePushPreferences(
+    preferences: PushPreference[]
+  ): Promise<PushPreference[]> {
+    const response = await this.send<PushPreferences>(
+      'PATCH',
+      '/push/preferences',
+      { preferences }
+    );
+    return response.preferences ?? [];
   }
 
   private get<T>(path: string, query?: QueryParams): Promise<T> {

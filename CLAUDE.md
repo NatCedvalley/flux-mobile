@@ -46,8 +46,9 @@ src/
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push and the
               Inbox's permission card (push/), the Inbox's unread
-              counts and its row (inbox/), and the providers that
-              bridge into src/core
+              counts and its row (inbox/), the Notifications
+              settings page (pages/notification-settings/), and the
+              providers that bridge into src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -740,7 +741,8 @@ reaction), attachments (list and upload) and subscription (read,
 subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
 assignable members, notifications (list, unread count, mark one or all
-read), and push device registration (register and unregister). The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+read), push device registration (register and unregister) and push
+preferences (read and update). The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -894,7 +896,8 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
 - **Permission** is never asked at launch. The Inbox shows a "Get notified
   on your phone" card (`app-push-card`) while the OS would still prompt
   (`prompt`/`prompt-with-rationale`) and the card hasn't been dismissed.
-  Only its button calls `requestPermissions()`. The dismissal is kept in
+  Only its button and the Notifications page's Turn on (below) call
+  `requestPermissions()`. The dismissal is kept in
   `@capacitor/preferences` (`push.cardDismissed`) across logouts. Once
   permission is granted or denied the card is gone (Android 12 and lower
   grant without asking), and it's checked again on resume, for a change
@@ -911,6 +914,33 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   `DEVICE_TOKEN_NOT_FOUND` or no response is ignored. A session the server
   ends can't unregister; FCM's pruning and the next sign-in's registration
   cover that.
+- **Settings.** Settings → Notifications (`/tabs/my-work/settings/notifications`,
+  `src/app/pages/notification-settings/`) shows the OS permission from
+  `PushService.permission`: Turn on (`enable()`) while the OS would still
+  prompt, Open settings once it's denied, or that push is only on the phone
+  apps (web) or not set up in this build. Open settings is
+  `capacitor-native-settings` with `AppNotification`, the app's own
+  notification screen. PushService's resume check updates the page after a
+  trip there.
+  - On Android 12 and lower the messaging plugin's `checkPermissions()` and
+    `requestPermissions()` answer `granted` without checking, so turning
+    notifications off in Settings would never show. On Android, a `granted`
+    is checked against the app's own `NotificationState` plugin
+    (`NotificationStatePlugin.java`, registered in `MainActivity`;
+    `NotificationManagerCompat.areNotificationsEnabled()`), and reads as
+    `denied` when they're off.
+  - Under that are the caller's push preferences
+    (`GET`/`PATCH /push/preferences`, stored per account on the server, so
+    they follow it to every phone). `PUSH_PREFERENCE_SECTIONS`
+    (`src/core/push/`) puts the 11 types under 7 plain names, e.g. Mentions
+    is `MENTION` and `DESCRIPTION_MENTION`. A group is on while any of its
+    types is, and a change writes all of them. A type the app doesn't know
+    gets no toggle.
+  - A toggle applies at once and PATCHes only its types. The response isn't
+    applied, so a toggle saved meanwhile isn't undone; a failure puts back
+    that group and toasts the server's message.
+  - The toggles are disabled until permission is granted. They only filter
+    pushes: the Inbox still lists everything, and the page says so.
 - **Android.** Pushes go to the "Task updates" channel (`task_updates`,
   default importance), which `PushService` creates and `AndroidManifest.xml`
   names as FCM's default. `POST_NOTIFICATIONS` comes from the plugin's
@@ -1306,6 +1336,6 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-opening a task from a push, foreground pushes, notification settings and iOS
-push in release builds (FM-7's later slices), offline caching, app store
+opening a task from a push, foreground pushes, and iOS push in release
+builds (FM-7's later slices), offline caching, app store
 assets, and Play Store upload.

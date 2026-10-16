@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { AlertController } from '@ionic/angular';
 import { buildInfo } from '../../../environments/build-info';
 import { environment } from '../../../environments/environment';
@@ -40,6 +41,7 @@ describe('SettingsPage', () => {
     await TestBed.configureTestingModule({
       imports: [SettingsPage],
       providers: [
+        provideRouter([]),
         { provide: AuthService, useValue: auth },
         { provide: AlertController, useValue: alerts },
         { provide: AppLockService, useValue: lock },
@@ -82,6 +84,14 @@ describe('SettingsPage', () => {
   it('shows the signed-in account', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Me Flux');
+  });
+
+  it('links to the notification settings', () => {
+    const item = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('ion-item')
+    ).find((el) => el.textContent?.includes('Notifications'));
+
+    expect(item?.getAttribute('routerLink')).toBe('notifications');
   });
 
   it('logs out once the user confirms', async () => {

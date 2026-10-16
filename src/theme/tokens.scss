@@ -733,6 +733,29 @@ $flux-type: (
     size: 14px,
     weight: 600,
   ),
+  // Inbox (FM-43, 3l): Mark all read, a row's lead (the actor, bold while
+  // unread), its verb and its subject.
+  inbox-action: (
+      size: 12.5px,
+      weight: 600,
+    ),
+  inbox-lead: (
+    size: 13.5px,
+    weight: 700,
+  ),
+  inbox-lead-read: (
+    size: 13.5px,
+    weight: 600,
+  ),
+  inbox-verb: (
+    size: 12px,
+    weight: 450,
+  ),
+  inbox-subject: (
+    size: 13.5px,
+    line: 19px,
+    weight: 450,
+  ),
 ) !default;
 
 // Ionic's named colours, built from the scales above. Each needs only a

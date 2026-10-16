@@ -134,6 +134,13 @@ export type TaskParentChange = { parentTaskId: string | null };
  * the spec types the body as a map of booleans without naming the key.
  */
 export type TaskSubscription = { subscribed?: boolean };
+/**
+ * The caller's unread notifications, of every type or the `type` asked for.
+ * Hand-written: the spec types the body as a map of numbers.
+ */
+export type UnreadCount = { unreadCount?: number };
+/** How many notifications Mark all read changed. Hand-written, as above. */
+export type MarkedAllRead = { markedAsRead?: number };
 
 /**
  * The backend's paged list (`PagedResponse*` in the spec). Hand-written and

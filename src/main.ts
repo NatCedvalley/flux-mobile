@@ -16,6 +16,7 @@ import { routes } from './app/app.routes';
 import { AuthService } from './app/auth/auth.service';
 import { BackButtonService } from './app/back-button/back-button.service';
 import { registerFluxIcons } from './app/icons/register-icons';
+import { InboxService } from './app/inbox/inbox.service';
 import { AppLockService } from './app/lock/app-lock.service';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
@@ -64,5 +65,7 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(BackButtonService).init()),
     // Not awaited: push setup mustn't hold up the first screen.
     provideAppInitializer(() => void inject(PushService).init()),
+    // The Inbox tab's badge: unread counts, kept for the signed-in account.
+    provideAppInitializer(() => inject(InboxService).init()),
   ],
 });

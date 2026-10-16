@@ -5,6 +5,7 @@ import type {
   CommentReaction,
   DeviceRegistration,
   Label,
+  MarkedAllRead,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -32,6 +33,7 @@ import type {
   TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
+  UnreadCount,
   WorkflowStatus,
 } from './types';
 import { type FetchFn, JsonHttpClient, type QueryParams } from '../http';
@@ -317,6 +319,18 @@ export class HttpFluxApi implements FluxApi {
     query?: NotificationsQuery
   ): Promise<Page<AppNotification>> {
     return this.get('/notifications', query);
+  }
+
+  notificationUnreadCount(type?: string): Promise<UnreadCount> {
+    return this.get('/notifications/unread-count', { type });
+  }
+
+  markNotificationRead(id: string): Promise<AppNotification> {
+    return this.send('PATCH', `/notifications/${encodeURIComponent(id)}/read`);
+  }
+
+  markAllNotificationsRead(): Promise<MarkedAllRead> {
+    return this.send('PATCH', '/notifications/read-all');
   }
 
   async registerDevice(device: DeviceRegistration): Promise<void> {

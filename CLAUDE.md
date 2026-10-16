@@ -45,7 +45,8 @@ src/
               upload, opening and the file sources (attachments/), the
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push and the
-              Inbox's permission card (push/), the Notifications
+              Inbox's permission card (push/), the Inbox's unread
+              counts and its row (inbox/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
 ```
@@ -68,7 +69,8 @@ src/
 **My Work** (`/tabs/my-work`, the default), **Projects** (`/tabs/projects`)
 and **Inbox** (`/tabs/inbox`). The design has no Settings tab: Settings is
 pushed onto the My Work stack (`/tabs/my-work/settings`) from the avatar
-button. Task detail is routed under every tab as
+button. The Inbox page lives in `src/app/pages/notifications/` (its route
+and file names predate the tab). Task detail is routed under every tab as
 `tasks/:projectId/:taskId` (tasks are project-scoped), so it pushes onto the
 tab it was opened from and back returns there; its route `data.backHref` is
 the fallback for a deep link. Link to it relative to the current tab
@@ -664,6 +666,69 @@ pad their bottom so it never covers the last row. It opens the create sheet
   My Work reloads its lists instead, because its rows carry project and
   status names a created task lacks.
 
+### Inbox
+
+The Inbox tab (handoff 3l, `src/app/pages/notifications/`) lists the
+account's notifications, newest first.
+
+- **Header:** "Inbox" over `4 unread · 1 mention`, and an outline Mark all
+  read (`check-check`, disabled at 0 unread). The push card
+  (`app-push-card`, see Push below) sits at the top of the list.
+- **Segments:** All, Mentions (`MENTION,DESCRIPTION_MENTION`, with a red
+  count while it has unread) and Assigned (`ASSIGNMENT`), from
+  `INBOX_SEGMENTS` (`src/core/inbox/`). Each is its own
+  `GET /notifications?type=` query, paged 30 at a time with `PagedList`,
+  and loads the first time it's opened. Each segment has its own `opened`
+  signal: a resource whose params read a shared signal reloads whenever
+  that signal changes, even when its params come out the same.
+- **Groups:** Today and Earlier by the device's local day (`inboxGroups()`),
+  in the server's order, under 32px sticky headers. With every page loaded,
+  a footer hint says "Swipe a notification to mark read or mute the task".
+  Pull-to-refresh, infinite scroll with Retry, skeleton, error and the
+  "You're all caught up" empty state are the shared ones.
+- **Rows** (`app-notification-row`, `src/app/inbox/notification-row/`):
+  `notificationView()` splits the message, which the server always writes
+  as `<actor><verb>: <subject>`. With FM-42's actor fields the name leads
+  (700 while unread, 600 once read) and the rest is the verb ("and 1 other
+  reacted to your comment on"). An older row has no actor, so its whole
+  prefix leads. Comments, mentions and reactions lead with the actor's
+  32px avatar, everything else with a tinted glyph (Activity's icons and
+  tones). Unread rows get a 3px `--flux-p9` rail on the item's `native`
+  part, so it slides with a swipe. The age is `relativeTime()`, and task
+  rows end with the mono key and the project.
+- **Tap:** an unread row is marked read at once with
+  `PATCH /notifications/{id}/read`, and put back with the server's message
+  if that's refused. A row that `opensTask()` (a TASK with a key, not
+  TASK_DELETED) then pushes task detail onto the Inbox stack. A release,
+  a deleted task or a row from before FM-42 only marks itself read.
+- **Swipes,** both at the end. A light haptic on reveal, a medium one on
+  commit.
+  - Mark read (indigo, `expandable`, unread rows only) shows the row as
+    read at once with a 4 s Undo. The server has no way back to unread, so
+    the PATCH waits for `UndoToastService.offer()`'s `onExpire`, which
+    runs when the toast goes without Undo (timed out, or replaced by
+    another toast). A read is lost if the app is killed in those 4 s.
+  - Mute (gray, task rows only) is `DELETE .../subscribe` with a short
+    `Muted CHK-142` toast and no Undo. It only stops the task's activity
+    notifications, not mentions or assignments, so it's labelled only
+    "Mute".
+- **Mark all read** sets every loaded row and both counts to read at once,
+  then `PATCH /notifications/read-all`, with no Undo or confirm. It first
+  takes down a pending swipe's Undo (which sends that read). A failure
+  puts everything back with the server's message.
+- A read change edits the row in every segment it's loaded in (a mention
+  is in All too), and moves the counts at once.
+- **Counts:** `InboxService` (`src/app/inbox/`, started from an app
+  initializer) holds `unread` and `mentions`, two
+  `GET /notifications/unread-count` calls, undefined until loaded. They
+  load once the session is restored and on each sign-in, clear on
+  sign-out, and refresh on app resume, on pull-to-refresh and after each
+  read write settles. A count that fails keeps its last value.
+- **Tab badge:** the Inbox tab shows `unread` as a red `ion-badge` (17px,
+  `--flux-red9`, a 2px ring in the tab bar's colour), `99+` above 99 and
+  hidden at 0. The handoff's "seen" marker (`/unseen-count`) is the web
+  bell's; the app uses unread. The server sets no app icon badge.
+
 ## 4. API layer
 
 `src/core/api/flux-api.ts` defines a small, hand-written `FluxApi` interface
@@ -675,8 +740,9 @@ delete and toggle a
 reaction), attachments (list and upload) and subscription (read,
 subscribe, unsubscribe), my projects, workflow statuses, resolutions, task view
 settings (read and update), labels (list, add to and remove from a task),
-assignable members, notifications, push device registration (register
-and unregister) and push preferences (read and update). The types it uses (`Task`, `MyTask`, `MyProject`, …) are
+assignable members, notifications (list, unread count, mark one or all
+read), push device registration (register and unregister) and push
+preferences (read and update). The types it uses (`Task`, `MyTask`, `MyProject`, …) are
 aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
@@ -713,7 +779,13 @@ reactions toggle hers. Project p1 has five labels. CHK-142
 carries the detail fixtures (Markdown description, parent, release, a
 comment thread with a reply, reactions and an Editor.js body, a day-split
 activity timeline, and bug fields detail doesn't show), and the EPIC
-CHK-120 has two subtasks.
+CHK-120 has two subtasks. Ada has nine notifications, three of them from
+the last few hours and four unread (one a mention), covering mentions, an
+assignment, a reaction "and 1 other", a release, a deleted task and a row
+from before FM-42 with no actor or key. They filter by read state and a
+`type` comma list (an unknown type is a 400 `INVALID_NOTIFICATION_TYPE`),
+and marking one (a 404 `NOTIFICATION_NOT_FOUND` for an unknown id) or all
+of them read changes the instance's list.
 
 ### Authentication
 

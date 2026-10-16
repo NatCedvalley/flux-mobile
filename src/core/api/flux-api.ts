@@ -4,6 +4,7 @@ import type {
   CommentReaction,
   DeviceRegistration,
   Label,
+  MarkedAllRead,
   MyProject,
   MyProjectsQuery,
   MyTask,
@@ -30,6 +31,7 @@ import type {
   TaskUpdate,
   TaskViewSettings,
   TaskViewSettingsUpdate,
+  UnreadCount,
   WorkflowStatus,
 } from './types';
 
@@ -272,8 +274,23 @@ export type FluxApi = {
   /** GET /projects/{projectId}/members/assignable: unpaged, in no order. */
   listAssignableMembers(projectId: string): Promise<ProjectMember[]>;
 
-  /** GET /notifications */
+  /**
+   * GET /notifications: newest first. `type` is a comma list of types; an
+   * unknown one is a 400 `INVALID_NOTIFICATION_TYPE`.
+   */
   listNotifications(query?: NotificationsQuery): Promise<Page<AppNotification>>;
+
+  /** GET /notifications/unread-count, of every type or the `type` comma list. */
+  notificationUnreadCount(type?: string): Promise<UnreadCount>;
+
+  /**
+   * PATCH /notifications/{id}/read. 404 `NOTIFICATION_NOT_FOUND` for
+   * someone else's. There is no way back to unread.
+   */
+  markNotificationRead(id: string): Promise<AppNotification>;
+
+  /** PATCH /notifications/read-all */
+  markAllNotificationsRead(): Promise<MarkedAllRead>;
 
   /** PUT /push/devices: registers the token for the caller (an upsert). */
   registerDevice(device: DeviceRegistration): Promise<void>;

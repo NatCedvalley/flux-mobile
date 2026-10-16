@@ -435,10 +435,59 @@ describe('InMemoryFluxApi', () => {
   });
 
   it('lists notifications, optionally only unread ones', async () => {
-    expect((await api.listNotifications()).content).toHaveLength(3);
+    expect((await api.listNotifications()).content).toHaveLength(9);
+    expect(
+      (await api.listNotifications({ isRead: false })).content?.map((n) => n.id)
+    ).toEqual(['n1', 'n2', 'n4', 'n7']);
+  });
+
+  it('lists notifications of the types asked for', async () => {
+    const page = await api.listNotifications({
+      type: 'MENTION,DESCRIPTION_MENTION',
+    });
+    expect(page.content?.map((n) => n.id)).toEqual(['n1', 'n5']);
+    expect(page.totalElements).toBe(2);
+  });
+
+  it('refuses an unknown notification type, as the server does', async () => {
+    await expect(api.listNotifications({ type: 'NOPE' })).rejects.toMatchObject(
+      { status: 400, body: { code: 'INVALID_NOTIFICATION_TYPE' } }
+    );
+    await expect(api.notificationUnreadCount('NOPE')).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+
+  it('counts unread notifications, of every type or some', async () => {
+    await expect(api.notificationUnreadCount()).resolves.toEqual({
+      unreadCount: 4,
+    });
+    await expect(
+      api.notificationUnreadCount('MENTION,DESCRIPTION_MENTION')
+    ).resolves.toEqual({ unreadCount: 1 });
+  });
+
+  it('marks one notification read', async () => {
+    await expect(api.markNotificationRead('n2')).resolves.toMatchObject({
+      id: 'n2',
+      isRead: true,
+    });
+    await expect(api.notificationUnreadCount()).resolves.toEqual({
+      unreadCount: 3,
+    });
+    await expect(api.markNotificationRead('nope')).rejects.toMatchObject({
+      status: 404,
+      body: { code: 'NOTIFICATION_NOT_FOUND' },
+    });
+  });
+
+  it('marks every notification read', async () => {
+    await expect(api.markAllNotificationsRead()).resolves.toEqual({
+      markedAsRead: 4,
+    });
     expect(
       (await api.listNotifications({ isRead: false })).content
-    ).toHaveLength(2);
+    ).toHaveLength(0);
   });
 
   it('changes a status, answering without the joined fields', async () => {

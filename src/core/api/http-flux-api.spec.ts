@@ -402,6 +402,46 @@ describe('HttpFluxApi', () => {
     });
   });
 
+  it('lists notifications of some types', async () => {
+    const { api, url } = setup({ content: [] });
+    await api.listNotifications({ type: 'MENTION,DESCRIPTION_MENTION' });
+    expect(url()).toBe(
+      `${BASE_URL}/notifications?type=MENTION%2CDESCRIPTION_MENTION`
+    );
+  });
+
+  it('counts unread notifications, optionally of some types', async () => {
+    const { api, fetchFn } = setup({ unreadCount: 3 });
+    await expect(api.notificationUnreadCount()).resolves.toEqual({
+      unreadCount: 3,
+    });
+    await api.notificationUnreadCount('ASSIGNMENT');
+    expect(fetchFn.mock.calls.map(([u]) => u)).toEqual([
+      `${BASE_URL}/notifications/unread-count`,
+      `${BASE_URL}/notifications/unread-count?type=ASSIGNMENT`,
+    ]);
+  });
+
+  it('marks a notification read with a PATCH and no body', async () => {
+    const { api, url, init } = setup({ id: 'n1', isRead: true });
+    await expect(api.markNotificationRead('n1')).resolves.toEqual({
+      id: 'n1',
+      isRead: true,
+    });
+    expect(url()).toBe(`${BASE_URL}/notifications/n1/read`);
+    expect(init().method).toBe('PATCH');
+    expect(init().body).toBeUndefined();
+  });
+
+  it('marks every notification read', async () => {
+    const { api, url, init } = setup({ markedAsRead: 4 });
+    await expect(api.markAllNotificationsRead()).resolves.toEqual({
+      markedAsRead: 4,
+    });
+    expect(url()).toBe(`${BASE_URL}/notifications/read-all`);
+    expect(init().method).toBe('PATCH');
+  });
+
   it('makes every call through withAccessToken', async () => {
     const fetchFn = vi.fn().mockResolvedValue(jsonResponse(200, {}));
     const withAccessToken = vi.fn(withToken) as unknown as WithAccessToken;

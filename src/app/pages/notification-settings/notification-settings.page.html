@@ -1,0 +1,92 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/my-work/settings"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Notifications</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (permission(); as permission) {
+    <ion-list class="permission">
+      <ion-item>
+        @switch (permission) {
+          @case ('web') {
+            <ion-label class="ion-text-wrap"
+              >Push notifications are only on the Flux phone apps.</ion-label
+            >
+          }
+          @case ('unavailable') {
+            <ion-label class="ion-text-wrap"
+              >Push isn't set up in this build.</ion-label
+            >
+          }
+          @case ('prompt') {
+            <ion-label class="ion-text-wrap">Notifications are off</ion-label>
+            <ion-button
+              slot="end"
+              size="small"
+              (click)="push.enable()"
+              >Turn on</ion-button
+            >
+          }
+          @case ('denied') {
+            <ion-label class="ion-text-wrap"
+              >Notifications are blocked in your phone's settings</ion-label
+            >
+            <ion-button
+              slot="end"
+              size="small"
+              (click)="push.openSettings()"
+              >Open settings</ion-button
+            >
+          }
+          @case ('granted') {
+            <ion-label>Notifications are on</ion-label>
+          }
+        }
+      </ion-item>
+    </ion-list>
+  }
+
+  @if (preferences.error(); as error) {
+    <app-error-state
+      [error]="error"
+      subject="your notification settings"
+      (retry)="preferences.reload()"
+    />
+  } @else if (preferences.hasValue()) {
+    @if (permission() === 'prompt' || permission() === 'denied') {
+      <p class="note">
+        Turn on notifications to choose which ones reach this phone.
+      </p>
+    }
+    @for (section of sections; track section.title) {
+      <ion-list>
+        <ion-list-header>
+          <ion-label>{{ section.title }}</ion-label>
+        </ion-list-header>
+        @for (group of section.groups; track group.id) {
+          <ion-item>
+            <ion-toggle
+              [checked]="enabled(group)"
+              [disabled]="!granted()"
+              (ionChange)="toggle(group, $event.detail.checked)"
+              >{{ group.label }}</ion-toggle
+            >
+          </ion-item>
+        }
+      </ion-list>
+    }
+    <p class="note">
+      These only choose what reaches your phone. The Inbox still lists every
+      notification.
+    </p>
+  } @else {
+    <app-skeleton-rows
+      [count]="7"
+      [rowHeight]="44"
+    />
+  }
+</ion-content>

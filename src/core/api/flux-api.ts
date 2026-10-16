@@ -15,6 +15,7 @@ import type {
   PageQuery,
   ProjectMember,
   ProjectTasksQuery,
+  PushPreference,
   Task,
   TaskActivity,
   TaskAssign,
@@ -282,4 +283,15 @@ export type FluxApi = {
    * token isn't registered to the caller.
    */
   unregisterDevice(token: string): Promise<void>;
+
+  /** GET /push/preferences: every type, in the server's order. */
+  pushPreferences(): Promise<PushPreference[]>;
+
+  /**
+   * PATCH /push/preferences: changes only the types listed (at least one)
+   * and returns every type.
+   */
+  updatePushPreferences(
+    preferences: PushPreference[]
+  ): Promise<PushPreference[]>;
 };

@@ -40,6 +40,12 @@
     }
     <ion-item
       button
+      routerLink="notifications"
+    >
+      <ion-label>Notifications</ion-label>
+    </ion-item>
+    <ion-item
+      button
       detail="false"
       [disabled]="loggingOut()"
       (click)="confirmLogout()"

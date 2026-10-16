@@ -25,6 +25,8 @@ import type {
   MyTaskResponse,
   NotificationResponse,
   ProjectMemberResponse,
+  PushPreferenceItem,
+  PushPreferencesResponse,
   RegisterDeviceTokenRequest,
   ReorderTasksRequest,
   TaskActivityResponse,
@@ -61,6 +63,14 @@ export type AppNotification = NotificationResponse;
  */
 export type DeviceRegistration = RegisterDeviceTokenRequest;
 export type DevicePlatform = DeviceRegistration['platform'];
+/**
+ * Whether pushes of one notification type reach the caller's phones. A type
+ * the caller never changed is on.
+ */
+export type PushPreference = PushPreferenceItem;
+export type PushNotificationType = PushPreference['type'];
+/** The body of GET and PATCH /push/preferences. */
+export type PushPreferences = PushPreferencesResponse;
 /** One entry of a task's activity timeline. */
 export type TaskActivity = TaskActivityResponse;
 /** A top-level comment carries its replies in `replies`. */

@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   AlertController,
   IonHeader,
@@ -34,6 +35,7 @@ import { AppLockService } from '../../lock/app-lock.service';
     IonLabel,
     IonNote,
     IonToggle,
+    RouterLink,
   ],
 })
 export class SettingsPage {

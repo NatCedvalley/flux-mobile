@@ -4,7 +4,8 @@ import { PushService } from '../push.service';
 
 /**
  * The Inbox's "Get notified on your phone" card: says what push will send,
- * and its button is the only thing that brings up the OS permission prompt.
+ * and its button brings up the OS permission prompt (as does the
+ * Notifications page's Turn on).
  * The page shows it while `PushService.showCard()` is true.
  */
 @Component({

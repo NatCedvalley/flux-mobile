@@ -892,7 +892,9 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   (`npm run android`/`ios` do one). The Gradle google-services plugin is
   applied only when the json exists, and iOS copies the plist into the app
   in a build phase ("Copy GoogleService-Info.plist if present"), because a
-  Resources entry for a missing file fails the build. The local backend
+  Resources entry for a missing file fails the build. The release
+  workflows write both files from secrets before the web build (see
+  [§9 Push in release builds](#push-in-release-builds)). The local backend
   sends pushes only with `flux.push.fcm.service-account-base64` set.
 - **Permission** is never asked at launch. The Inbox shows a "Get notified
   on your phone" card (`app-push-card`) while the OS would still prompt
@@ -948,10 +950,10 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   manifest. There's no monochrome notification icon yet, so the status bar
   draws the launcher icon.
 - **iOS.** `AppDelegate` forwards the APNs token and background pushes to
-  the plugin, `Info.plist` has `UIBackgroundModes` `remote-notification`,
-  and `App/App.entitlements` (`aps-environment` development) is set on the
-  Debug config only: Release signs with the "Flux App Store" profile, which
-  has no Push capability yet. The SPM package needs `symlink: true`
+  the plugin, and `Info.plist` has `UIBackgroundModes` `remote-notification`.
+  Debug signs with `App/App.entitlements` (`aps-environment` development)
+  and Release with `App/App.Release.entitlements` (production), which the
+  "Flux App Store" profile's Push capability allows. The SPM package needs `symlink: true`
   (`capacitor.config.ts`). `cap sync` then creates the gitignored
   `CapApp-SPM/symlinks/`, which fails on Windows without Developer Mode
   (EPERM), so edit `Package.swift` by hand there.
@@ -983,8 +985,6 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   title as its header, then its body) with Open, which opens it as a tap
   does. At the top it can't meet the Undo toast, the tab bar or task
   detail's docked bar. A newer push replaces it.
-- Not handled yet: push in release builds (their workflows have no config
-  files).
 
 ### Regenerating API types
 
@@ -1206,8 +1206,11 @@ release → Run workflow, or
 `configuration` input of `production` (default) or `staging` (staging API
 URLs are still placeholders — see [§6](#6-environments)).
 
-Steps: `npm ci`, the web build for that configuration, `npx cap sync android`,
-then `./gradlew bundleRelease assembleRelease` on JDK 21. It checks that the
+Steps: `npm ci`, writing `android/app/google-services.json` from its secret
+(see [Push in release builds](#push-in-release-builds)), the web build for
+that configuration (which fails if `build-info.ts` has push off for Android),
+`npx cap sync android`, then `./gradlew bundleRelease assembleRelease` on
+JDK 21. It checks that the
 APK verifies with `apksigner` and the AAB with `jarsigner`, writes the signing
 certificate's SHA-256 to the job summary, and uploads
 `flux-<configuration>-<version>-<versionCode>.apk` and `.aab` as one
@@ -1223,10 +1226,11 @@ that ever happens, add an offset so `versionCode` keeps increasing, or
 installed builds won't accept the update.
 
 **Secrets.** The job uses the `android-release` GitHub Environment (repo
-Settings → Environments), which must hold four secrets:
-`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`
-and `ANDROID_KEY_PASSWORD`. The job fails fast with a clear message if any is
-missing. The keystore is decoded into the runner's temp directory and handed
+Settings → Environments), which must hold five secrets:
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+`ANDROID_KEY_PASSWORD` and `ANDROID_GOOGLE_SERVICES_JSON_BASE64` (see
+[Push in release builds](#push-in-release-builds)). The job fails fast with
+a clear message if any is missing. The keystore is decoded into the runner's temp directory and handed
 to Gradle as `ANDROID_SIGNING_*` environment variables for that one step.
 Never give a signing variable a `FLUX_` prefix: `write-build-info.mjs` copies
 every `FLUX_*` variable into the app bundle (see [§6](#6-environments)).
@@ -1265,14 +1269,18 @@ uploads it to TestFlight. It runs **only on manual `workflow_dispatch`**
 boolean (default `true`; `-f upload=false` builds and signs without
 uploading).
 
-Steps on a `macos-26` runner: `npm ci`, the web build for that configuration,
+Steps on a `macos-26` runner: `npm ci`, writing
+`ios/App/App/GoogleService-Info.plist` from its secret (see
+[Push in release builds](#push-in-release-builds)), the web build for that
+configuration (which fails if `build-info.ts` has push off for iOS),
 `npx cap sync ios`, then the signing certificate is imported into a temporary
 keychain and the provisioning profile installed. `xcodebuild archive` builds
 the `App` scheme's Release configuration, and `xcodebuild -exportArchive`
 exports an `.ipa` using `ios/App/ExportOptions.plist`. The job checks with
 `codesign` that the app is signed by an Apple Distribution certificate for
-team `44UNNHB3V6`, and that its version and build number are the expected
-ones, writes both to the job summary, and uploads
+team `44UNNHB3V6`, that its version and build number are the expected
+ones, and that it carries `GoogleService-Info.plist` and is signed with
+`aps-environment` production. It writes these to the job summary, and uploads
 `flux-<configuration>-<version>-<buildNumber>.ipa` as an `ios-release`
 artifact (kept 30 days). If `upload` is set, `xcrun altool --upload-app`
 sends it to App Store Connect; the build then appears under TestFlight once
@@ -1281,8 +1289,9 @@ the end of every run.
 
 **Signing settings.** The App target's **Release** config uses manual
 signing: `DEVELOPMENT_TEAM = 44UNNHB3V6`, identity `Apple Distribution`,
-profile `Flux App Store` (in `project.pbxproj`; the team ID is also in the
-workflow's `APPLE_TEAM_ID`). Debug keeps automatic signing, so simulator and
+profile `Flux App Store`, entitlements `App/App.Release.entitlements`
+(`aps-environment` production; in `project.pbxproj`, and the team ID is also
+in the workflow's `APPLE_TEAM_ID`). Debug keeps automatic signing, so simulator and
 device runs from Xcode or `npm run ios` are unaffected. These settings live
 in the target rather than on the `xcodebuild` command line, where they would
 also apply to the Capacitor Swift package targets and break the build.
@@ -1301,9 +1310,11 @@ workflow file is renamed or recreated, add an offset so the build number
 keeps increasing, or App Store Connect will reject the upload.
 
 **Secrets.** The job uses the `ios-release` GitHub Environment, which must
-hold six secrets: `IOS_DIST_CERT_P12_BASE64`, `IOS_DIST_CERT_PASSWORD`,
+hold seven secrets: `IOS_DIST_CERT_P12_BASE64`, `IOS_DIST_CERT_PASSWORD`,
 `IOS_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_API_KEY_ID`,
-`APP_STORE_CONNECT_API_ISSUER_ID` and `APP_STORE_CONNECT_API_KEY_P8_BASE64`.
+`APP_STORE_CONNECT_API_ISSUER_ID`, `APP_STORE_CONNECT_API_KEY_P8_BASE64` and
+`IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` (see
+[Push in release builds](#push-in-release-builds)).
 The job fails fast with a clear message if any is missing. The same rule as
 Android applies: never give a signing variable a `FLUX_` prefix. `*.p12`,
 `*.cer`, `*.mobileprovision` and `*.p8` are gitignored repo-wide.
@@ -1349,7 +1360,7 @@ vault: the private key must never end up in a commit.
 7. Store the key, `.p12` and its password, profile and `.p8` in the company
    password vault.
 8. `base64 -w0` the `.p12`, `.mobileprovision` and `.p8`, and save them with
-   the `.p12` password, Key ID and Issuer ID as the six secrets in the
+   the `.p12` password, Key ID and Issuer ID as the six signing secrets in the
    `ios-release` Environment. Optionally add required reviewers there.
 9. In App Store Connect → TestFlight, create an internal testing group and
    add testers. They install builds with the TestFlight app on their device.
@@ -1357,9 +1368,60 @@ vault: the private key must never end up in a commit.
 **Renewal.** The distribution certificate and the profile expire after a
 year. Create a new certificate (steps 2–3), regenerate the profile under the
 same name `Flux App Store` (step 4), and replace the three affected secrets.
+The profile takes its capabilities from the App ID, so it keeps Push.
+
+### Push in release builds
+
+Both release workflows write the Firebase config (see Push in
+[§4](#push)) from a secret before the web build, so `write-build-info.mjs`
+turns push on, and fail fast when the secret is missing, doesn't decode, or
+is for another app. The files aren't server secrets (they ship inside every
+build), but they stay out of the repo like the rest of the signing
+material. Both apps live in the Firebase project `flux-web-469d3` (shared
+with flux-web), which every configuration uses, so each platform has one
+secret.
+
+| Environment       | Secret                                 | File                                   |
+| ----------------- | -------------------------------------- | -------------------------------------- |
+| `android-release` | `ANDROID_GOOGLE_SERVICES_JSON_BASE64`  | `android/app/google-services.json`     |
+| `ios-release`     | `IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `ios/App/App/GoogleService-Info.plist` |
+
+**Setting it up.** Done once, by someone with access to the Apple Developer
+account, the Firebase console and the vault. Steps 1–4 come before the iOS
+workflow's next run: the Release entitlements ask for `aps-environment`, and
+a profile without Push fails the archive.
+
+1. In the Apple Developer portal, under Identifiers → `asia.justflux.mobile`,
+   enable **Push Notifications**. Skip its SSL certificates: the key below
+   replaces them.
+2. Under Keys → +, create a key with **Apple Push Notifications service
+   (APNs)** for Sandbox & Production. Download the `.p8` (it can only be
+   downloaded once), note its Key ID, and store both in the vault.
+3. In the Firebase console (`flux-web-469d3`):
+   - Project settings → General → Add app → iOS, bundle ID
+     `asia.justflux.mobile`, and download `GoogleService-Info.plist`. The
+     Android app is already registered there; its `google-services.json`
+     is under the same page.
+   - Project settings → Cloud Messaging → Apple app configuration: upload
+     the `.p8` as the APNs authentication key, with its Key ID and team
+     `44UNNHB3V6`. One key serves development and production.
+4. Under Profiles, edit `Flux App Store`, save it to regenerate it with
+   Push, download it, and replace `IOS_PROVISIONING_PROFILE_BASE64` with its
+   `base64 -w0`.
+5. `base64 -w0` both Firebase files and save them as the two secrets above.
+   Like every secret here, never with a `FLUX_` prefix.
+
+Production sends pushes only once its backend has
+`FIREBASE_SERVICE_ACCOUNT_BASE64` set in `.env.production`, a backend
+deploy step outside this repo.
+
+**The APNs key** never expires, but it can only be downloaded once, so the
+vault holds the only copy. Firebase keeps a copy for sending, and nothing
+else needs it. To replace it (lost, or leaked), create a new key, upload it
+to Firebase, then revoke the old one; a team can hold two APNs keys at once,
+which allows the overlap.
 
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-iOS push in release builds (FM-46), offline caching, app store
-assets, and Play Store upload.
+offline caching, app store assets, and Play Store upload.

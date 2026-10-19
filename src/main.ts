@@ -21,6 +21,7 @@ import { AppLockService } from './app/lock/app-lock.service';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
+import { PushOpenService } from './app/push/push-open.service';
 import { PushService } from './app/push/push.service';
 import { StatusBarService } from './app/status-bar/status-bar.service';
 import { environment } from './environments/environment';
@@ -65,6 +66,8 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(BackButtonService).init()),
     // Not awaited: push setup mustn't hold up the first screen.
     provideAppInitializer(() => void inject(PushService).init()),
+    // Listens for push taps here, so a cold start's tap isn't lost.
+    provideAppInitializer(() => inject(PushOpenService).init()),
     // The Inbox tab's badge: unread counts, kept for the signed-in account.
     provideAppInitializer(() => inject(InboxService).init()),
   ],

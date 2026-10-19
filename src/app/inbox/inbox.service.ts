@@ -31,6 +31,13 @@ export class InboxService {
   readonly unread = this.unreadCount.asReadonly();
   readonly mentions = this.mentionCount.asReadonly();
 
+  private readonly version = signal(0);
+  /**
+   * Bumped when the notifications changed outside the Inbox page (a push
+   * arrived, or one was read from a push), so a loaded Inbox reloads.
+   */
+  readonly listVersion = this.version.asReadonly();
+
   /** Bumped by a sign-out, so a refresh started before it is dropped. */
   private generation = 0;
 
@@ -102,6 +109,11 @@ export class InboxService {
       this.unreadCount.set(unread);
       this.mentionCount.set(mentions);
     };
+  }
+
+  /** Tells a loaded Inbox page to reload its lists. */
+  listsChanged(): void {
+    this.version.update((version) => version + 1);
   }
 
   private clear(): void {

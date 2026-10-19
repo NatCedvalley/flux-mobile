@@ -493,6 +493,22 @@ describe('NotificationsPage', () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it('reloads the segments it has opened when a push changes the list', async () => {
+    await create();
+    await selectSegment('mentions');
+    const list = vi.spyOn(api, 'listNotifications');
+
+    TestBed.inject(InboxService).listsChanged();
+    fixture.detectChanges();
+    expect(element().querySelectorAll('app-notification-row')).toHaveLength(2);
+    await settle();
+
+    expect(list.mock.calls.map(([query]) => query?.type)).toEqual([
+      undefined,
+      'MENTION,DESCRIPTION_MENTION',
+    ]);
+  });
+
   it('pages as you scroll, with Retry when a page fails, then the hint', async () => {
     await create((api) =>
       vi

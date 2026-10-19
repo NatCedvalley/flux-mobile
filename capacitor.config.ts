@@ -20,6 +20,11 @@ const config: CapacitorConfig = {
       resize: KeyboardResize.Body,
       resizeOnFullScreen: true,
     },
+    // No system banner for a push while the app is open: the app shows its
+    // own toast, as on Android, which never shows one (FM-45).
+    FirebaseMessaging: {
+      presentationOptions: [],
+    },
   },
   experimental: {
     ios: {

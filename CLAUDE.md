@@ -44,8 +44,8 @@ src/
               create sheet and its button (task-create/), attachment
               upload, opening and the file sources (attachments/), the
               project board and its drag (board/), the project calendar
-              and its Unscheduled drawer (calendar/), push and the
-              Inbox's permission card (push/), the Inbox's unread
+              and its Unscheduled drawer (calendar/), push, opening
+              one and the Inbox's permission card (push/), the Inbox's unread
               counts and its row (inbox/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
@@ -722,8 +722,9 @@ account's notifications, newest first.
   initializer) holds `unread` and `mentions`, two
   `GET /notifications/unread-count` calls, undefined until loaded. They
   load once the session is restored and on each sign-in, clear on
-  sign-out, and refresh on app resume, on pull-to-refresh and after each
-  read write settles. A count that fails keeps its last value.
+  sign-out, and refresh on app resume, on pull-to-refresh, after each
+  read write settles, and for a push (see Push below). A count that
+  fails keeps its last value.
 - **Tab badge:** the Inbox tab shows `unread` as a red `ion-badge` (17px,
   `--flux-red9`, a 2px ring in the tab bar's colour), `99+` above 99 and
   hidden at 0. The handoff's "seen" marker (`/unseen-count`) is the web
@@ -958,8 +959,32 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   which isn't installed: `angular.json` lists `firebase/messaging` in
   `externalDependencies`, and that lazy chunk never loads, since push never
   calls the plugin on web.
-- Not handled yet: tapping a push, showing one in the foreground, and push
-  in release builds (their workflows have no config files).
+- **Opening.** `PushOpenService` (`src/app/push/`, its own app
+  initializer) listens for taps. The plugin keeps a cold start's tap until
+  that listener is added.
+  - `parsePushData()` and `pushTarget()` (`src/core/push/`) read the data
+    (`notificationId`, `type`, and `entityType`, `entityId`, `projectId`
+    when set). A TASK push other than TASK_DELETED with both ids opens the
+    task; a release, a deleted task or a missing id opens the Inbox. For
+    comments, mentions and reactions the task opens, not the comment.
+  - A tap waits until the session is restored and the lock is passed. With
+    no one signed in it's dropped, so a later sign-in opens nothing.
+  - It goes back to `/tabs/inbox` (no animation), then pushes
+    `/tabs/inbox/tasks/:p/:t`. A tab switch is always a back navigation
+    in Ionic, so pushing the task straight from another tab would leave it
+    alone on the Inbox stack, and Android's Back would leave the app.
+  - It marks the notification read (`PATCH`, a 404 ignored), then
+    refreshes the counts and calls `InboxService.listsChanged()`, which
+    makes a loaded Inbox page reload its opened segments.
+- **Foreground.** Android never shows a push while the app is open, and
+  iOS is told not to (`presentationOptions: []` in `capacitor.config.ts`,
+  not yet tried on an iPhone). `notificationReceived` refreshes the counts
+  and the Inbox, and shows a 5 s toast at the top of the screen (the push's
+  title as its header, then its body) with Open, which opens it as a tap
+  does. At the top it can't meet the Undo toast, the tab bar or task
+  detail's docked bar. A newer push replaces it.
+- Not handled yet: push in release builds (their workflows have no config
+  files).
 
 ### Regenerating API types
 
@@ -1336,6 +1361,5 @@ same name `Flux App Store` (step 4), and replace the three affected secrets.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-opening a task from a push, foreground pushes, and iOS push in release
-builds (FM-7's later slices), offline caching, app store
+iOS push in release builds (FM-46), offline caching, app store
 assets, and Play Store upload.

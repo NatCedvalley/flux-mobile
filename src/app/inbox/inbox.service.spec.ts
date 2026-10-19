@@ -131,4 +131,12 @@ describe('InboxService', () => {
     restore();
     expect([service.unread(), service.mentions()]).toEqual([4, 1]);
   });
+
+  it('bumps the list version when the notifications change elsewhere', () => {
+    const before = service.listVersion();
+
+    service.listsChanged();
+
+    expect(service.listVersion()).toBe(before + 1);
+  });
 });

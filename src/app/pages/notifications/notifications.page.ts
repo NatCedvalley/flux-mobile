@@ -7,6 +7,7 @@ import {
   inject,
   resource,
   signal,
+  untracked,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -155,6 +156,23 @@ export class NotificationsPage {
         void refresher.complete();
         this.refresher.set(undefined);
       }
+    });
+    // A push arrived, or one was read from a push: reload what's loaded,
+    // keeping the rows on screen meanwhile.
+    let seen = this.inbox.listVersion();
+    effect(() => {
+      const version = this.inbox.listVersion();
+      if (version === seen) {
+        return;
+      }
+      seen = version;
+      untracked(() => {
+        for (const { opened, results } of Object.values(this.lists)) {
+          if (opened()) {
+            results.reload();
+          }
+        }
+      });
     });
   }
 

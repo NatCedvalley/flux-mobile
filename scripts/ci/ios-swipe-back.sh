@@ -43,16 +43,19 @@ screenshot() {
 
 # Share of pixels that differ between two screenshots, from 0 to 1. The
 # simulator's screenshots are pixel-exact, so any change above 2 counts
-# (the canvas and row backgrounds differ by only ~6). The status bar is
-# cropped off, because its clock can change between shots.
+# (the canvas and row backgrounds differ by only ~6). The top 180 pt is
+# cropped off: the status bar's clock can change between shots, and an iOS
+# banner ("Ready for Apple Intelligence") once slid in there, blur reaching
+# ~170 pt, and passed for the tab switch. Real changes stay far above the
+# limits without it (tab switch ~29%, detail ~45%).
 difference() {
   python3 - "$OUT_DIR/$1" "$OUT_DIR/$2" <<'PY'
 import sys
 from PIL import Image, ImageChops
 
 a, b = (Image.open(p).convert('RGB') for p in sys.argv[1:3])
-status_bar = 62 * a.width // 402
-box = (0, status_bar, a.width, a.height)
+top = 180 * a.width // 402
+box = (0, top, a.width, a.height)
 diff = ImageChops.difference(a.crop(box), b.crop(box)).convert('L')
 changed = sum(diff.point(lambda v: 255 if v > 2 else 0).histogram()[255:])
 print(f'{changed / (diff.width * diff.height):.4f}')

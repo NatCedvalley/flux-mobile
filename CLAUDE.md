@@ -1182,7 +1182,9 @@ the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
 tab, and swipes from the left edge. idb can't see inside the WebView (its
 accessibility tree stops at the app), so the script taps fixed points on the
-iPhone 17 and judges the result from screenshots with Pillow. Sign-in must
+iPhone 17 and judges the result from screenshots with Pillow, ignoring the
+top 180 pt, where the clock and iOS's own banners (once "Ready for Apple
+Intelligence") change on their own. Sign-in must
 reach the mock IAM (checked in its log). After each tap or swipe the script
 polls screenshots for up to 45 s, because idb can deliver input ~15 s late
 on a slow runner: switching to Projects must change over 2% of pixels,

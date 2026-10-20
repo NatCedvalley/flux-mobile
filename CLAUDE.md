@@ -979,8 +979,8 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
     refreshes the counts and calls `InboxService.listsChanged()`, which
     makes a loaded Inbox page reload its opened segments.
 - **Foreground.** Android never shows a push while the app is open, and
-  iOS is told not to (`presentationOptions: []` in `capacitor.config.ts`,
-  not yet tried on an iPhone). `notificationReceived` refreshes the counts
+  iOS is told not to (`presentationOptions: []` in `capacitor.config.ts`).
+  `notificationReceived` refreshes the counts
   and the Inbox, and shows a 5 s toast at the top of the screen (the push's
   title as its header, then its body) with Open, which opens it as a tap
   does. At the top it can't meet the Undo toast, the tab bar or task
@@ -1413,7 +1413,20 @@ a profile without Push fails the archive.
 
 Production sends pushes only once its backend has
 `FIREBASE_SERVICE_ACCOUNT_BASE64` set in `.env.production`, a backend
-deploy step outside this repo.
+deploy step outside this repo. On the host, that file renders into
+`/etc/flux/operations.env` (`04-env-install.sh`, then restart
+`flux-operations.service`); the flux repo's deploy workflow only ships jars
+and never writes it.
+
+When pushes don't arrive but the Inbox row does:
+
+- **Neither platform gets them:** the backend isn't sending.
+  `sudo grep -c '^FIREBASE_SERVICE_ACCOUNT_BASE64=..' /etc/flux/operations.env`
+  prints `0`, and flux-operations logged `FCM push disabled` at startup.
+- **Android does, iPhones don't:** Firebase has no APNs key (Cloud
+  Messaging → Apple app configuration), so the backend logs
+  `FCM send to one device failed [code=THIRD_PARTY_AUTH_ERROR]`. Upload
+  the `.p8` to both the development and production slots.
 
 **The APNs key** never expires, but it can only be downloaded once, so the
 vault holds the only copy. Firebase keeps a copy for sending, and nothing

@@ -7,6 +7,7 @@ import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
 import { InboxService } from '../../inbox/inbox.service';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { PushService } from '../../push/push.service';
 import { NotificationsPage } from './notifications.page';
@@ -52,6 +53,7 @@ describe('NotificationsPage', () => {
   let toasts: ReturnType<typeof fakeToast>[];
   let toast: { create: ReturnType<typeof vi.fn> };
   let nav: { navigateForward: ReturnType<typeof vi.fn> };
+  let online: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -67,6 +69,7 @@ describe('NotificationsPage', () => {
     api = new InMemoryFluxApi(NOW);
     arrange(api);
     showCard = signal(false);
+    online = signal(true);
     toasts = [];
     toast = {
       create: vi.fn(() => {
@@ -84,6 +87,7 @@ describe('NotificationsPage', () => {
         { provide: PushService, useValue: { showCard } },
         { provide: ToastController, useValue: toast },
         { provide: NavController, useValue: nav },
+        { provide: ConnectivityService, useValue: { online } },
         {
           provide: AuthService,
           useValue: {
@@ -491,6 +495,102 @@ describe('NotificationsPage', () => {
     expect(list).toHaveBeenCalledTimes(1);
     expect(count).toHaveBeenCalledTimes(2);
     expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  describe('offline', () => {
+    async function goOffline(): Promise<void> {
+      online.set(false);
+      await settle();
+    }
+
+    it('keeps the rows on pull-to-refresh, and says so', async () => {
+      await create();
+      await goOffline();
+      const list = vi.spyOn(api, 'listNotifications');
+      const refresher = element().querySelector('ion-refresher')!;
+      const complete = vi.fn().mockResolvedValue(undefined);
+      Object.assign(refresher, { complete });
+
+      refresher.dispatchEvent(new CustomEvent('ionRefresh'));
+      await settle();
+
+      expect(complete).toHaveBeenCalledTimes(1);
+      expect(list).not.toHaveBeenCalled();
+      expect(element().querySelectorAll('app-notification-row')).toHaveLength(
+        9
+      );
+      expect(toastMessages()).toEqual(['You’re offline. Showing saved work.']);
+    });
+
+    it('opens a tapped task without marking it read', async () => {
+      await create();
+      await goOffline();
+      const mark = vi.spyOn(api, 'markNotificationRead');
+
+      row(MENTION).click();
+      await settle();
+
+      expect(nav.navigateForward).toHaveBeenCalled();
+      expect(mark).not.toHaveBeenCalled();
+      expect(isUnread(MENTION)).toBe(true);
+      expect(toastMessages()).toEqual([]);
+    });
+
+    it('says marking a release read needs a connection', async () => {
+      await create();
+      await goOffline();
+
+      row(RELEASE).click();
+      await settle();
+
+      expect(isUnread(RELEASE)).toBe(true);
+      expect(toastMessages()).toEqual(['Marking read needs a connection.']);
+    });
+
+    it('says a swipe’s Mark read needs a connection', async () => {
+      await create();
+      await goOffline();
+
+      option(COMMENT, 'read')!.click();
+      await settle();
+
+      expect(isUnread(COMMENT)).toBe(true);
+      expect(toastMessages()).toEqual(['Marking read needs a connection.']);
+    });
+
+    it('says Mark all read needs a connection', async () => {
+      await create();
+      await goOffline();
+      const markAll = vi.spyOn(api, 'markAllNotificationsRead');
+
+      element().querySelector<HTMLElement>('.mark-all')!.click();
+      await settle();
+
+      expect(markAll).not.toHaveBeenCalled();
+      expect(element().querySelectorAll('ion-item.unread')).toHaveLength(4);
+      expect(toastMessages()).toEqual(['Marking read needs a connection.']);
+    });
+
+    it('says loading more needs a connection', async () => {
+      await create((api) =>
+        vi
+          .spyOn(api, 'listNotifications')
+          .mockImplementation(manyNotifications(40))
+      );
+      await goOffline();
+      vi.mocked(api.listNotifications).mockRejectedValueOnce(new ApiError(0));
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const infinite = element().querySelector('ion-infinite-scroll')!;
+      Object.assign(infinite, {
+        complete: vi.fn().mockResolvedValue(undefined),
+      });
+      infinite.dispatchEvent(new CustomEvent('ionInfinite'));
+      await settle();
+
+      expect(texts('.load-more-error span')).toEqual([
+        'Loading more needs a connection.',
+      ]);
+    });
   });
 
   it('reloads the segments it has opened when a push changes the list', async () => {

@@ -132,7 +132,11 @@
         class="load-more-error"
         role="alert"
       >
-        <span>Couldn't load more notifications.</span>
+        <span>{{
+          online()
+            ? "Couldn't load more notifications."
+            : offlineMessages.loadMore
+        }}</span>
         <ion-button
           fill="clear"
           size="small"

@@ -83,7 +83,12 @@ import {
   TaskBoardComponent,
 } from '../../board/task-board/task-board.component';
 import { TaskCalendarComponent } from '../../calendar/task-calendar/task-calendar.component';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../../offline/offline-toast.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
@@ -198,6 +203,9 @@ export class ProjectTasksPage {
   private readonly creates = inject(CreateTaskLauncherService);
   private readonly nav = inject(NavController);
   private readonly route = inject(ActivatedRoute);
+  private readonly offlineToast = inject(OfflineToastService);
+  protected readonly online = inject(ConnectivityService).online;
+  protected readonly offlineMessages = OFFLINE_MESSAGES;
   private readonly content = viewChild.required(IonContent);
   private readonly board = viewChild(TaskBoardComponent);
   private readonly calendar = viewChild(TaskCalendarComponent);
@@ -814,8 +822,16 @@ export class ProjectTasksPage {
     void this.nextPage().finally(() => this.retryingMore.set(false));
   }
 
-  /** Reloads the projects (their counts) and the open project's list. */
+  /**
+   * Reloads the projects (their counts) and the open project's list.
+   * Offline, keeps the saved rows instead.
+   */
   protected refresh(event: RefresherCustomEvent): void {
+    if (!this.online()) {
+      void event.target.complete();
+      void this.offlineToast.show(OFFLINE_MESSAGES.refresh, TAB_BAR);
+      return;
+    }
     this.today.set(localIsoDate(new Date()));
     this.myProjects.invalidate();
     this.projects.reload();

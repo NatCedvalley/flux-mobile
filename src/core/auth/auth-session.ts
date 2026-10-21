@@ -9,13 +9,18 @@ import {
 } from './api-error';
 import {
   isStoredSession,
+  storedAccount,
   type StoredSession,
   type TokenStore,
 } from './token-store';
 
 export type AuthState = {
   isSignedIn: boolean;
-  /** Null until `/accounts/me` loads, or while the backend is unreachable. */
+  /**
+   * The signed-in account. On a cold start it is the one saved with the
+   * tokens until `/accounts/me` answers; null if none was saved and the
+   * backend can't be reached.
+   */
   account: Account | null;
   /**
    * Why the last session ended, for the login page. Null after a logout,
@@ -46,6 +51,8 @@ const REFRESH_BACKOFF_CAP_MS = 30_000;
 export class AuthSession {
   private session: StoredSession | null = null;
   private account: Account | null = null;
+  /** True while `account` is the stored copy, not yet fetched this launch. */
+  private accountStale = false;
   private endedMessage: string | null = null;
   private readonly listeners = new Set<(state: AuthState) => void>();
   /** The refresh in flight, shared by every caller that needs one. */
@@ -93,9 +100,10 @@ export class AuthSession {
 
   /**
    * Restores the stored session on a cold start: refreshes the access token
-   * if it has expired, then loads the account.
+   * if it has expired, then loads the account. With `offline`, nothing is
+   * sent: the stored tokens and account stand until `resume()`.
    */
-  async restore(): Promise<void> {
+  async restore(options: { offline?: boolean } = {}): Promise<void> {
     let stored: unknown = null;
     try {
       stored = await this.store.load();
@@ -109,6 +117,13 @@ export class AuthSession {
     }
 
     this.session = stored;
+    this.account = storedAccount(stored);
+    this.accountStale = true;
+    if (options.offline) {
+      // Every request would fail: show the stored session at once.
+      this.emit();
+      return;
+    }
     if (this.expiresSoon()) {
       try {
         // One attempt only: backing off would hold the first screen.
@@ -127,8 +142,10 @@ export class AuthSession {
   }
 
   /**
-   * Call when the app returns to the foreground: timers don't run while it
-   * is suspended, so the proactive refresh may be overdue. Never rejects.
+   * Call when the app returns to the foreground, or the connection comes
+   * back: timers don't run while the app is suspended, so the proactive
+   * refresh may be overdue, and an account restored from the store is
+   * fetched again. Never rejects.
    */
   async resume(): Promise<void> {
     if (!this.session) {
@@ -138,6 +155,10 @@ export class AuthSession {
       await this.refresh(true).catch(() => undefined);
     } else {
       this.scheduleRefresh();
+    }
+    // Skipped while the refresh still can't happen: the account would fail too.
+    if (this.accountStale && this.session && !this.expiresSoon()) {
+      await this.loadAccount();
     }
   }
 
@@ -213,10 +234,9 @@ export class AuthSession {
     if (!this.session) {
       return;
     }
+    let account: Account;
     try {
-      this.account = await this.withAccessToken((token) =>
-        this.client.getMe(token)
-      );
+      account = await this.withAccessToken((token) => this.client.getMe(token));
     } catch (error) {
       if (!this.session) {
         return; // withAccessToken ended it.
@@ -225,7 +245,17 @@ export class AuthSession {
         await this.discard();
         return;
       }
+      this.emit();
+      return;
     }
+    if (!this.session) {
+      return; // Signed out while it loaded.
+    }
+    this.account = account;
+    this.accountStale = false;
+    this.session = { ...this.session, account };
+    // Only the next cold start needs it, so a failed save changes nothing now.
+    await this.store.save(this.session).catch(() => undefined);
     this.emit();
   }
 
@@ -313,6 +343,8 @@ export class AuthSession {
       accessToken,
       refreshToken,
       accessTokenExpiresAt: this.now() + expiresIn * 1000,
+      // A refresh keeps the account; a sign-in starts without one.
+      account: this.session?.account,
     };
     this.endedMessage = null;
     await this.store.save(this.session);
@@ -339,6 +371,7 @@ export class AuthSession {
     clearTimeout(this.refreshTimer);
     this.session = null;
     this.account = null;
+    this.accountStale = false;
     await this.store.clear();
     this.emit();
   }

@@ -1,10 +1,12 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ToastController } from '@ionic/angular';
 import type { FluxApi } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import {
@@ -22,6 +24,8 @@ describe('MyWorkPage', () => {
   let fixture: ComponentFixture<MyWorkPage>;
   let api: FluxApi;
   let launcher: { open: ReturnType<typeof vi.fn> };
+  let online: ReturnType<typeof signal<boolean>>;
+  let toast: { create: ReturnType<typeof vi.fn> };
 
   async function create(
     withApi: FluxApi = new InMemoryFluxApi(),
@@ -29,12 +33,20 @@ describe('MyWorkPage', () => {
   ) {
     api = withApi;
     launcher = { open: vi.fn().mockResolvedValue(undefined) };
+    online = signal(true);
+    toast = {
+      create: vi.fn().mockResolvedValue({
+        present: vi.fn().mockResolvedValue(undefined),
+      }),
+    };
     await TestBed.configureTestingModule({
       imports: [MyWorkPage],
       providers: [
         provideRouter([]),
         { provide: FLUX_API, useValue: api },
         { provide: CreateTaskLauncherService, useValue: launcher },
+        { provide: ConnectivityService, useValue: { online } },
+        { provide: ToastController, useValue: toast },
         {
           provide: ProjectPrefsService,
           useValue: {
@@ -192,6 +204,29 @@ describe('MyWorkPage', () => {
     expect(listMyTasks).toHaveBeenCalledTimes(2);
     expect(complete).toHaveBeenCalledTimes(1);
     expect(texts('ion-item-divider')[0]).toBe('Overdue · 1');
+  });
+
+  it('keeps the rows on pull-to-refresh while offline, and says so', async () => {
+    await create();
+    await settle();
+    online.set(false);
+    const listMyTasks = vi.spyOn(api, 'listMyTasks');
+    const refresher = element().querySelector('ion-refresher')!;
+    const complete = vi.fn().mockResolvedValue(undefined);
+    Object.assign(refresher, { complete });
+
+    refresher.dispatchEvent(new CustomEvent('ionRefresh'));
+    await settle();
+
+    expect(listMyTasks).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(texts('ion-item-divider')[0]).toBe('Overdue · 1');
+    expect(toast.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'You’re offline. Showing saved work.',
+        positionAnchor: 'tab-bar',
+      })
+    );
   });
 
   it('shows skeleton rows while the first load is pending', async () => {

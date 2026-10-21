@@ -74,6 +74,7 @@ describe('AuthSession', () => {
         accessToken: 'a2',
         refreshToken: 'r2',
         accessTokenExpiresAt: NOW + 300_000,
+        account: ACCOUNT,
       });
       expect(client.getMe).toHaveBeenCalledWith('a2');
       expect(session.state).toEqual({
@@ -374,7 +375,10 @@ describe('AuthSession', () => {
 
       expect(client.refresh).not.toHaveBeenCalled();
       expect(session.state.isSignedIn).toBe(true);
-      expect(await store.load()).toEqual(stored(120_000));
+      expect(await store.load()).toEqual({
+        ...stored(120_000),
+        account: ACCOUNT,
+      });
     });
 
     it('rejects without calling when signed out', async () => {
@@ -416,7 +420,10 @@ describe('AuthSession', () => {
       expect(sleep.mock.calls).toEqual([[2_000], [4_000], [8_000]]);
       expect(call).not.toHaveBeenCalled();
       expect(session.state.isSignedIn).toBe(true);
-      expect(await store.load()).toEqual(stored(120_000));
+      expect(await store.load()).toEqual({
+        ...stored(120_000),
+        account: ACCOUNT,
+      });
     });
 
     it('ends the session when the refresh is rejected', async () => {
@@ -546,6 +553,108 @@ describe('AuthSession', () => {
       expect(client.logout).not.toHaveBeenCalled();
       expect(session.state.isSignedIn).toBe(false);
       expect(await store.load()).toBeNull();
+    });
+  });
+
+  describe('stored account', () => {
+    const SAVED = { id: 'u1', email: 'old@flux.test' };
+
+    it('restores offline from the store without calling the server', async () => {
+      await store.save({ ...stored(-1), account: SAVED });
+      const listener = vi.fn();
+      session.onChange(listener);
+
+      await session.restore({ offline: true });
+
+      expect(client.refresh).not.toHaveBeenCalled();
+      expect(client.getMe).not.toHaveBeenCalled();
+      expect(session.state).toMatchObject({ isSignedIn: true, account: SAVED });
+      expect(listener).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(600_000);
+      expect(client.refresh).not.toHaveBeenCalled();
+    });
+
+    it('restores offline without an account stored by an older version', async () => {
+      await store.save(stored(120_000));
+
+      await session.restore({ offline: true });
+
+      expect(session.state).toMatchObject({ isSignedIn: true, account: null });
+      expect(client.getMe).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the stored account when the refresh fails transiently', async () => {
+      await store.save({ ...stored(-1), account: SAVED });
+      client.refresh.mockRejectedValue(new ApiError(0));
+
+      await session.restore();
+
+      expect(session.state).toMatchObject({ isSignedIn: true, account: SAVED });
+    });
+
+    it('falls back to the stored account when /accounts/me fails transiently', async () => {
+      await store.save({ ...stored(120_000), account: SAVED });
+      client.getMe.mockRejectedValue(new ApiError(503));
+
+      await session.restore();
+
+      expect(session.state).toMatchObject({ isSignedIn: true, account: SAVED });
+    });
+
+    it('replaces the stored account once /accounts/me answers', async () => {
+      await store.save({ ...stored(120_000), account: SAVED });
+
+      await session.restore();
+
+      expect(session.state.account).toEqual(ACCOUNT);
+      expect(await store.load()).toMatchObject({ account: ACCOUNT });
+    });
+
+    it('keeps the account through a refresh', async () => {
+      await signedInWith(120_000);
+      clock = NOW + 95_000;
+
+      await session.withAccessToken(async () => undefined);
+
+      expect(await store.load()).toMatchObject({
+        accessToken: 'a2',
+        account: ACCOUNT,
+      });
+    });
+
+    it('fetches a restored account again on resume, once', async () => {
+      await store.save({ ...stored(-1), account: SAVED });
+      await session.restore({ offline: true });
+
+      await session.resume();
+      await session.resume();
+
+      expect(client.refresh).toHaveBeenCalledTimes(1);
+      expect(client.getMe).toHaveBeenCalledTimes(1);
+      expect(session.state.account).toEqual(ACCOUNT);
+    });
+
+    it('waits to fetch the account until the refresh succeeds', async () => {
+      await store.save({ ...stored(-1), account: SAVED });
+      await session.restore({ offline: true });
+      client.refresh.mockRejectedValue(new ApiError(0));
+
+      await session.resume();
+
+      expect(client.getMe).not.toHaveBeenCalled();
+      expect(session.state.account).toEqual(SAVED);
+    });
+
+    it('keeps the account when saving it fails', async () => {
+      await store.save(stored(120_000));
+      vi.spyOn(store, 'save').mockRejectedValue(new Error('keychain'));
+
+      await session.restore();
+
+      expect(session.state).toMatchObject({
+        isSignedIn: true,
+        account: ACCOUNT,
+      });
     });
   });
 });

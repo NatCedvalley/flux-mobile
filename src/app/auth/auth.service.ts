@@ -1,8 +1,16 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import {
+  Injectable,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
 import { AuthClient, AuthSession } from '@core/auth';
 import { environment } from '../../environments/environment';
+import { ConnectivityService } from '../offline/connectivity.service';
 import { TOKEN_STORE } from '../providers/token-store.token';
 
 /**
@@ -16,6 +24,7 @@ export class AuthService {
     inject(TOKEN_STORE)
   );
   private readonly router = inject(Router);
+  private readonly connectivity = inject(ConnectivityService);
   private readonly state = signal(this.session.state);
   private restoring?: Promise<void>;
 
@@ -34,17 +43,29 @@ export class AuthService {
     });
     // Timers don't run while the app is suspended.
     void App.addListener('resume', () => void this.session.resume());
+    // A session restored offline refreshes, and fetches its account, once
+    // the connection is back.
+    effect(() => {
+      if (this.connectivity.online()) {
+        untracked(() => void this.session.resume());
+      }
+    });
   }
 
   /**
    * Restores the stored session, once per app launch. Never rejects: an
    * unexpected failure leaves the user signed out and is retried next call.
+   * Offline, it sends nothing, so the first screen isn't held up.
    */
   restore(): Promise<void> {
-    this.restoring ??= this.session.restore().catch((error: unknown) => {
-      console.error('Session restore failed', error);
-      this.restoring = undefined;
-    });
+    this.restoring ??= this.connectivity.ready
+      .then(() =>
+        this.session.restore({ offline: !this.connectivity.online() })
+      )
+      .catch((error: unknown) => {
+        console.error('Session restore failed', error);
+        this.restoring = undefined;
+      });
     return this.restoring;
   }
 

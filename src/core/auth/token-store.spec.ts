@@ -1,4 +1,8 @@
-import { MemoryTokenStore, isStoredSession } from './token-store';
+import {
+  MemoryTokenStore,
+  isStoredSession,
+  storedAccount,
+} from './token-store';
 
 const SESSION = {
   accessToken: 'a',
@@ -28,6 +32,20 @@ describe('isStoredSession', () => {
     'rejects %j',
     (value) => {
       expect(isStoredSession(value)).toBe(false);
+    }
+  );
+});
+
+describe('storedAccount', () => {
+  it('returns a stored account', () => {
+    const account = { id: 'u1', email: 'me@flux.test' };
+    expect(storedAccount({ ...SESSION, account })).toBe(account);
+  });
+
+  it.each([undefined, null, 'u1', { email: 'me@flux.test' }])(
+    'ignores %j',
+    (account) => {
+      expect(storedAccount({ ...SESSION, account } as never)).toBeNull();
     }
   );
 });

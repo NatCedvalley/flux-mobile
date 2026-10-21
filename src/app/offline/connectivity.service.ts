@@ -13,6 +13,10 @@ export class ConnectivityService {
   private readonly state = signal(true);
   readonly online = this.state.asReadonly();
 
+  private markReady!: () => void;
+  /** Resolves once the first check has answered (or failed). */
+  readonly ready = new Promise<void>((resolve) => (this.markReady = resolve));
+
   /**
    * Runs once at startup, awaited, so a cold start that's already offline
    * knows before the first screen renders. Never rejects.
@@ -24,6 +28,7 @@ export class ConnectivityService {
     // A change made while the app was suspended may never have arrived.
     void App.addListener('resume', () => void this.check());
     await this.check();
+    this.markReady();
   }
 
   /** Asks the OS. A failure keeps the last value. */

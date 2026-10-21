@@ -44,6 +44,7 @@
           [class.picked]="task.id === pickedId()"
           [task]="task"
           [today]="today()"
+          [pending]="pendingTaskIds().has(task.id ?? '')"
         />
       }
     </ion-list>

@@ -8,6 +8,12 @@ import type { GroupBy, PagerState } from '@core/project-list';
 import type { TaskFilters } from '@core/task-filters';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import {
+  CachingFluxApi,
+  MemoryCacheStore,
+  ResponseCache,
+  type StatusChangeRequest,
+} from '@core/offline';
 import type { Pickup } from '../../board/task-board/board-drag';
 import { AuthService } from '../../auth/auth.service';
 import { TaskBoardComponent } from '../../board/task-board/task-board.component';
@@ -16,6 +22,7 @@ import {
   UNSCHEDULED,
 } from '../../calendar/task-calendar/task-calendar.component';
 import { ConnectivityService } from '../../offline/connectivity.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import {
@@ -56,6 +63,8 @@ describe('ProjectTasksPage', () => {
       prefs?: ReturnType<typeof fakePrefs>;
       defaultGroupBy?: string;
       defaultView?: string;
+      /** Status changes already queued offline when the page opens. */
+      queued?: StatusChangeRequest[];
     } = {}
   ) {
     api = options.api ?? new InMemoryFluxApi();
@@ -69,7 +78,22 @@ describe('ProjectTasksPage', () => {
       imports: [ProjectTasksPage],
       providers: [
         provideRouter([]),
-        { provide: FLUX_API, useValue: api },
+        {
+          provide: FLUX_API,
+          // With changes queued, reads show their statuses, as in main.ts.
+          useValue: options.queued
+            ? new CachingFluxApi(
+                api,
+                new ResponseCache(new MemoryCacheStore()),
+                {
+                  accountId: () => 'a1',
+                  online: () => online(),
+                  queuedStatus: (id) =>
+                    TestBed.inject(WriteQueueService).queue.queuedStatus(id),
+                }
+              )
+            : api,
+        },
         { provide: ProjectPrefsService, useValue: prefs },
         { provide: ToastController, useValue: toast },
         { provide: CreateTaskLauncherService, useValue: launcher },
@@ -86,6 +110,11 @@ describe('ProjectTasksPage', () => {
         },
       ],
     }).compileComponents();
+    const writeQueue = TestBed.inject(WriteQueueService);
+    await writeQueue.queue.load('a1');
+    for (const change of options.queued ?? []) {
+      await writeQueue.enqueueStatus(change);
+    }
 
     fixture = TestBed.createComponent(ProjectTasksPage);
     fixture.detectChanges();
@@ -193,6 +222,28 @@ describe('ProjectTasksPage', () => {
       'CHK-142',
       'CHK-120',
     ]);
+  });
+
+  it('shows a task whose status change is queued in its new group, with the glyph', async () => {
+    await create({
+      queued: [
+        {
+          projectId: 'p1',
+          taskId: '2', // CHK-150, to do on the server
+          taskKey: 'CHK-150',
+          from: { slug: 'todo' },
+          to: { slug: 'in_progress', category: 'IN_PROGRESS' },
+        },
+      ],
+    });
+    await settle();
+    await settle();
+
+    expect(headers()).toEqual(['Backlog 1', 'In Progress 2', 'Done 1']);
+    const row = Array.from(
+      element().querySelectorAll('app-project-task-row')
+    ).find((r) => r.querySelector('.key')?.textContent === 'CHK-150');
+    expect(row?.querySelector('.sync')).not.toBeNull();
   });
 
   it('colours each group header from its status', async () => {
@@ -1329,7 +1380,7 @@ describe('ProjectTasksPage', () => {
       it("doesn't save the order when the status change is refused", async () => {
         await create({ api: inProgressApi(1) });
         await settle();
-        vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(new ApiError(0));
+        vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(new ApiError(400));
         const save = vi.spyOn(api, 'reorderTasks');
 
         board().dropped({
@@ -1341,6 +1392,52 @@ describe('ProjectTasksPage', () => {
 
         expect(columns()).toContain('To Do: CHK-150');
         expect(save).not.toHaveBeenCalled();
+      });
+
+      it('queues a drop on another column offline, without saving the order', async () => {
+        await create({ api: inProgressApi(1) });
+        await settle();
+        online.set(false);
+        const send = vi.spyOn(api, 'changeTaskStatus');
+        const save = vi.spyOn(api, 'reorderTasks');
+
+        board().dropped({
+          task: task('CHK-150'),
+          status: status('in_progress'),
+          index: 1,
+        });
+        await settle();
+
+        expect(send).not.toHaveBeenCalled();
+        expect(save).not.toHaveBeenCalled();
+        expect(columns()).toContain('In Progress: CHK-142, CHK-150, CHK-1000');
+        expect(TestBed.inject(WriteQueueService).items()[0].to.slug).toBe(
+          'in_progress'
+        );
+        const card = Array.from(
+          element().querySelectorAll('app-board-card')
+        ).find((c) => c.querySelector('.key')?.textContent === 'CHK-150');
+        expect(card?.querySelector('.sync')).not.toBeNull();
+      });
+
+      it('says reordering needs a connection offline, and keeps the order', async () => {
+        await create({ api: inProgressApi(2) });
+        await settle();
+        online.set(false);
+
+        board().dropped({
+          task: task('CHK-142'),
+          status: status('in_progress'),
+          index: 2,
+        });
+        await settle();
+
+        expect(columns()).toContain('In Progress: CHK-142, CHK-1000, CHK-1001');
+        expect(toast.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'Reordering needs a connection.',
+          })
+        );
       });
 
       it('lands a card on a closed status at the drop point once resolved', async () => {

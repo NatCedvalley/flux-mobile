@@ -87,6 +87,7 @@ import {
   OFFLINE_MESSAGES,
   OfflineToastService,
 } from '../../offline/offline-toast.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
@@ -243,6 +244,7 @@ export class TaskDetailPage {
   private readonly account = inject(AuthService).account;
   private readonly online = inject(ConnectivityService).online;
   private readonly offlineToast = inject(OfflineToastService);
+  private readonly writeQueue = inject(WriteQueueService);
   protected readonly myId = computed(() => this.account()?.id);
 
   // Bound to the ':projectId/:taskId' route params and the route's
@@ -361,6 +363,10 @@ export class TaskDetailPage {
         )
       : undefined;
   });
+  /** A status change still to send: the pill shows the sync glyph. */
+  protected readonly statusPending = computed(() =>
+    this.writeQueue.pendingTaskIds().has(this.taskId())
+  );
   protected readonly priority = computed(() =>
     priorityFact(this.header()?.priority)
   );
@@ -635,6 +641,22 @@ export class TaskDetailPage {
       this.ids();
       untracked(() => void this.startComments());
     });
+    // This task changed elsewhere: a queued status change sent or put back.
+    // The change reported before this page opened is old news.
+    const opened = this.taskChanges.changed();
+    effect(() => {
+      const change = this.taskChanges.changed();
+      untracked(() => {
+        if (
+          change !== opened &&
+          !change?.removed &&
+          change?.task.id === this.taskId() &&
+          this.task.hasValue()
+        ) {
+          this.task.set(change.task);
+        }
+      });
+    });
     effect(() => {
       const refresher = this.refresher();
       if (refresher && !this.task.isLoading()) {
@@ -823,6 +845,10 @@ export class TaskDetailPage {
   /** Picks a file from `source` and uploads it, showing it at the top. */
   protected async attach(source: FileSource): Promise<void> {
     if (this.uploading()) {
+      return;
+    }
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.upload, this.anchor());
       return;
     }
     const file = await this.files.pick(source);
@@ -1211,8 +1237,8 @@ export class TaskDetailPage {
           anchor: this.anchor(),
         }
       );
-      // The timeline has a new entry.
-      if (moved && this.activityStarted) {
+      // The timeline has a new entry (not yet, for a queued change).
+      if (moved === 'sent' && this.activityStarted) {
         void this.startActivity();
       }
     } finally {

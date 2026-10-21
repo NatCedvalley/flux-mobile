@@ -24,6 +24,14 @@
             aria-hidden="true"
           ></span
           >{{ status() }}
+          @if (pending()) {
+            <ion-icon
+              class="sync"
+              name="refresh-cw"
+              aria-label="Waiting to sync"
+              role="img"
+            ></ion-icon>
+          }
         </span>
       }
       @if (fact(); as fact) {

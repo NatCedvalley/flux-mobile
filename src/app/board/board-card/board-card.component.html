@@ -13,6 +13,14 @@
     @if (task().taskKey) {
       <span class="key">{{ task().taskKey }}</span>
     }
+    @if (pending()) {
+      <ion-icon
+        class="sync"
+        name="refresh-cw"
+        aria-label="Waiting to sync"
+        role="img"
+      ></ion-icon>
+    }
     @if (priority(); as priority) {
       <span
         class="priority"

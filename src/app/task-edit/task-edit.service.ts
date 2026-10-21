@@ -5,6 +5,11 @@ import { ApiError } from '@core/auth';
 import { scheduleOf } from '@core/calendar';
 import { type TaskChange, taskUpdateBody, withChange } from '@core/task-edit';
 import type { TaskView } from '../task-status/task-status.service';
+import { ConnectivityService } from '../offline/connectivity.service';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../offline/offline-toast.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskChangesService } from '../task-status/task-changes.service';
 import { UndoToastService } from '../task-status/undo-toast.service';
@@ -17,7 +22,8 @@ const ERROR_MS = 3000;
  * change shows at once; if the server refuses, the task is put back and the
  * server's message shown. On success the task is fetched again, because the
  * responses leave out assignees and joined fields, and reported so a list
- * further back shows the change.
+ * further back shows the change. Offline, nothing changes and a toast says
+ * it needs a connection (only status changes are queued).
  */
 @Injectable({ providedIn: 'root' })
 export class TaskEditService {
@@ -25,6 +31,8 @@ export class TaskEditService {
   private readonly toasts = inject(ToastController);
   private readonly changes = inject(TaskChangesService);
   private readonly undo = inject(UndoToastService);
+  private readonly online = inject(ConnectivityService).online;
+  private readonly offlineToast = inject(OfflineToastService);
 
   /** Saves `change` with PUT /tasks/{id}. Resolves with whether it was taken. */
   update(task: Task, change: TaskChange, view: TaskView): Promise<boolean> {
@@ -49,6 +57,10 @@ export class TaskEditService {
     view: TaskView,
     undoable = true
   ): Promise<boolean> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.reschedule, view.anchor);
+      return false;
+    }
     // The task as last shown, the server's copy once fetched, for Undo.
     let moved = task;
     const tracked: TaskView = {
@@ -82,6 +94,11 @@ export class TaskEditService {
     remove: readonly Label[],
     view: TaskView
   ): Promise<boolean> {
+    if (!this.online()) {
+      // Before `write`, whose failure would show the saved copy here.
+      await this.offlineToast.show(OFFLINE_MESSAGES.edit, view.anchor);
+      return false;
+    }
     const removed = new Set(remove.map((l) => l.name));
     const labels = [
       ...(task.labels ?? []).filter((name) => !removed.has(name)),
@@ -177,6 +194,10 @@ export class TaskEditService {
     fallback: string,
     send: (projectId: string, taskId: string) => Promise<unknown>
   ): Promise<boolean> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.edit, view.anchor);
+      return false;
+    }
     view.apply(shown);
     try {
       await send(task.projectId ?? '', task.id ?? '');

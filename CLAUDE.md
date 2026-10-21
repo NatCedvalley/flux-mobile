@@ -47,8 +47,8 @@ src/
               and its Unscheduled drawer (calendar/), push, opening
               one and the Inbox's permission card (push/), the Inbox's unread
               counts and its row (inbox/), the connection state, the
-              offline banner and toasts, and the read cache's wipe
-              (offline/), the Notifications
+              offline banner and toasts, the read cache's wipe, and the
+              write queue and its replay (offline/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
 ```
@@ -56,11 +56,15 @@ src/
 - Import `src/core` code only via the `@core/*` path alias
   (`tsconfig.json`), never with a relative `../core/...` path — this is also
   eslint-enforced from `src/app`.
-- The bridges between `src/app` and `src/core` are three injection tokens
+- The bridges between `src/app` and `src/core` are five injection tokens
   in `src/app/providers/`, all provided in `src/main.ts`: `FLUX_API`
-  (`flux-api.token.ts`), `TOKEN_STORE` (`token-store.token.ts`, see
-  [§4 Authentication](#authentication)) and `CACHE_STORE`
-  (`cache-store.token.ts`, see [Offline](#offline)). Everything else in `src/core` is
+  (`flux-api.token.ts`) and `NETWORK_FLUX_API`
+  (`network-flux-api.token.ts`, the same without its cache, see
+  [§4](#4-api-layer)), `TOKEN_STORE` (`token-store.token.ts`, see
+  [§4 Authentication](#authentication)), and `CACHE_STORE`
+  (`cache-store.token.ts`) and `WRITE_QUEUE_STORE`
+  (`write-queue-store.token.ts`, in memory unless provided), see
+  [Offline](#offline). Everything else in `src/core` is
   plain data, interfaces and classes that take their dependencies as
   constructor arguments.
 - Business logic and API types belong in `src/core`. Angular services,
@@ -491,7 +495,9 @@ EDITOR+), the docked bar and the list's swipe actions.
      reschedules, so only one Undo is on screen.
 
   If the server refuses, the task is put back and the server's message
-  shown.
+  shown. Offline, or when the PATCH gets no response, the change is
+  queued instead (see Write queue under [Offline](#offline)), and
+  `move()` resolves `'queued'` rather than `'sent'`.
 
 - Archive (`POST .../archive`, which archives the subtree, so the list
   drops the subtasks it shows too) also offers Undo. That calls
@@ -746,8 +752,7 @@ until that first check, and a failed check keeps the last value.
 `--flux-ambera3` with `--flux-amber11` text, `cloud-off` and "Offline ·
 showing cached work". My Work, Projects (all three views), Inbox and task
 detail put it last in their `ion-header`, as the app shell has no header
-of its own. The write queue and its pending count (FM-49 to FM-51) will
-build on `online` too.
+of its own.
 
 **Read cache** (FM-48). A cache, not offline-first: only responses
 already fetched are served back, never queried or merged.
@@ -781,6 +786,63 @@ already fetched are served back, never queried or merged.
 - After a write online, a cached list page keeps its old rows until that
   list is fetched again; task detail refetches the task after each write.
 
+**Write queue** (FM-49). Only status changes are queued; comments come in
+FM-50 and the pending changes sheet in FM-51.
+
+- `WriteQueue` (`src/core/offline/`) keeps status changes made offline,
+  in order, as one blob per account (`write-queue.<accountId>.json`).
+  Signing out hides them and deletes nothing: they replay once that
+  account signs in again, and another account never sees them. An item
+  is `queued`, `sending` (back to `queued` at load, in case the app was
+  killed mid-send), `conflict` or `failed`.
+- Changes to one task merge while queued: the first `from`, the last
+  `to`. One back at its `from` (same slug and resolution) is dropped,
+  which is how Undo cancels it. A change after a `sending` one is a new
+  item from that one's `to`; one after a conflict or failure replaces it.
+- `TaskStatusService.move()` queues when `online()` is false, when the
+  PATCH gets an `ApiError(0)`, or when the task already has a `queued` or
+  `sending` change (so changes stay in order). It keeps the change on
+  screen, reports it to `TaskChangesService` without a refetch (that
+  would be the pre-change cache), and offers the usual Undo. With no
+  account loaded (an offline cold start of a session saved before
+  accounts were) it puts the task back as before. A closed status works
+  offline when its resolutions are cached; the sheet's error otherwise.
+  A board drop that queues skips the column order save.
+- `QueueReplayService` (`src/app/offline/`) replays in the foreground
+  only: at launch, on sign-in and when `online` turns true (one effect),
+  and on resume. Items go one at a time through `NETWORK_FLUX_API`, so
+  the check never reads the cache: the task is fetched, and sent only if
+  its status is still the item's `from`. Already at `to` drops the item;
+  any other status is a `conflict` and isn't sent (a small race remains
+  between the GET and the PATCH; the backend has no precondition). A
+  status 0, a 5xx or a session that ended stops the replay with the item
+  `queued`. Any other 4xx (the endpoint documents 400, 403 and 404) is
+  `failed`, with the server's message.
+- Each settled item is fetched again through `FLUX_API` (so the cache
+  holds the new copy) and reported; a 403 or 404 reports it removed. A
+  conflict or failure puts the server's status back and says so in one
+  toast ("CHK-142 changed on the server, so your status change wasn’t
+  sent.", "Couldn’t move CHK-142: …", or a count). Conflicts and
+  failures stay in the queue for FM-51.
+- `CachingFluxApi` takes `queuedStatus`, and `getTask`, `listMyTasks`
+  (with `statusName`), `listProjectTasks` and `listChildTasks` show a
+  `queued` or `sending` change's status, from the network or the cache. A
+  conflict's isn't shown.
+- `WriteQueueService` holds the queue as signals: `items`,
+  `pendingTaskIds` (queued, sending or conflict; the rows' glyph) and
+  `queuedStatuses`, which only changes when a shown status does. My Work
+  reloads its lists on it; the Projects list and board move a task that
+  arrives in its old status's group into its queued one; task detail
+  applies a reported change for its own task.
+- A pending task gets the handoff's `refresh-cw` glyph (12px, "Waiting
+  to sync"): in My Work rows' status, at the end of project rows' meta
+  line (list, Unscheduled drawer, day sheet), after a board card's key,
+  and in task detail's status pill.
+- `WRITE_QUEUE_STORE` is `PreferencesStore` on native
+  (`@capacitor/preferences`, keys `write-queue/…`, which the OS never
+  purges, unlike the read cache's Cache directory) and `MemoryCacheStore`
+  on web, the token's default, so a browser reload loses it.
+
 **Screens offline** (`OfflineToastService`, `OFFLINE_MESSAGES`):
 
 - Pull-to-refresh on My Work, Projects (all views), task detail and the
@@ -796,6 +858,13 @@ already fetched are served back, never queried or merged.
 - In the Inbox, swipe Mark read and Mark all read toast "Marking read
   needs a connection." A tapped task row opens from the cache and stays
   unread; a row that only marks itself read toasts the same.
+- The writes that aren't queued check `online()` before showing anything:
+  field edits ("Editing needs a connection.", `TaskEditService`),
+  calendar reschedules ("Rescheduling …"), archive ("Archiving …"), a
+  board reorder ("Reordering …"), create ("Creating tasks …", the sheet
+  keeps the draft) and attaching a file ("Uploading files …", before the
+  picker opens). Task delete, watch, Inbox mute and comment writes still
+  fail with their usual error.
 - A screen with nothing cached shows the existing `app-error-state`.
 
 ## 4. API layer
@@ -816,8 +885,9 @@ aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
 
-`HttpFluxApi` (`src/core/api/http-flux-api.ts`) is what `main.ts` provides,
-inside `CachingFluxApi` (see [Offline](#offline)): it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
+`HttpFluxApi` (`src/core/api/http-flux-api.ts`) is what `main.ts` provides
+as `NETWORK_FLUX_API`, and inside `CachingFluxApi` as `FLUX_API` (see
+[Offline](#offline)); only the write queue's replay uses it bare. It calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
 written without it) and makes every request through
 `AuthService.withAccessToken` (see below). `JsonHttpClient`
 (`src/core/http/`) is the request (GET, POST, PUT, PATCH and DELETE), timeout,
@@ -1516,5 +1586,5 @@ which allows the overlap.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-the offline write queue (FM-49 to FM-51), app store assets, and Play
-Store upload.
+offline comments (FM-50), the pending changes sheet with conflict
+resolution (FM-51), app store assets, and Play Store upload.

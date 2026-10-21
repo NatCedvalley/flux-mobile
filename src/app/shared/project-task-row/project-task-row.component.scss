@@ -79,6 +79,13 @@ ion-item {
   color: var(--flux-red11);
 }
 
+// A status change still to send (the write queue).
+.sync {
+  flex: none;
+  font-size: 12px;
+  color: var(--flux-na11);
+}
+
 // 28px circle: initials on the person's fill, or a user glyph when nobody
 // is assigned.
 .avatar {

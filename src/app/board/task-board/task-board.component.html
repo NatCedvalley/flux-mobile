@@ -66,6 +66,7 @@
                 [class.gap-after]="gapAfter(column, task)"
                 [task]="task"
                 [today]="today()"
+                [pending]="pending().has(task.id ?? '')"
               />
             }
           } @else if (failed().has(column.loaded.group.key)) {

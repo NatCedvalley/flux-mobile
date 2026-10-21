@@ -1,8 +1,10 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { type TaskDraft, emptyDraft } from '@core/task-create';
+import { ConnectivityService } from '../offline/connectivity.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskCreateService } from './task-create.service';
 
@@ -10,6 +12,7 @@ describe('TaskCreateService', () => {
   let api: InMemoryFluxApi;
   let toast: { create: ReturnType<typeof vi.fn> };
   let service: TaskCreateService;
+  let online: ReturnType<typeof signal<boolean>>;
   const draft = (fields: Partial<TaskDraft> = {}): TaskDraft => ({
     ...emptyDraft('p1'),
     title: 'New one',
@@ -19,10 +22,12 @@ describe('TaskCreateService', () => {
   beforeEach(() => {
     api = new InMemoryFluxApi();
     toast = { create: vi.fn().mockResolvedValue({ present: vi.fn() }) };
+    online = signal(true);
     TestBed.configureTestingModule({
       providers: [
         { provide: FLUX_API, useValue: api },
         { provide: ToastController, useValue: toast },
+        { provide: ConnectivityService, useValue: { online } },
       ],
     });
     service = TestBed.inject(TaskCreateService);
@@ -133,5 +138,19 @@ describe('TaskCreateService', () => {
     });
     options.buttons[0].handler();
     expect(open).toHaveBeenCalled();
+  });
+
+  it('says creating needs a connection when offline, and sends nothing', async () => {
+    online.set(false);
+    const createTask = vi.spyOn(api, 'createTask');
+
+    expect(await service.create(draft(), [])).toBeUndefined();
+
+    expect(createTask).not.toHaveBeenCalled();
+    expect(toast.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Creating tasks needs a connection.',
+      })
+    );
   });
 });

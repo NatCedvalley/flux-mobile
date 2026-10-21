@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import {
   IonButton,
   IonContent,
@@ -10,6 +10,7 @@ import {
 } from '@ionic/angular';
 import type { Task } from '@core/api';
 import type { PagedListState } from '@core/task-filters';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
@@ -55,6 +56,9 @@ export class UnscheduledListComponent {
   readonly dragKey = input.required<string>();
 
   readonly toggled = output<void>();
+
+  /** Tasks with a status change still to send: their rows show the glyph. */
+  protected readonly pendingTaskIds = inject(WriteQueueService).pendingTaskIds;
   readonly retry = output<void>();
   readonly retryMore = output<void>();
   readonly loadMore = output<InfiniteScrollCustomEvent>();

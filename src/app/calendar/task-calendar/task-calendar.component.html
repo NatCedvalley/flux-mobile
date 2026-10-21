@@ -163,6 +163,7 @@
           <app-project-task-row
             [task]="task"
             [today]="today()"
+            [pending]="pendingTaskIds().has(task.id ?? '')"
           />
         }
       </ion-list>

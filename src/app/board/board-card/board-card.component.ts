@@ -26,6 +26,8 @@ export class BoardCardComponent {
   readonly task = input.required<Task>();
   /** The local day (`YYYY-MM-DD`) the due date is read against. */
   readonly today = input.required<string>();
+  /** A status change still to send: the key gets the sync glyph. */
+  readonly pending = input(false);
 
   protected readonly icon = computed(
     () => TYPE_ICONS[this.task().type ?? 'TASK'] ?? TYPE_ICONS.TASK

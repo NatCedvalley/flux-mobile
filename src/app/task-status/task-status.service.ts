@@ -1,8 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import type { Task, WorkflowStatus } from '@core/api';
+import type { QueuedStatus } from '@core/offline';
 import { ApiError } from '@core/auth';
 import { withStatus } from '@core/task-status';
+import { ConnectivityService } from '../offline/connectivity.service';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../offline/offline-toast.service';
+import { WriteQueueService } from '../offline/write-queue.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskChangesService } from './task-changes.service';
 import { UndoToastService } from './undo-toast.service';
@@ -19,6 +26,12 @@ export type TaskView = {
   anchor?: HTMLElement | string;
 };
 
+/**
+ * What became of a status change: the server took it, it waits in the write
+ * queue for a connection, or it was refused (and put back).
+ */
+export type MoveOutcome = 'sent' | 'queued' | 'refused';
+
 /** Where a list shows an archived task, and shows it again on Undo. */
 export type ArchiveView = {
   removed(): void;
@@ -32,6 +45,9 @@ export type ArchiveView = {
  * task is put back and the server's message shown. On success the task is
  * fetched again, because the response leaves out assignees and other joined
  * fields (and a status's assignment rule can change the assignees).
+ *
+ * Without a connection a status change goes in the write queue instead,
+ * and stays on screen until `QueueReplayService` sends it.
  */
 @Injectable({ providedIn: 'root' })
 export class TaskStatusService {
@@ -39,10 +55,16 @@ export class TaskStatusService {
   private readonly toasts = inject(ToastController);
   private readonly changes = inject(TaskChangesService);
   private readonly undo = inject(UndoToastService);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly writeQueue = inject(WriteQueueService);
+  private readonly offlineToast = inject(OfflineToastService);
 
   /**
-   * Moves `task` to `to`, with a resolution when `to` is closed. Resolves
-   * with whether the server took it. `undoable` is false for the Undo itself.
+   * Moves `task` to `to`, with a resolution when `to` is closed. Offline, or
+   * when the request gets no response, the change is queued rather than put
+   * back; so is any change to a task whose earlier change is still queued,
+   * which keeps them in order (and lets Undo cancel a queued one). `undoable`
+   * is false for the Undo itself.
    */
   async move(
     task: Task,
@@ -50,19 +72,33 @@ export class TaskStatusService {
     resolution: string | undefined,
     view: TaskView,
     undoable = true
-  ): Promise<boolean> {
+  ): Promise<MoveOutcome> {
     const projectId = task.projectId ?? '';
     const taskId = task.id ?? '';
-    view.apply(withStatus(task, to, resolution));
-    try {
-      await this.api.changeTaskStatus(projectId, taskId, {
-        status: to.slug ?? '',
-        resolution: to.isClosed ? resolution : undefined,
-      });
-    } catch (error) {
-      view.apply(task);
-      await this.error(error, 'Couldn’t change the status', view.anchor);
-      return false;
+    const moved = withStatus(task, to, resolution);
+    view.apply(moved);
+    const waiting = this.writeQueue.pending(taskId)?.state;
+    let queue =
+      !this.connectivity.online() ||
+      waiting === 'queued' ||
+      waiting === 'sending';
+    if (!queue) {
+      try {
+        await this.api.changeTaskStatus(projectId, taskId, {
+          status: to.slug ?? '',
+          resolution: to.isClosed ? resolution : undefined,
+        });
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 0)) {
+          view.apply(task);
+          await this.error(error, 'Couldn’t change the status', view.anchor);
+          return 'refused';
+        }
+        queue = true;
+      }
+    }
+    if (queue) {
+      return this.enqueue(task, to, resolution, view, undoable);
     }
     const fresh = await this.refetch(projectId, taskId);
     if (fresh) {
@@ -70,25 +106,73 @@ export class TaskStatusService {
       this.changes.report(fresh);
     }
     if (undoable) {
-      // The task as it was, as a status to move back to.
-      const previous: WorkflowStatus = {
-        slug: task.status,
+      await this.offerUndo(task, fresh ?? moved, to, view);
+    }
+    return 'sent';
+  }
+
+  /** Queues the change shown on `view`, or puts the task back if it can't. */
+  private async enqueue(
+    task: Task,
+    to: WorkflowStatus,
+    resolution: string | undefined,
+    view: TaskView,
+    undoable: boolean
+  ): Promise<MoveOutcome> {
+    const queued = await this.writeQueue.enqueueStatus({
+      projectId: task.projectId ?? '',
+      taskId: task.id ?? '',
+      taskKey: task.taskKey,
+      from: {
+        slug: task.status ?? '',
         category: task.statusCategory,
         isClosed: task.isClosedStatus,
-      };
-      const moved = fresh ?? withStatus(task, to, resolution);
-      await this.undo.offer(`Moved to ${to.name ?? to.slug}`, view.anchor, () =>
-        this.move(moved, previous, task.resolution, view, false)
-      );
+        resolution: task.resolution,
+      },
+      to: queuedStatus(to, resolution),
+    });
+    if (!queued) {
+      // No account to queue it for (a session from before accounts were kept).
+      view.apply(task);
+      await this.error(undefined, 'Couldn’t change the status', view.anchor);
+      return 'refused';
     }
-    return true;
+    // Not fetched again: offline, that would be the saved copy from before.
+    const moved = withStatus(task, to, resolution);
+    this.changes.report(moved);
+    if (undoable) {
+      await this.offerUndo(task, moved, to, view);
+    }
+    return 'queued';
+  }
+
+  /** Offers to move `moved` back to the status `task` had. */
+  private offerUndo(
+    task: Task,
+    moved: Task,
+    to: WorkflowStatus,
+    view: TaskView
+  ): Promise<void> {
+    // The task as it was, as a status to move back to.
+    const previous: WorkflowStatus = {
+      slug: task.status,
+      category: task.statusCategory,
+      isClosed: task.isClosedStatus,
+    };
+    return this.undo.offer(`Moved to ${to.name ?? to.slug}`, view.anchor, () =>
+      this.move(moved, previous, task.resolution, view, false)
+    );
   }
 
   /**
    * Archives `task` and its subtasks, which must all be done. Resolves with
-   * whether the server took it.
+   * whether the server took it. Offline it isn't tried.
    */
   async archive(task: Task, view: ArchiveView): Promise<boolean> {
+    if (!this.connectivity.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.archive, view.anchor);
+      return false;
+    }
     const projectId = task.projectId ?? '';
     const taskId = task.id ?? '';
     view.removed();
@@ -151,4 +235,18 @@ export class TaskStatusService {
     });
     await toast.present();
   }
+}
+
+/** `to` as the write queue keeps it. */
+function queuedStatus(
+  to: WorkflowStatus,
+  resolution: string | undefined
+): QueuedStatus {
+  return {
+    slug: to.slug ?? '',
+    name: to.name,
+    category: to.category,
+    isClosed: to.isClosed,
+    resolution: to.isClosed ? resolution : undefined,
+  };
 }

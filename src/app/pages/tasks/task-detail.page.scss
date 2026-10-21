@@ -162,6 +162,11 @@ ion-back-button {
     font-size: 14px;
   }
 
+  // A status change still to send (the write queue).
+  .sync {
+    font-size: 12px;
+  }
+
   .dot {
     width: 7px;
     height: 7px;

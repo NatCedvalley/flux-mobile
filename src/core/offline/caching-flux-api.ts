@@ -36,7 +36,9 @@ import type {
   WorkflowStatus,
 } from '../api';
 import type { ResponseCache } from './response-cache';
+import type { QueuedStatus } from './write-queue';
 import { ApiError } from '../auth/api-error';
+import { withStatus } from '../task-status/status-rules';
 import { cacheKey } from './cache-key';
 
 export type CachingFluxApiOptions = {
@@ -44,6 +46,8 @@ export type CachingFluxApiOptions = {
   accountId: () => string | undefined;
   /** False while the device has no connection. */
   online: () => boolean;
+  /** The status a change still waiting to be sent gives a task, if any. */
+  queuedStatus?: (taskId: string) => QueuedStatus | undefined;
 };
 
 /**
@@ -58,6 +62,9 @@ export type CachingFluxApiOptions = {
  * - Offline, no read touches the network (which would only fail, after the
  *   token refresh's backoff): it is the saved copy or an `ApiError(0)`.
  * - Writes always go straight to `inner`.
+ *
+ * Tasks it reads, from either, show the status of a change still queued
+ * for them (`queuedStatus`), so they match what the person did offline.
  */
 export class CachingFluxApi implements FluxApi {
   constructor(
@@ -66,19 +73,21 @@ export class CachingFluxApi implements FluxApi {
     private readonly options: CachingFluxApiOptions
   ) {}
 
-  listMyTasks(query?: MyTasksQuery): Promise<Page<MyTask>> {
-    return this.read('listMyTasks', query);
+  async listMyTasks(query?: MyTasksQuery): Promise<Page<MyTask>> {
+    const page = await this.read('listMyTasks', query);
+    return { ...page, content: page.content?.map((t) => this.queuedMine(t)) };
   }
 
-  listProjectTasks(
+  async listProjectTasks(
     projectId: string,
     query?: ProjectTasksQuery
   ): Promise<Page<Task>> {
-    return this.read('listProjectTasks', projectId, query);
+    const page = await this.read('listProjectTasks', projectId, query);
+    return { ...page, content: page.content?.map((t) => this.queued(t)) };
   }
 
-  getTask(projectId: string, taskId: string): Promise<Task> {
-    return this.read('getTask', projectId, taskId);
+  async getTask(projectId: string, taskId: string): Promise<Task> {
+    return this.queued(await this.read('getTask', projectId, taskId));
   }
 
   createTask(projectId: string, task: NewTask): Promise<Task> {
@@ -137,8 +146,9 @@ export class CachingFluxApi implements FluxApi {
     return this.inner.unarchiveTask(projectId, taskId, request);
   }
 
-  listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
-    return this.read('listChildTasks', projectId, taskId);
+  async listChildTasks(projectId: string, taskId: string): Promise<Task[]> {
+    const tasks = await this.read('listChildTasks', projectId, taskId);
+    return tasks.map((t) => this.queued(t));
   }
 
   listTaskActivities(
@@ -314,6 +324,25 @@ export class CachingFluxApi implements FluxApi {
     preferences: PushPreference[]
   ): Promise<PushPreference[]> {
     return this.inner.updatePushPreferences(preferences);
+  }
+
+  /** `task` with its queued status, if it has one. */
+  private queued(task: Task): Task {
+    const status = task.id ? this.options.queuedStatus?.(task.id) : undefined;
+    return status ? withStatus(task, status, status.resolution) : task;
+  }
+
+  /** The same for a My Work row, which also shows the status by name. */
+  private queuedMine(task: MyTask): MyTask {
+    const status = task.id ? this.options.queuedStatus?.(task.id) : undefined;
+    return status
+      ? {
+          ...task,
+          status: status.slug,
+          statusName: status.name,
+          statusCategory: status.category,
+        }
+      : task;
   }
 
   private async read<Method extends keyof FluxApi>(

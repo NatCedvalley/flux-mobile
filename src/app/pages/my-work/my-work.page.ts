@@ -7,6 +7,7 @@ import {
   inject,
   resource,
   signal,
+  untracked,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -40,6 +41,7 @@ import {
   OFFLINE_MESSAGES,
   OfflineToastService,
 } from '../../offline/offline-toast.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
@@ -107,6 +109,9 @@ export class MyWorkPage {
   private readonly route = inject(ActivatedRoute);
   private readonly connectivity = inject(ConnectivityService);
   private readonly offlineToast = inject(OfflineToastService);
+  private readonly writeQueue = inject(WriteQueueService);
+  /** Tasks with a status change still to send: their rows show the glyph. */
+  protected readonly pendingTaskIds = this.writeQueue.pendingTaskIds;
 
   protected readonly segment = signal<Segment>('focus');
   /** The local day. Read again on refresh, so Focus rolls over at midnight. */
@@ -205,6 +210,16 @@ export class MyWorkPage {
   >(undefined);
 
   constructor() {
+    // A status change queued or settled elsewhere: the rows carry status
+    // names, so they load again (offline, from the cache with it shown).
+    let queued: ReadonlyMap<string, string> | undefined;
+    effect(() => {
+      const now = this.writeQueue.queuedStatuses();
+      if (queued !== undefined && now !== queued) {
+        untracked(() => this.reloadLists());
+      }
+      queued = now;
+    });
     effect(() => {
       const refresher = this.refresher();
       if (refresher && !this.current().isLoading()) {

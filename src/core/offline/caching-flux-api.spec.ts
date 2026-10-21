@@ -1,4 +1,5 @@
 import type { FluxApi } from '../api';
+import type { QueuedStatus } from './write-queue';
 import { ApiError } from '../auth/api-error';
 import { InMemoryFluxApi } from '../mock/in-memory-flux-api';
 import { MemoryCacheStore } from './cache-store';
@@ -10,6 +11,7 @@ describe('CachingFluxApi', () => {
   let cache: ResponseCache;
   let online: boolean;
   let accountId: string | undefined;
+  let queued: Map<string, QueuedStatus>;
   let api: FluxApi;
 
   beforeEach(() => {
@@ -17,9 +19,11 @@ describe('CachingFluxApi', () => {
     cache = new ResponseCache(new MemoryCacheStore());
     online = true;
     accountId = 'a1';
+    queued = new Map();
     api = new CachingFluxApi(inner, cache, {
       accountId: () => accountId,
       online: () => online,
+      queuedStatus: (id) => queued.get(id),
     });
   });
 
@@ -137,5 +141,61 @@ describe('CachingFluxApi', () => {
     await api.listTaskComments('p1', 't1', { page: 2, size: 100 });
 
     expect(list).toHaveBeenCalledWith('p1', 't1', { page: 2, size: 100 });
+  });
+
+  describe('a queued status change', () => {
+    const DONE: QueuedStatus = {
+      slug: 'done',
+      name: 'Done',
+      category: 'DONE',
+      isClosed: true,
+      resolution: 'done',
+    };
+
+    beforeEach(() => queued.set('1', DONE));
+
+    it('shows on a task, online and from the cache', async () => {
+      expect(await api.getTask('p1', '1')).toMatchObject({
+        status: 'done',
+        statusCategory: 'DONE',
+        isClosedStatus: true,
+        resolution: 'done',
+      });
+
+      online = false;
+      expect((await api.getTask('p1', '1')).status).toBe('done');
+    });
+
+    it('isn’t saved in the cache', async () => {
+      await api.getTask('p1', '1');
+      queued.clear();
+      online = false;
+
+      expect((await api.getTask('p1', '1')).status).toBe('in_progress');
+    });
+
+    it('shows on My Work rows, by name', async () => {
+      const page = await api.listMyTasks();
+      const row = page.content?.find((t) => t.id === '1');
+
+      expect(row).toMatchObject({
+        status: 'done',
+        statusName: 'Done',
+        statusCategory: 'DONE',
+      });
+      expect(page.content?.find((t) => t.id !== '1')?.status).not.toBe(
+        undefined
+      );
+    });
+
+    it('shows on a project’s tasks and a task’s subtasks', async () => {
+      const page = await api.listProjectTasks('p1');
+      expect(page.content?.find((t) => t.id === '1')?.status).toBe('done');
+
+      const [child] = await api.listChildTasks('p1', '6');
+      queued.set(child.id ?? '', DONE);
+      const children = await api.listChildTasks('p1', '6');
+      expect(children.find((t) => t.id === child.id)?.status).toBe('done');
+    });
   });
 });

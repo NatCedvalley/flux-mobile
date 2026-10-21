@@ -48,6 +48,7 @@ import {
 import { PagedList, type PagedListState } from '@core/task-filters';
 import { InboxService } from '../../inbox/inbox.service';
 import { NotificationRowComponent } from '../../inbox/notification-row/notification-row.component';
+import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { PushCardComponent } from '../../push/push-card/push-card.component';
 import { PushService } from '../../push/push.service';
@@ -106,6 +107,7 @@ type SegmentList = {
     EmptyStateComponent,
     ErrorStateComponent,
     NotificationRowComponent,
+    OfflineBannerComponent,
     PushCardComponent,
     SkeletonRowsComponent,
   ],

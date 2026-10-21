@@ -83,6 +83,7 @@ import {
   TaskBoardComponent,
 } from '../../board/task-board/task-board.component';
 import { TaskCalendarComponent } from '../../calendar/task-calendar/task-calendar.component';
+import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
@@ -174,6 +175,7 @@ const TAB_BAR = 'tab-bar';
     EmptyStateComponent,
     ErrorStateComponent,
     FilterButtonComponent,
+    OfflineBannerComponent,
     ProjectSwitcherComponent,
     ProjectTaskRowComponent,
     SkeletonRowsComponent,

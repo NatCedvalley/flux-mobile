@@ -34,6 +34,7 @@ import { avatarFillIndex, initials } from '@core/people';
 import { can } from '@core/permissions';
 import { initialProject } from '@core/project-list';
 import { AuthService } from '../../auth/auth.service';
+import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
@@ -86,6 +87,7 @@ const EMPTY_MESSAGES: Record<Segment, string> = {
     CreateTaskFabComponent,
     EmptyStateComponent,
     ErrorStateComponent,
+    OfflineBannerComponent,
     SkeletonRowsComponent,
     TaskRowComponent,
   ],

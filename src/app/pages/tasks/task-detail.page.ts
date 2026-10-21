@@ -81,6 +81,7 @@ import {
   type CommentTarget,
   CommentService,
 } from '../../comments/comment.service';
+import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
@@ -202,6 +203,7 @@ type ListView<T> = {
     IonSkeletonText,
     EmptyStateComponent,
     ErrorStateComponent,
+    OfflineBannerComponent,
     SkeletonRowsComponent,
     TaskDetailsComponent,
     TaskDetailsSkeletonComponent,

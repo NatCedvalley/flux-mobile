@@ -46,7 +46,8 @@ src/
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push, opening
               one and the Inbox's permission card (push/), the Inbox's unread
-              counts and its row (inbox/), the Notifications
+              counts and its row (inbox/), the connection state and
+              the offline banner (offline/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
 ```
@@ -729,6 +730,22 @@ account's notifications, newest first.
   `--flux-red9`, a 2px ring in the tab bar's colour), `99+` above 99 and
   hidden at 0. The handoff's "seen" marker (`/unseen-count`) is the web
   bell's; the app uses unread. The server sets no app icon badge.
+
+### Offline
+
+`ConnectivityService` (`src/app/offline/`) holds `online`, from
+`@capacitor/network` (the browser's online/offline events on web). Its
+app initializer is awaited, so a cold start that's already offline knows
+before the first screen renders. The status is checked again on resume,
+since a change made while suspended may never arrive. It reads as online
+until that first check, and a failed check keeps the last value.
+
+`app-offline-banner` is the handoff's offline band: 28px (a min-height),
+`--flux-ambera3` with `--flux-amber11` text, `cloud-off` and "Offline ·
+showing cached work". My Work, Projects (all three views), Inbox and task
+detail put it last in their `ion-header`, as the app shell has no header
+of its own. It only shows the state: the read cache, the write queue and
+its pending count (FM-48 to FM-51) build on `online`.
 
 ## 4. API layer
 

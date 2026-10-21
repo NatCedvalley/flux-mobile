@@ -18,6 +18,7 @@ import { BackButtonService } from './app/back-button/back-button.service';
 import { registerFluxIcons } from './app/icons/register-icons';
 import { InboxService } from './app/inbox/inbox.service';
 import { AppLockService } from './app/lock/app-lock.service';
+import { ConnectivityService } from './app/offline/connectivity.service';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
@@ -62,6 +63,8 @@ bootstrapApplication(AppComponent, {
     },
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
+    // Awaited, so a cold start that's already offline shows it at once.
+    provideAppInitializer(() => inject(ConnectivityService).init()),
     provideAppInitializer(() => inject(StatusBarService).init()),
     provideAppInitializer(() => inject(BackButtonService).init()),
     // Not awaited: push setup mustn't hold up the first screen.

@@ -15,6 +15,7 @@ import {
   TaskCalendarComponent,
   UNSCHEDULED,
 } from '../../calendar/task-calendar/task-calendar.component';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import {
@@ -47,6 +48,7 @@ describe('ProjectTasksPage', () => {
   let prefs: ReturnType<typeof fakePrefs>;
   let toast: { create: ReturnType<typeof vi.fn> };
   let launcher: { open: ReturnType<typeof vi.fn> };
+  let online: ReturnType<typeof signal<boolean>>;
 
   async function create(
     options: {
@@ -62,6 +64,7 @@ describe('ProjectTasksPage', () => {
       create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
     };
     launcher = { open: vi.fn().mockResolvedValue(undefined) };
+    online = signal(true);
     await TestBed.configureTestingModule({
       imports: [ProjectTasksPage],
       providers: [
@@ -70,6 +73,7 @@ describe('ProjectTasksPage', () => {
         { provide: ProjectPrefsService, useValue: prefs },
         { provide: ToastController, useValue: toast },
         { provide: CreateTaskLauncherService, useValue: launcher },
+        { provide: ConnectivityService, useValue: { online } },
         {
           provide: AuthService,
           useValue: {
@@ -496,6 +500,25 @@ describe('ProjectTasksPage', () => {
     expect(element().querySelectorAll('app-project-task-row')).toHaveLength(64);
   });
 
+  it('says the next page needs a connection while offline', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const flaky = new InMemoryFluxApi().addProjectTasks('p1', 60, 'backlog');
+    await create({ api: flaky });
+    await settle();
+    online.set(false);
+    vi.spyOn(flaky, 'listProjectTasks').mockRejectedValueOnce(new ApiError(0));
+
+    const infinite = element().querySelector('ion-infinite-scroll')!;
+    Object.assign(infinite, { complete: vi.fn().mockResolvedValue(undefined) });
+    infinite.dispatchEvent(new CustomEvent('ionInfinite'));
+    await settle();
+    await settle();
+
+    expect(texts('.load-more-error span')).toEqual([
+      'Loading more needs a connection.',
+    ]);
+  });
+
   it('switches project from the switcher and remembers it', async () => {
     await create();
     await settle();
@@ -552,6 +575,31 @@ describe('ProjectTasksPage', () => {
     // One request per status group.
     expect(listProjectTasks).toHaveBeenCalledTimes(4);
     expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the rows on pull-to-refresh while offline, and says so', async () => {
+    await create();
+    await settle();
+    online.set(false);
+    const listProjectTasks = vi.spyOn(api, 'listProjectTasks');
+    const listMyProjects = vi.spyOn(api, 'listMyProjects');
+    const refresher = element().querySelector('ion-refresher')!;
+    const complete = vi.fn().mockResolvedValue(undefined);
+    Object.assign(refresher, { complete });
+
+    refresher.dispatchEvent(new CustomEvent('ionRefresh'));
+    await settle();
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(listProjectTasks).not.toHaveBeenCalled();
+    expect(listMyProjects).not.toHaveBeenCalled();
+    expect(element().querySelectorAll('app-project-task-row')).toHaveLength(4);
+    expect(toast.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'You’re offline. Showing saved work.',
+        positionAnchor: 'tab-bar',
+      })
+    );
   });
 
   it('shows skeleton rows while the projects load', async () => {

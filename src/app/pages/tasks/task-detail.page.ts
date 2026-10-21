@@ -81,7 +81,12 @@ import {
   type CommentTarget,
   CommentService,
 } from '../../comments/comment.service';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../../offline/offline-toast.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
@@ -236,6 +241,8 @@ export class TaskDetailPage {
   private readonly myProjects = inject(MyProjectsService);
   private readonly route = inject(ActivatedRoute);
   private readonly account = inject(AuthService).account;
+  private readonly online = inject(ConnectivityService).online;
+  private readonly offlineToast = inject(OfflineToastService);
   protected readonly myId = computed(() => this.account()?.id);
 
   // Bound to the ':projectId/:taskId' route params and the route's
@@ -401,6 +408,7 @@ export class TaskDetailPage {
   /**
    * The task's attachments, loaded with it (the task has no count of them).
    * Their URLs expire 15 minutes after this load (see `openAttachment`).
+   * A list loaded offline is the saved one, so its URLs count as expired.
    */
   protected readonly attachments = resource({
     params: this.ids,
@@ -409,7 +417,7 @@ export class TaskDetailPage {
         params.projectId,
         params.taskId
       );
-      this.attachmentsLoadedAt = Date.now();
+      this.attachmentsLoadedAt = this.online() ? Date.now() : 0;
       return list;
     },
   });
@@ -842,6 +850,10 @@ export class TaskDetailPage {
    * list older than 10 minutes is fetched again first.
    */
   protected async openAttachment(attachment: Attachment): Promise<void> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.openFile, this.anchor());
+      return;
+    }
     let current: Attachment | undefined = attachment;
     if (Date.now() - this.attachmentsLoadedAt > ATTACHMENT_URLS_FRESH_MS) {
       const { projectId, taskId } = this.ids();
@@ -1218,13 +1230,21 @@ export class TaskDetailPage {
       }
     } catch (error) {
       console.error('Loading more failed', error);
-      await this.toast('Couldn’t load more. Pull down to try again.');
+      await (this.online()
+        ? this.toast('Couldn’t load more. Pull down to try again.')
+        : this.offlineToast.show(OFFLINE_MESSAGES.loadMore, this.anchor()));
     } finally {
       void event.target.complete();
     }
   }
 
+  /** Reloads everything. Offline, keeps the saved task instead. */
   protected refresh(event: RefresherCustomEvent): void {
+    if (!this.online()) {
+      void event.target.complete();
+      void this.offlineToast.show(OFFLINE_MESSAGES.refresh, this.anchor());
+      return;
+    }
     this.now.set(new Date());
     this.reloadTask();
     void this.startComments();

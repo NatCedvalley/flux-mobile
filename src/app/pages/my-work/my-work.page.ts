@@ -34,7 +34,12 @@ import { avatarFillIndex, initials } from '@core/people';
 import { can } from '@core/permissions';
 import { initialProject } from '@core/project-list';
 import { AuthService } from '../../auth/auth.service';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../../offline/offline-toast.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
@@ -100,6 +105,8 @@ export class MyWorkPage {
   private readonly creates = inject(CreateTaskLauncherService);
   private readonly nav = inject(NavController);
   private readonly route = inject(ActivatedRoute);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly offlineToast = inject(OfflineToastService);
 
   protected readonly segment = signal<Segment>('focus');
   /** The local day. Read again on refresh, so Focus rolls over at midnight. */
@@ -215,8 +222,16 @@ export class MyWorkPage {
     this.segment.set(segment);
   }
 
-  /** Reloads the visible segment, and the count in the subtitle. */
+  /**
+   * Reloads the visible segment, and the count in the subtitle. Offline,
+   * keeps the saved rows instead.
+   */
   protected refresh(event: RefresherCustomEvent): void {
+    if (!this.connectivity.online()) {
+      void event.target.complete();
+      void this.offlineToast.show(OFFLINE_MESSAGES.refresh, 'tab-bar');
+      return;
+    }
     this.today.set(localIsoDate(new Date()));
     const current = this.current();
     current.reload();

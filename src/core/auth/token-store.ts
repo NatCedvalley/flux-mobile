@@ -1,12 +1,16 @@
+import type { Account } from '../api';
+
 /**
- * What survives an app restart. The account is not stored; it is re-fetched
- * from `/accounts/me` on every cold start.
+ * What survives an app restart. The account is the last `/accounts/me`
+ * seen, so a cold start offline still knows who is signed in; it is fetched
+ * again whenever the backend can be reached.
  */
 export type StoredSession = {
   accessToken: string;
   refreshToken: string;
   /** Epoch milliseconds. */
   accessTokenExpiresAt: number;
+  account?: Account;
 };
 
 /**
@@ -51,4 +55,14 @@ export function isStoredSession(value: unknown): value is StoredSession {
     typeof session['refreshToken'] === 'string' &&
     typeof session['accessTokenExpiresAt'] === 'number'
   );
+}
+
+/** The stored account, if it looks like one (older versions stored none). */
+export function storedAccount(session: StoredSession): Account | null {
+  const account: unknown = session.account;
+  return typeof account === 'object' &&
+    account !== null &&
+    typeof (account as Account).id === 'string'
+    ? (account as Account)
+    : null;
 }

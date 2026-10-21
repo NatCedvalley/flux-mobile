@@ -265,7 +265,9 @@
         class="load-more-error"
         role="alert"
       >
-        <span>Couldn't load more tasks.</span>
+        <span>{{
+          online() ? "Couldn't load more tasks." : offlineMessages.loadMore
+        }}</span>
         <ion-button
           fill="clear"
           size="small"

@@ -46,8 +46,9 @@ src/
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push, opening
               one and the Inbox's permission card (push/), the Inbox's unread
-              counts and its row (inbox/), the connection state and
-              the offline banner (offline/), the Notifications
+              counts and its row (inbox/), the connection state, the
+              offline banner and toasts, and the read cache's wipe
+              (offline/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
 ```
@@ -55,10 +56,11 @@ src/
 - Import `src/core` code only via the `@core/*` path alias
   (`tsconfig.json`), never with a relative `../core/...` path — this is also
   eslint-enforced from `src/app`.
-- The bridges between `src/app` and `src/core` are two injection tokens in
-  `src/app/providers/`, both provided in `src/main.ts`: `FLUX_API`
-  (`flux-api.token.ts`) and `TOKEN_STORE` (`token-store.token.ts`, see
-  [§4 Authentication](#authentication)). Everything else in `src/core` is
+- The bridges between `src/app` and `src/core` are three injection tokens
+  in `src/app/providers/`, all provided in `src/main.ts`: `FLUX_API`
+  (`flux-api.token.ts`), `TOKEN_STORE` (`token-store.token.ts`, see
+  [§4 Authentication](#authentication)) and `CACHE_STORE`
+  (`cache-store.token.ts`, see [Offline](#offline)). Everything else in `src/core` is
   plain data, interfaces and classes that take their dependencies as
   constructor arguments.
 - Business logic and API types belong in `src/core`. Angular services,
@@ -744,8 +746,57 @@ until that first check, and a failed check keeps the last value.
 `--flux-ambera3` with `--flux-amber11` text, `cloud-off` and "Offline ·
 showing cached work". My Work, Projects (all three views), Inbox and task
 detail put it last in their `ion-header`, as the app shell has no header
-of its own. It only shows the state: the read cache, the write queue and
-its pending count (FM-48 to FM-51) build on `online`.
+of its own. The write queue and its pending count (FM-49 to FM-51) will
+build on `online` too.
+
+**Read cache** (FM-48). A cache, not offline-first: only responses
+already fetched are served back, never queried or merged.
+
+- `CachingFluxApi` (`src/core/offline/`) wraps `HttpFluxApi` as `FLUX_API`.
+  Online, every read goes to the server and a success is saved; an
+  `ApiError(0)` is answered from the cache when it can be, and any other
+  error is the caller's. Offline (`!online()`), no read touches the
+  network: it's the saved copy or an `ApiError(0)` at once, which also
+  skips the token refresh's backoff. Writes always pass straight through.
+- `cacheKey()` holds the allow-list: My Work, the Projects list, task
+  detail and the Inbox, first pages only. It leaves out My Work search
+  (`openOnly=false`), project search (`search`), the board (100-row pages,
+  above `PROJECT_PAGE_SIZE`), the calendar (`dueDateFrom`/`dueDateTo`,
+  `onlyUnscheduled`) and every later page. Focus is keyed without its
+  `dueDateTo`, so yesterday's Focus still shows offline today. Labels and
+  push preferences aren't cached. The key is the method plus its
+  arguments as JSON with sorted keys.
+- `ResponseCache` keeps one blob per response plus `index.json`, for one
+  account: using it for another account wipes everything first. An entry
+  older than 7 days is a miss, and past 10 MB of JSON the
+  least recently fetched go first. It runs one operation at a time, and a
+  store failure is logged and reads as a miss, never failing the request.
+- `CACHE_STORE` is `FileCacheStore` on native (`@capacitor/filesystem`,
+  `Directory.Cache`/`flux-cache/`: app-private and never backed up; a file
+  the OS purges is a miss) and `MemoryCacheStore` on web, so a browser
+  reload loses it with the session.
+- `ReadCacheService` (`src/app/offline/`) owns the cache and wipes it
+  whenever no one is signed in. It watches `isSignedIn`, not the account,
+  because an offline cold start can be signed in with no account.
+- After a write online, a cached list page keeps its old rows until that
+  list is fetched again; task detail refetches the task after each write.
+
+**Screens offline** (`OfflineToastService`, `OFFLINE_MESSAGES`):
+
+- Pull-to-refresh on My Work, Projects (all views), task detail and the
+  Inbox completes at once, keeps the rows and toasts "You're offline.
+  Showing saved work." It doesn't reload, so it never swaps rows for an
+  error.
+- Later pages fail at once: the Projects and Inbox Retry rows read
+  "Loading more needs a connection." while offline, and task detail's
+  load-more toast says the same.
+- Opening an attachment toasts "Opening files needs a connection." An
+  attachment list loaded offline counts as expired, so the first tap
+  online signs fresh URLs.
+- In the Inbox, swipe Mark read and Mark all read toast "Marking read
+  needs a connection." A tapped task row opens from the cache and stays
+  unread; a row that only marks itself read toasts the same.
+- A screen with nothing cached shows the existing `app-error-state`.
 
 ## 4. API layer
 
@@ -765,8 +816,8 @@ aliases, in `src/core/api/types/index.ts`, of DTOs generated from the
 backend's OpenAPI spec. Paged lists use the hand-written generic `Page<T>`,
 because springdoc emits the list endpoints' 200 responses as `unknown`.
 
-`HttpFluxApi` (`src/core/api/http-flux-api.ts`) is what `main.ts` provides:
-it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
+`HttpFluxApi` (`src/core/api/http-flux-api.ts`) is what `main.ts` provides,
+inside `CachingFluxApi` (see [Offline](#offline)): it calls `environment.apiBaseUrl` (which ends in `/api/v1`, so paths are
 written without it) and makes every request through
 `AuthService.withAccessToken` (see below). `JsonHttpClient`
 (`src/core/http/`) is the request (GET, POST, PUT, PATCH and DELETE), timeout,
@@ -817,11 +868,20 @@ logic is plain TypeScript in `src/core/auth/`:
   `ErrorResponse`, which is hand-written because springdoc doesn't emit it.
   Login always sends `rememberMe: true` (a Keycloak offline session: 30
   days idle, 1 year max); there is no checkbox.
-- `AuthSession` holds the tokens and account and persists the tokens
-  through a `TokenStore`. On a cold start `restore()` refreshes an expired
-  access token (they live 5 minutes), then loads the account. A 4xx drops
-  the session; no response or a 5xx keeps it, so being offline never signs
-  anyone out.
+- `AuthSession` holds the tokens and account and persists both through a
+  `TokenStore` (the account is the last `/accounts/me`, saved after each
+  load and kept through refreshes). On a cold start `restore()` refreshes
+  an expired access token (they live 5 minutes), then loads the account. A
+  4xx drops the session; no response or a 5xx keeps it, with the stored
+  account, so being offline never signs anyone out.
+- `AuthService.restore()` waits for `ConnectivityService.ready` (the first
+  network check) and, offline, calls `restore({ offline: true })`: it
+  sends nothing and signs in with the stored tokens and account at once,
+  so the first screen isn't held up by a 10 s timeout. A session saved by
+  an older version has no account, and stays without one until online.
+  A stored account counts as stale: `resume()` fetches it again once the
+  token is live, and `AuthService` calls `resume()` whenever `online` turns
+  true.
 - Refresh runs 30 s before expiry (a timer), on app resume (`resume()`,
   since timers stop while the app is suspended), and after a 401 with no
   error code. Concurrent callers share one refresh in flight. Only the
@@ -1456,4 +1516,5 @@ which allows the overlap.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-offline caching, app store assets, and Play Store upload.
+the offline write queue (FM-49 to FM-51), app store assets, and Play
+Store upload.

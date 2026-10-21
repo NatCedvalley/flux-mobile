@@ -48,7 +48,12 @@ import {
 import { PagedList, type PagedListState } from '@core/task-filters';
 import { InboxService } from '../../inbox/inbox.service';
 import { NotificationRowComponent } from '../../inbox/notification-row/notification-row.component';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { OfflineBannerComponent } from '../../offline/offline-banner/offline-banner.component';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../../offline/offline-toast.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { PushCardComponent } from '../../push/push-card/push-card.component';
 import { PushService } from '../../push/push.service';
@@ -118,6 +123,9 @@ export class NotificationsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastController);
   private readonly undo = inject(UndoToastService);
+  private readonly offlineToast = inject(OfflineToastService);
+  protected readonly online = inject(ConnectivityService).online;
+  protected readonly offlineMessages = OFFLINE_MESSAGES;
   protected readonly inbox = inject(InboxService);
   protected readonly push = inject(PushService);
 
@@ -185,8 +193,16 @@ export class NotificationsPage {
     this.segment.set(segment);
   }
 
-  /** Reloads the visible segment and the counts, keeping the rows meanwhile. */
+  /**
+   * Reloads the visible segment and the counts, keeping the rows meanwhile.
+   * Offline, keeps the saved rows instead.
+   */
   protected refresh(event: RefresherCustomEvent): void {
+    if (!this.online()) {
+      void event.target.complete();
+      void this.offlineToast.show(OFFLINE_MESSAGES.refresh, ANCHOR);
+      return;
+    }
     this.current().results.reload();
     void this.inbox.refresh();
     // Set after the reload starts, so the effect sees it loading.
@@ -202,10 +218,17 @@ export class NotificationsPage {
     void this.nextPage().finally(() => this.retryingMore.set(false));
   }
 
-  /** A tap: marks the row read at once, then opens its task if it has one. */
+  /**
+   * A tap: marks the row read at once, then opens its task if it has one.
+   * Offline, the task opens from the cache and the row stays unread.
+   */
   protected open(notification: AppNotification): void {
     if (!notification.isRead) {
-      void this.markRead(notification);
+      if (this.online()) {
+        void this.markRead(notification);
+      } else if (!opensTask(notification)) {
+        void this.offlineToast.show(OFFLINE_MESSAGES.markRead, ANCHOR);
+      }
     }
     if (opensTask(notification)) {
       void this.nav.navigateForward(
@@ -225,6 +248,10 @@ export class NotificationsPage {
     sliding: IonItemSliding
   ): void {
     void sliding.close();
+    if (!this.online()) {
+      void this.offlineToast.show(OFFLINE_MESSAGES.markRead, ANCHOR);
+      return;
+    }
     void impact('medium');
     this.setRead(notification, true);
     void this.undo.offer(
@@ -259,6 +286,10 @@ export class NotificationsPage {
 
   /** Every loaded row and the counts go to read at once; no Undo. */
   protected async markAllRead(): Promise<void> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.markRead, ANCHOR);
+      return;
+    }
     // A swipe's Undo would put back a row the server has now read.
     this.undo.dismiss();
     const unread = new Set(

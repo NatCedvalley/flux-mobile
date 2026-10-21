@@ -40,6 +40,18 @@ describe('ConnectivityService', () => {
     expect(Network.getStatus).not.toHaveBeenCalled();
   });
 
+  it('is ready once the first check answers', async () => {
+    let ready = false;
+    void service.ready.then(() => (ready = true));
+    await Promise.resolve();
+    expect(ready).toBe(false);
+
+    await service.init();
+    await service.ready;
+
+    expect(ready).toBe(true);
+  });
+
   it('starts offline when the OS says so', async () => {
     offline();
 

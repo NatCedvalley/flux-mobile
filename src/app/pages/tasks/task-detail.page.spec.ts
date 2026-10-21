@@ -16,6 +16,7 @@ import type { OverflowAction } from './task-overflow-sheet/task-overflow-sheet.c
 import { AttachmentService } from '../../attachments/attachment.service';
 import { FileSourceService } from '../../attachments/file-source.service';
 import { AuthService } from '../../auth/auth.service';
+import { ConnectivityService } from '../../offline/connectivity.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskChangesService } from '../../task-status/task-changes.service';
 import { CommentComposerComponent } from './comment-composer/comment-composer.component';
@@ -34,6 +35,7 @@ describe('TaskDetailPage', () => {
     navigateBack: ReturnType<typeof vi.fn>;
   };
   let fileSources: { sources: string[]; pick: ReturnType<typeof vi.fn> };
+  let online: ReturnType<typeof signal<boolean>>;
 
   async function create(
     options: {
@@ -42,6 +44,8 @@ describe('TaskDetailPage', () => {
       api?: InMemoryFluxApi;
       /** The file sources the platform offers; native's by default. */
       sources?: string[];
+      /** Whether the device has a connection as the page opens. */
+      online?: boolean;
     } = {}
   ) {
     TestBed.resetTestingModule();
@@ -59,6 +63,7 @@ describe('TaskDetailPage', () => {
       ),
     };
     nav = { pop: vi.fn().mockResolvedValue(true), navigateBack: vi.fn() };
+    online = signal(options.online ?? true);
     fileSources = {
       sources: options.sources ?? ['camera', 'photos', 'files'],
       pick: vi.fn(),
@@ -73,6 +78,7 @@ describe('TaskDetailPage', () => {
         { provide: NavController, useValue: nav },
         { provide: AuthService, useValue: { account: signal({ id: 'a1' }) } },
         { provide: FileSourceService, useValue: fileSources },
+        { provide: ConnectivityService, useValue: { online } },
       ],
     }).compileComponents();
     if (options.row) {
@@ -839,6 +845,78 @@ describe('TaskDetailPage', () => {
     expect(task).toHaveBeenCalled();
     expect(comments).toHaveBeenCalled();
     expect(complete).toHaveBeenCalled();
+  });
+
+  describe('offline', () => {
+    it('keeps the task on pull-to-refresh, and says so', async () => {
+      await create();
+      await settle();
+      online.set(false);
+      const task = vi.spyOn(api, 'getTask');
+      const comments = vi.spyOn(api, 'listTaskComments');
+      const complete = vi.fn().mockResolvedValue(undefined);
+
+      fixture.componentInstance['refresh']({ target: { complete } } as never);
+      await settle();
+
+      expect(task).not.toHaveBeenCalled();
+      expect(comments).not.toHaveBeenCalled();
+      expect(complete).toHaveBeenCalled();
+      expect(lastToast()).toBe('You’re offline. Showing saved work.');
+    });
+
+    it('says loading more needs a connection', async () => {
+      await create();
+      await settle();
+      online.set(false);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const page = fixture.componentInstance as unknown as {
+        tab: { set(tab: string): void };
+        commentList: { loadMore(): Promise<void> };
+        loadMore(event: unknown): Promise<void>;
+      };
+      page.tab.set('comments');
+      vi.spyOn(page.commentList, 'loadMore').mockRejectedValue(new ApiError(0));
+      const complete = vi.fn().mockResolvedValue(undefined);
+
+      await page.loadMore({ target: { complete } });
+
+      expect(lastToast()).toBe('Loading more needs a connection.');
+      expect(complete).toHaveBeenCalled();
+    });
+
+    it('says opening a file needs a connection', async () => {
+      await create();
+      await settle();
+      online.set(false);
+      const open = vi.spyOn(TestBed.inject(AttachmentService), 'open');
+      const page = fixture.componentInstance as unknown as {
+        openAttachment(attachment: { id?: string }): Promise<void>;
+      };
+
+      await page.openAttachment({ id: 'f1' });
+
+      expect(open).not.toHaveBeenCalled();
+      expect(lastToast()).toBe('Opening files needs a connection.');
+    });
+
+    it('fetches fresh URLs for files listed while offline', async () => {
+      await create({ online: false });
+      await settle();
+      online.set(true);
+      const open = vi
+        .spyOn(TestBed.inject(AttachmentService), 'open')
+        .mockResolvedValue();
+      const list = vi.spyOn(api, 'listTaskAttachments');
+      const page = fixture.componentInstance as unknown as {
+        openAttachment(attachment: { id?: string }): Promise<void>;
+      };
+
+      await page.openAttachment({ id: 'f1' });
+
+      expect(list).toHaveBeenCalledWith('p1', '1');
+      expect(open).toHaveBeenCalled();
+    });
   });
 
   describe('comment writing', () => {

@@ -11,6 +11,7 @@ import { Capacitor } from '@capacitor/core';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular';
 import { HttpFluxApi } from '@core/api';
 import { MemoryTokenStore } from '@core/auth';
+import { CachingFluxApi, MemoryCacheStore } from '@core/offline';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { AuthService } from './app/auth/auth.service';
@@ -19,6 +20,9 @@ import { registerFluxIcons } from './app/icons/register-icons';
 import { InboxService } from './app/inbox/inbox.service';
 import { AppLockService } from './app/lock/app-lock.service';
 import { ConnectivityService } from './app/offline/connectivity.service';
+import { ReadCacheService } from './app/offline/read-cache.service';
+import { CACHE_STORE } from './app/providers/cache-store.token';
+import { FileCacheStore } from './app/providers/file-cache-store';
 import { FLUX_API } from './app/providers/flux-api.token';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
@@ -42,13 +46,22 @@ bootstrapApplication(AppComponent, {
       withPreloading(PreloadAllModules),
       withComponentInputBinding()
     ),
-    // flux-operations, with every call made through the session's token.
+    // flux-operations, with every call made through the session's token,
+    // and the reads the screens last loaded served from the cache offline.
     {
       provide: FLUX_API,
       useFactory: () => {
         const auth = inject(AuthService);
-        return new HttpFluxApi(environment.apiBaseUrl, (call) =>
-          auth.withAccessToken(call)
+        const connectivity = inject(ConnectivityService);
+        return new CachingFluxApi(
+          new HttpFluxApi(environment.apiBaseUrl, (call) =>
+            auth.withAccessToken(call)
+          ),
+          inject(ReadCacheService).cache,
+          {
+            accountId: () => auth.account()?.id,
+            online: () => connectivity.online(),
+          }
         );
       },
     },
@@ -60,6 +73,15 @@ bootstrapApplication(AppComponent, {
         Capacitor.isNativePlatform()
           ? new SecureTokenStore()
           : new MemoryTokenStore(),
+    },
+    // App-private files on native, so the cache survives the app being
+    // killed. Web keeps it in memory, like the tokens.
+    {
+      provide: CACHE_STORE,
+      useFactory: () =>
+        Capacitor.isNativePlatform()
+          ? new FileCacheStore()
+          : new MemoryCacheStore(),
     },
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
@@ -73,5 +95,7 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(PushOpenService).init()),
     // The Inbox tab's badge: unread counts, kept for the signed-in account.
     provideAppInitializer(() => inject(InboxService).init()),
+    // Wipes the read cache whenever no one is signed in.
+    provideAppInitializer(() => inject(ReadCacheService).init()),
   ],
 });

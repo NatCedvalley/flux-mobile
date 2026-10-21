@@ -32,9 +32,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           MISSING=""
-          for NAME in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+          for NAME in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_GOOGLE_SERVICES_JSON_BASE64; do
             if [ -z "${!NAME}" ]; then
               MISSING="$MISSING $NAME"
             fi
@@ -55,12 +56,33 @@ jobs:
 
       - run: npm ci
 
+      # Before the web build: write-build-info.mjs turns push on only when
+      # the file exists at build time.
+      - name: Write Firebase config
+        env:
+          ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          JSON=android/app/google-services.json
+          echo "$ANDROID_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > "$JSON"
+          if ! node -e '
+            const config = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            const packages = (config.client ?? []).map((c) => c.client_info?.android_client_info?.package_name);
+            process.exit(packages.includes("asia.justflux.mobile") ? 0 : 1);
+          ' "$JSON"; then
+            echo "::error::ANDROID_GOOGLE_SERVICES_JSON_BASE64 isn't a google-services.json with the app asia.justflux.mobile"
+            exit 1
+          fi
+
       - name: Build web app
         run: |
           if [ "$CONFIGURATION" = staging ]; then
             npm run build:staging
           else
             npm run build
+          fi
+          if ! grep -q '"android":true' src/environments/build-info.ts; then
+            echo "::error::build-info.ts has push off for Android, so push would be off in this build"
+            exit 1
           fi
 
       - run: npx cap sync android

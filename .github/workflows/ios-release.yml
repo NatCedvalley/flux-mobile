@@ -40,9 +40,10 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: |
           MISSING=""
-          for NAME in IOS_DIST_CERT_P12_BASE64 IOS_DIST_CERT_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_ISSUER_ID APP_STORE_CONNECT_API_KEY_P8_BASE64; do
+          for NAME in IOS_DIST_CERT_P12_BASE64 IOS_DIST_CERT_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_ISSUER_ID APP_STORE_CONNECT_API_KEY_P8_BASE64 IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64; do
             if [ -z "${!NAME}" ]; then
               MISSING="$MISSING $NAME"
             fi
@@ -63,12 +64,34 @@ jobs:
 
       - run: npm ci
 
+      # Before the web build: write-build-info.mjs turns push on only when
+      # the file exists at build time.
+      - name: Write Firebase config
+        env:
+          IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          PLIST=ios/App/App/GoogleService-Info.plist
+          echo "$IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > "$PLIST"
+          if ! plutil -lint "$PLIST" > /dev/null; then
+            echo "::error::IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 doesn't decode to a valid plist"
+            exit 1
+          fi
+          BUNDLE_ID=$(plutil -extract BUNDLE_ID raw -o - "$PLIST" || true)
+          if [ "$BUNDLE_ID" != asia.justflux.mobile ]; then
+            echo "::error::IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 is for '$BUNDLE_ID', expected asia.justflux.mobile"
+            exit 1
+          fi
+
       - name: Build web app
         run: |
           if [ "$CONFIGURATION" = staging ]; then
             npm run build:staging
           else
             npm run build
+          fi
+          if ! grep -q '"ios":true' src/environments/build-info.ts; then
+            echo "::error::build-info.ts has push off for iOS, so push would be off in this build"
+            exit 1
           fi
 
       - run: npx cap sync ios
@@ -172,6 +195,16 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f "$APP/GoogleService-Info.plist" ]; then
+            echo "::error::GoogleService-Info.plist is missing from the app"
+            exit 1
+          fi
+          APS_ENVIRONMENT=$(codesign -d --entitlements - --xml "$APP" 2>/dev/null | plutil -extract aps-environment raw -o - - || true)
+          if [ "$APS_ENVIRONMENT" != production ]; then
+            echo "::error::App is signed with aps-environment '$APS_ENVIRONMENT', expected production"
+            exit 1
+          fi
+
           {
             echo "### iOS release"
             echo ""
@@ -179,6 +212,7 @@ jobs:
             echo "- CFBundleShortVersionString: \`$ACTUAL_VERSION\`"
             echo "- CFBundleVersion: \`$ACTUAL_BUILD\`"
             echo "- Signing identity: \`$AUTHORITY\`"
+            echo "- Push: aps-environment \`$APS_ENVIRONMENT\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           mkdir -p "$RUNNER_TEMP/artifacts"
@@ -224,3 +258,4 @@ jobs:
               "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
           fi
           rm -rf "$HOME/.appstoreconnect/private_keys"
+          rm -f ios/App/App/GoogleService-Info.plist

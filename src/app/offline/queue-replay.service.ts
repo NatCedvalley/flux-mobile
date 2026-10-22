@@ -4,6 +4,7 @@ import { ToastController } from '@ionic/angular';
 import type { Task } from '@core/api';
 import type { QueuedStatusChange, ReplayOutcome } from '@core/offline';
 import { ApiError } from '@core/auth';
+import { localIsoDate, myWorkQueries } from '@core/my-work';
 import { AuthService } from '../auth/auth.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { NETWORK_FLUX_API } from '../providers/network-flux-api.token';
@@ -19,7 +20,9 @@ const TOAST_MS = 4000;
  * on sign-in, when the connection comes back and on resume. Each one sent
  * is fetched again and reported (`TaskChangesService`), so the screens show
  * the server's copy. A change that wasn't sent (a conflict) or was refused
- * puts the server's copy back and says so in a toast.
+ * puts the server's copy back and says so in a toast. My Work's cached
+ * lists are fetched again too, since My Work may be hidden meanwhile and
+ * would otherwise reload its old rows from the cache once offline.
  */
 @Injectable({ providedIn: 'root' })
 export class QueueReplayService {
@@ -61,7 +64,18 @@ export class QueueReplayService {
     await queue.load(accountId);
     const outcomes = await queue.replay(this.network);
     await Promise.all(outcomes.map((outcome) => this.settle(outcome)));
+    if (outcomes.length) {
+      void this.refreshMyWork();
+    }
     await this.tell(outcomes);
+  }
+
+  /** Fetches My Work's lists through FLUX_API, which caches them. */
+  private async refreshMyWork(): Promise<void> {
+    const queries = myWorkQueries(localIsoDate(new Date()));
+    await Promise.allSettled(
+      Object.values(queries).map((query) => this.api.listMyTasks(query))
+    );
   }
 
   /** Shows the server's copy of the task, now that its change has settled. */

@@ -107,7 +107,8 @@ win. Releases (handoff screen 3k) has no tab.
 ### My Work
 
 My Work (handoff 3a) has three segments, each one `GET /dashboard/my-tasks`
-query of open tasks (one page of 100). **Focus** asks for those assigned
+query of open tasks (one page of 100, `myWorkQueries()` in
+`src/core/my-work/`). **Focus** asks for those assigned
 and due by today + 7 days, and `focusBuckets()` (`src/core/my-work/`) splits
 them into Overdue, Today and Next 7 days. **All assigned** has no due window
 and also gives the subtitle's count. **Watching** loads the first time it's
@@ -785,6 +786,10 @@ already fetched are served back, never queried or merged.
   because an offline cold start can be signed in with no account.
 - After a write online, a cached list page keeps its old rows until that
   list is fetched again; task detail refetches the task after each write.
+- A saved view or group-by (`updateTaskViewSettings`) replaces the cached
+  view settings, since the PUT returns them whole, so a launch offline
+  opens the view chosen last. One switched while offline isn't saved, and
+  the cache keeps the old view.
 
 **Write queue** (FM-49). Only status changes are queued; comments come in
 FM-50 and the pending changes sheet in FM-51.
@@ -824,7 +829,10 @@ FM-50 and the pending changes sheet in FM-51.
   toast ("CHK-142 changed on the server, so your status change wasn’t
   sent.", "Couldn’t move CHK-142: …", or a count). Conflicts and
   failures stay in the queue for FM-51, until a newer change to that task
-  is queued or sent online (`dropUnsent()`).
+  is queued or sent online (`dropUnsent()`). After a replay that settled
+  anything, My Work's three lists (`myWorkQueries()`) are fetched again
+  through `FLUX_API`: Ionic doesn't run a hidden page's effects, so a
+  hidden My Work would otherwise reload its old cached rows once offline.
 - `CachingFluxApi` takes `queuedStatus`, and `getTask`, `listMyTasks`
   (with `statusName`), `listProjectTasks` and `listChildTasks` show a
   `queued` or `sending` change's status, from the network or the cache. A

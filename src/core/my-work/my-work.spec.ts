@@ -2,6 +2,7 @@ import {
   PROJECT_HUES,
   focusBuckets,
   isOverdue,
+  myWorkQueries,
   projectHue,
   secondFact,
   statusTone,
@@ -105,5 +106,20 @@ describe('projectHue', () => {
   it('is stable for a project and one of the chip hues', () => {
     expect(projectHue('p1')).toBe(projectHue('p1'));
     expect(PROJECT_HUES).toContain(projectHue('p1'));
+  });
+});
+
+describe('myWorkQueries', () => {
+  it('asks for one page of open tasks per segment, Focus up to a week out', () => {
+    expect(myWorkQueries(TODAY)).toEqual({
+      focus: {
+        scope: 'assigned',
+        openOnly: true,
+        size: 100,
+        dueDateTo: '2026-10-08',
+      },
+      assigned: { scope: 'assigned', openOnly: true, size: 100 },
+      watching: { scope: 'watching', openOnly: true, size: 100 },
+    });
   });
 });

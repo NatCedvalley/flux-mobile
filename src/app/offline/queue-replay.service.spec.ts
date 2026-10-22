@@ -196,4 +196,35 @@ describe('QueueReplayService', () => {
       })
     );
   });
+
+  it('fetches My Work’s lists again once something settled', async () => {
+    const list = vi.spyOn(api, 'listMyTasks');
+    online.set(true);
+
+    await service.replay();
+    await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(3));
+
+    expect(list.mock.calls.map(([q]) => q?.scope)).toEqual([
+      'assigned',
+      'assigned',
+      'watching',
+    ]);
+  });
+
+  it('fetches nothing more when nothing settled', async () => {
+    // Back where it started, as Undo does: the queue is empty.
+    await writeQueue.enqueueStatus({
+      ...TO_TODO,
+      from: TO_TODO.to,
+      to: TO_TODO.from,
+    });
+    expect(writeQueue.items()).toEqual([]);
+    const list = vi.spyOn(api, 'listMyTasks');
+    online.set(true);
+
+    await service.replay();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(list).not.toHaveBeenCalled();
+  });
 });

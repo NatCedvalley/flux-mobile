@@ -1,9 +1,34 @@
-import type { MyTask } from '../api';
+import type { MyTask, MyTasksQuery } from '../api';
 import { stableIndex } from '../people';
 import { addDays, shortDate } from './dates';
 
 /** How far ahead My Work's Focus segment looks. */
 export const FOCUS_DAYS = 7;
+
+/** One page is plenty for a person's open tasks; the server caps it at 100. */
+const MY_WORK_PAGE_SIZE = 100;
+
+export type MyWorkSegment = 'focus' | 'assigned' | 'watching';
+
+/**
+ * My Work's three lists on the local day `today`: Focus (assigned, due by
+ * today + `FOCUS_DAYS`), All assigned, and Watching, one page of open tasks
+ * each. Shared by the page and by what refreshes their cached copies.
+ */
+export function myWorkQueries(
+  today: string
+): Record<MyWorkSegment, MyTasksQuery> {
+  const page = { openOnly: true, size: MY_WORK_PAGE_SIZE };
+  return {
+    focus: {
+      scope: 'assigned',
+      ...page,
+      dueDateTo: addDays(today, FOCUS_DAYS),
+    },
+    assigned: { scope: 'assigned', ...page },
+    watching: { scope: 'watching', ...page },
+  };
+}
 
 export type FocusBuckets<T> = { overdue: T[]; today: T[]; next7: T[] };
 

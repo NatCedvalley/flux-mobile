@@ -89,7 +89,12 @@
               class="status"
               [style]="status.colors"
               [disabled]="!statusReady()"
-              [attr.aria-label]="'Status: ' + status.name + '. Change status'"
+              [attr.aria-label]="
+                'Status: ' +
+                status.name +
+                (statusPending() ? ', waiting to sync' : '') +
+                '. Change status'
+              "
               (click)="openSheet()"
             >
               <span
@@ -97,6 +102,13 @@
                 aria-hidden="true"
               ></span>
               {{ status.name }}
+              @if (statusPending()) {
+                <ion-icon
+                  class="sync"
+                  name="refresh-cw"
+                  aria-hidden="true"
+                ></ion-icon>
+              }
               <ion-icon
                 name="chevron-down"
                 aria-hidden="true"
@@ -112,6 +124,14 @@
                 aria-hidden="true"
               ></span>
               {{ status.name }}
+              @if (statusPending()) {
+                <ion-icon
+                  class="sync"
+                  name="refresh-cw"
+                  aria-label="Waiting to sync"
+                  role="img"
+                ></ion-icon>
+              }
             </span>
           }
         }

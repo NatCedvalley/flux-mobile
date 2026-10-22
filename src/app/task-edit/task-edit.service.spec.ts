@@ -1,8 +1,10 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
 import type { Task } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { ConnectivityService } from '../offline/connectivity.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskChangesService } from '../task-status/task-changes.service';
 import { TaskEditService } from './task-edit.service';
@@ -12,6 +14,7 @@ describe('TaskEditService', () => {
   let toast: { create: ReturnType<typeof vi.fn> };
   let service: TaskEditService;
   let shown: Task[];
+  let online: ReturnType<typeof signal<boolean>>;
   const view = { apply: (t: Task) => shown.push(t) };
 
   beforeEach(() => {
@@ -19,10 +22,12 @@ describe('TaskEditService', () => {
     toast = {
       create: vi.fn().mockResolvedValue({ present: vi.fn(), dismiss: vi.fn() }),
     };
+    online = signal(true);
     TestBed.configureTestingModule({
       providers: [
         { provide: FLUX_API, useValue: api },
         { provide: ToastController, useValue: toast },
+        { provide: ConnectivityService, useValue: { online } },
       ],
     });
     service = TestBed.inject(TaskEditService);
@@ -176,6 +181,50 @@ describe('TaskEditService', () => {
       expect(toast.create).toHaveBeenCalledOnce();
       expect(toast.create).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Nope' })
+      );
+    });
+  });
+
+  describe('offline', () => {
+    beforeEach(() => online.set(false));
+
+    it('says an edit needs a connection, and changes nothing', async () => {
+      const task = await api.getTask('p1', '1');
+      const update = vi.spyOn(api, 'updateTask');
+
+      await expect(service.update(task, { title: 'New' }, view)).resolves.toBe(
+        false
+      );
+
+      expect(update).not.toHaveBeenCalled();
+      expect(shown).toEqual([]);
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Editing needs a connection.' })
+      );
+    });
+
+    it('says the same for labels, without showing the saved copy', async () => {
+      const task = await api.getTask('p1', '1');
+      const [label] = await api.listLabels('p1');
+
+      await expect(service.setLabels(task, [label], [], view)).resolves.toBe(
+        false
+      );
+
+      expect(shown).toEqual([]);
+      expect(toast.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('says a reschedule needs a connection', async () => {
+      const task = await api.getTask('p1', '1');
+
+      await expect(
+        service.reschedule(task, { dueDate: '2026-12-01' }, view)
+      ).resolves.toBe(false);
+
+      expect(shown).toEqual([]);
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Rescheduling needs a connection.' })
       );
     });
   });

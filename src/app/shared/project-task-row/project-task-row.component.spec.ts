@@ -81,4 +81,18 @@ describe('ProjectTaskRowComponent', () => {
     expect(el.querySelector('.avatar')?.classList).toContain('unassigned');
     expect(iconName(el.querySelector('.avatar ion-icon'))).toBe('user');
   });
+
+  it('ends the meta line with the sync glyph while a change is queued', () => {
+    expect(
+      render({ id: 't1', taskKey: 'CHK-7' }).querySelector('.sync')
+    ).toBeNull();
+
+    fixture.componentRef.setInput('pending', true);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const last = el.querySelector('.meta')?.lastElementChild;
+    expect(last?.classList.contains('sync')).toBe(true);
+    expect(iconName(last)).toBe('refresh-cw');
+  });
 });

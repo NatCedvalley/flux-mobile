@@ -7,6 +7,7 @@ import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { AuthService } from '../../auth/auth.service';
 import { ConnectivityService } from '../../offline/connectivity.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import {
@@ -227,6 +228,29 @@ describe('MyWorkPage', () => {
         positionAnchor: 'tab-bar',
       })
     );
+  });
+
+  it('reloads when a status change is queued, and marks its row', async () => {
+    await create();
+    await settle();
+    const writeQueue = TestBed.inject(WriteQueueService);
+    await writeQueue.queue.load('account-1');
+    const listMyTasks = vi.spyOn(api, 'listMyTasks');
+
+    await writeQueue.enqueueStatus({
+      projectId: 'p1',
+      taskId: '1',
+      taskKey: 'CHK-142',
+      from: { slug: 'in_progress' },
+      to: { slug: 'done', isClosed: true, resolution: 'done' },
+    });
+    await settle();
+
+    expect(listMyTasks).toHaveBeenCalledTimes(2); // Focus and All assigned
+    const row = Array.from(element().querySelectorAll('app-task-row')).find(
+      (r) => r.querySelector('.key')?.textContent === 'CHK-142'
+    );
+    expect(row?.querySelector('.status .sync')).not.toBeNull();
   });
 
   it('shows skeleton rows while the first load is pending', async () => {

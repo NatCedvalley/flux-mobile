@@ -82,4 +82,22 @@ describe('TaskRowComponent', () => {
     expect(el.querySelector('.meta')?.children).toHaveLength(0);
     expect(el.querySelector('.project')).toBeNull();
   });
+
+  it('shows the sync glyph on the status while a change is queued', () => {
+    const task: MyTask = {
+      id: 't1',
+      statusName: 'Done',
+      statusCategory: 'DONE',
+    };
+    expect(render(task).querySelector('.sync')).toBeNull();
+
+    fixture.componentRef.setInput('pending', true);
+    fixture.detectChanges();
+
+    const glyph = (fixture.nativeElement as HTMLElement).querySelector(
+      '.status .sync'
+    );
+    expect(iconName(glyph)).toBe('refresh-cw');
+    expect(glyph?.getAttribute('aria-label')).toBe('Waiting to sync');
+  });
 });

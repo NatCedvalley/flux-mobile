@@ -4,6 +4,11 @@ import type { Label, Task } from '@core/api';
 import { ApiError } from '@core/auth';
 import { type TaskDraft, createTaskBody } from '@core/task-create';
 import type { PickedFile } from '../attachments/file-source.service';
+import { ConnectivityService } from '../offline/connectivity.service';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../offline/offline-toast.service';
 import { FLUX_API } from '../providers/flux-api.token';
 
 const CREATED_MS = 4000;
@@ -31,18 +36,25 @@ export type CreatedTask = {
 export class TaskCreateService {
   private readonly api = inject(FLUX_API);
   private readonly toasts = inject(ToastController);
+  private readonly online = inject(ConnectivityService).online;
+  private readonly offlineToast = inject(OfflineToastService);
 
   /**
    * Creates `draft`, attaching its labels (`labels` are the project's, to
    * find their ids) and `files`. On failure shows the server's message and
    * resolves undefined, so the sheet keeps what was typed. A label or file
-   * that fails still counts as created.
+   * that fails still counts as created. Offline it isn't tried, and the
+   * sheet keeps the draft for once the connection is back.
    */
   async create(
     draft: TaskDraft,
     labels: readonly Label[],
     files: readonly PickedFile[] = []
   ): Promise<CreatedTask | undefined> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.create);
+      return undefined;
+    }
     let task: Task;
     try {
       task = await this.api.createTask(draft.projectId, createTaskBody(draft));

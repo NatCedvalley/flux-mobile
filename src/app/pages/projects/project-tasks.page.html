@@ -177,6 +177,7 @@
       [canReorder]="canReorder()"
       [canCreate]="canCreate()"
       [failed]="columnsFailed()"
+      [pending]="pendingTaskIds()"
       (loadMore)="loadColumn($event)"
       (dropped)="dropped($event)"
       (add)="openCreate($event)"
@@ -223,6 +224,7 @@
               <app-project-task-row
                 [task]="task"
                 [today]="today()"
+                [pending]="pendingTaskIds().has(task.id ?? '')"
               />
               <ion-item-options
                 side="end"

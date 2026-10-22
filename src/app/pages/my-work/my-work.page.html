@@ -102,6 +102,7 @@
               <app-task-row
                 [task]="task"
                 [today]="today()"
+                [pending]="pendingTaskIds().has(task.id ?? '')"
               />
             }
           </ion-item-group>
@@ -115,6 +116,7 @@
               <app-task-row
                 [task]="task"
                 [today]="today()"
+                [pending]="pendingTaskIds().has(task.id ?? '')"
               />
             }
           </ion-item-group>
@@ -128,6 +130,7 @@
               <app-task-row
                 [task]="task"
                 [today]="today()"
+                [pending]="pendingTaskIds().has(task.id ?? '')"
               />
             }
           </ion-item-group>
@@ -145,6 +148,7 @@
         <app-task-row
           [task]="task"
           [today]="today()"
+          [pending]="pendingTaskIds().has(task.id ?? '')"
         />
       }
     </ion-list>

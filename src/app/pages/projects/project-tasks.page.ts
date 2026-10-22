@@ -89,6 +89,7 @@ import {
   OFFLINE_MESSAGES,
   OfflineToastService,
 } from '../../offline/offline-toast.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { MyProjectsService } from '../../projects/my-projects.service';
 import { groupHueColors, projectTint } from '../../projects/project-colors';
 import { ProjectPrefsService } from '../../projects/project-prefs.service';
@@ -205,6 +206,9 @@ export class ProjectTasksPage {
   private readonly route = inject(ActivatedRoute);
   private readonly offlineToast = inject(OfflineToastService);
   protected readonly online = inject(ConnectivityService).online;
+  private readonly writeQueue = inject(WriteQueueService);
+  /** Tasks with a status change still to send: their rows show the glyph. */
+  protected readonly pendingTaskIds = this.writeQueue.pendingTaskIds;
   protected readonly offlineMessages = OFFLINE_MESSAGES;
   private readonly content = viewChild.required(IonContent);
   private readonly board = viewChild(TaskBoardComponent);
@@ -538,6 +542,30 @@ export class ProjectTasksPage {
             this.pager.placeTask(task, undefined);
           } else {
             this.place(task);
+          }
+        }
+      });
+    });
+
+    // A task whose status change is queued arrives in its old status's
+    // group (the server still has it there): it moves to the one it shows.
+    effect(() => {
+      const queued = this.writeQueue.queuedStatuses();
+      const { columns } = this.pages();
+      if (!queued.size || this.list.isLoading()) {
+        return;
+      }
+      const grouping = this.grouping();
+      untracked(() => {
+        for (const column of columns) {
+          for (const task of column.tasks) {
+            if (
+              task.id &&
+              queued.has(task.id) &&
+              taskGroupKey(grouping, task) !== column.group.key
+            ) {
+              this.place(task);
+            }
           }
         }
       });
@@ -913,6 +941,8 @@ export class ProjectTasksPage {
    * Moves `task` to `status`, showing it at `index` in that board column
    * (a refusal puts it back where the board order puts it), then saves the
    * column's order, since a status change keeps the task's old position.
+   * A change queued offline skips the order: it stays where it was dropped
+   * until the list reloads.
    */
   private async moveTo(
     task: Task,
@@ -932,7 +962,8 @@ export class ProjectTasksPage {
       },
       undoable
     );
-    if (moved && index !== undefined) {
+    // A queued change waits for a connection; reordering needs one now.
+    if (moved === 'sent' && index !== undefined) {
       const previous = boardOrder(this.columnTasks(key)).map((t) => t.id ?? '');
       await this.saveOrder(task.projectId ?? '', key, previous);
     }
@@ -942,6 +973,10 @@ export class ProjectTasksPage {
   private async reorder(task: Task, key: string, index: number): Promise<void> {
     const id = task.id ?? '';
     if (this.busy.has(id)) {
+      return;
+    }
+    if (!this.online()) {
+      void this.offlineToast.show(OFFLINE_MESSAGES.reorder, TAB_BAR);
       return;
     }
     this.busy.add(id);

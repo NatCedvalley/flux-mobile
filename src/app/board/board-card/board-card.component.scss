@@ -37,6 +37,13 @@
   color: var(--flux-pa11);
 }
 
+// A status change still to send (the write queue).
+.sync {
+  flex: none;
+  font-size: 12px;
+  color: var(--flux-na11);
+}
+
 .priority {
   display: inline-flex;
   align-items: center;

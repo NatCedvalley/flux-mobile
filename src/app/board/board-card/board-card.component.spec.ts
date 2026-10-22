@@ -118,4 +118,18 @@ describe('BoardCardComponent', () => {
 
     expect(el.querySelector('a')?.getAttribute('href')).toBe('/tasks/p1/t1');
   });
+
+  it('shows the sync glyph by the key while a change is queued', () => {
+    expect(
+      render({ id: 't1', taskKey: 'CHK-7' }).querySelector('.sync')
+    ).toBeNull();
+
+    fixture.componentRef.setInput('pending', true);
+    fixture.detectChanges();
+
+    const glyph = (fixture.nativeElement as HTMLElement).querySelector(
+      '.top .key + .sync'
+    );
+    expect(iconName(glyph)).toBe('refresh-cw');
+  });
 });

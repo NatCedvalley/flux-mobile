@@ -66,6 +66,12 @@ ion-item {
   color: var(--status-text);
 }
 
+// A status change still to send (the write queue).
+.sync {
+  margin-inline-start: var(--flux-space-4);
+  font-size: 12px;
+}
+
 .dot {
   width: 6px;
   height: 6px;

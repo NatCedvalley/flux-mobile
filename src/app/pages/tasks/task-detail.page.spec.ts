@@ -17,6 +17,7 @@ import { AttachmentService } from '../../attachments/attachment.service';
 import { FileSourceService } from '../../attachments/file-source.service';
 import { AuthService } from '../../auth/auth.service';
 import { ConnectivityService } from '../../offline/connectivity.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { TaskChangesService } from '../../task-status/task-changes.service';
 import { CommentComposerComponent } from './comment-composer/comment-composer.component';
@@ -763,6 +764,45 @@ describe('TaskDetailPage', () => {
       expect(undoToast()).toBeUndefined();
     });
 
+    it('queues a move offline, with the sync glyph on the pill', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      await TestBed.inject(WriteQueueService).queue.load('a1');
+      online.set(false);
+      const send = vi.spyOn(api, 'changeTaskStatus');
+
+      move()!.click();
+      await settle();
+
+      expect(send).not.toHaveBeenCalled();
+      expect(pill()).toBe('In Progress');
+      expect(element().querySelector('button.status .sync')).not.toBeNull();
+      expect(
+        element().querySelector('button.status')?.getAttribute('aria-label')
+      ).toBe('Status: In Progress, waiting to sync. Change status');
+      expect(undoToast()?.message).toBe('Moved to In Progress');
+
+      undoToast().buttons[0].handler();
+      await settle();
+      expect(pill()).toBe('To Do');
+      expect(element().querySelector('button.status .sync')).toBeNull();
+    });
+
+    it('shows the server’s copy once a change made elsewhere is reported', async () => {
+      await create({ taskId: '2' });
+      await settle();
+
+      TestBed.inject(TaskChangesService).report({
+        ...loaded(),
+        id: '2',
+        status: 'done',
+        statusCategory: 'DONE',
+      } as Task);
+      await settle();
+
+      expect(pill()).toBe('Done');
+    });
+
     it('opens the sheet with the resolutions when the next status is closed', async () => {
       await create();
       await settle();
@@ -1181,6 +1221,17 @@ describe('TaskDetailPage', () => {
       );
       expect(text('.attachments .count')).toBe('3');
       expect(lastToast()).toBe('Attached photo-1.jpg');
+    });
+
+    it('says uploading needs a connection offline, before picking a file', async () => {
+      await create();
+      await settle();
+      online.set(false);
+
+      await attachmentPage().attach('camera');
+
+      expect(fileSources.pick).not.toHaveBeenCalled();
+      expect(lastToast()).toBe('Uploading files needs a connection.');
     });
 
     it('opens one, fetching fresh URLs once the list is 10 minutes old', async () => {

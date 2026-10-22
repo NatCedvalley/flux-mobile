@@ -20,12 +20,17 @@ import { registerFluxIcons } from './app/icons/register-icons';
 import { InboxService } from './app/inbox/inbox.service';
 import { AppLockService } from './app/lock/app-lock.service';
 import { ConnectivityService } from './app/offline/connectivity.service';
+import { QueueReplayService } from './app/offline/queue-replay.service';
 import { ReadCacheService } from './app/offline/read-cache.service';
+import { WriteQueueService } from './app/offline/write-queue.service';
 import { CACHE_STORE } from './app/providers/cache-store.token';
 import { FileCacheStore } from './app/providers/file-cache-store';
 import { FLUX_API } from './app/providers/flux-api.token';
+import { NETWORK_FLUX_API } from './app/providers/network-flux-api.token';
+import { PreferencesStore } from './app/providers/preferences-store';
 import { SecureTokenStore } from './app/providers/secure-token-store';
 import { TOKEN_STORE } from './app/providers/token-store.token';
+import { WRITE_QUEUE_STORE } from './app/providers/write-queue-store.token';
 import { PushOpenService } from './app/push/push-open.service';
 import { PushService } from './app/push/push.service';
 import { StatusBarService } from './app/status-bar/status-bar.service';
@@ -46,21 +51,31 @@ bootstrapApplication(AppComponent, {
       withPreloading(PreloadAllModules),
       withComponentInputBinding()
     ),
-    // flux-operations, with every call made through the session's token,
-    // and the reads the screens last loaded served from the cache offline.
+    // flux-operations, with every call made through the session's token.
+    {
+      provide: NETWORK_FLUX_API,
+      useFactory: () => {
+        const auth = inject(AuthService);
+        return new HttpFluxApi(environment.apiBaseUrl, (call) =>
+          auth.withAccessToken(call)
+        );
+      },
+    },
+    // The same, with the reads the screens last loaded served from the cache
+    // offline, and the statuses changed offline shown on the tasks read.
     {
       provide: FLUX_API,
       useFactory: () => {
         const auth = inject(AuthService);
         const connectivity = inject(ConnectivityService);
+        const { queue } = inject(WriteQueueService);
         return new CachingFluxApi(
-          new HttpFluxApi(environment.apiBaseUrl, (call) =>
-            auth.withAccessToken(call)
-          ),
+          inject(NETWORK_FLUX_API),
           inject(ReadCacheService).cache,
           {
             accountId: () => auth.account()?.id,
             online: () => connectivity.online(),
+            queuedStatus: (taskId) => queue.queuedStatus(taskId),
           }
         );
       },
@@ -83,6 +98,15 @@ bootstrapApplication(AppComponent, {
           ? new FileCacheStore()
           : new MemoryCacheStore(),
     },
+    // Preferences on native, which the OS never purges (unlike the Cache
+    // directory). Web keeps the queue in memory, like the tokens.
+    {
+      provide: WRITE_QUEUE_STORE,
+      useFactory: () =>
+        Capacitor.isNativePlatform()
+          ? new PreferencesStore()
+          : new MemoryCacheStore(),
+    },
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
     // Awaited, so a cold start that's already offline shows it at once.
@@ -97,5 +121,8 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(InboxService).init()),
     // Wipes the read cache whenever no one is signed in.
     provideAppInitializer(() => inject(ReadCacheService).init()),
+    // The signed-in account's status changes made offline, sent once online.
+    provideAppInitializer(() => inject(WriteQueueService).init()),
+    provideAppInitializer(() => inject(QueueReplayService).init()),
   ],
 });

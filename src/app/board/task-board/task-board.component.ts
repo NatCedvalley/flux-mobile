@@ -83,6 +83,8 @@ export class TaskBoardComponent {
   readonly canCreate = input(false);
   /** Columns whose loading failed, which show Retry instead. */
   readonly failed = input<ReadonlySet<string>>(new Set());
+  /** Tasks with a status change still to send, whose cards show the glyph. */
+  readonly pending = input<ReadonlySet<string>>(new Set());
 
   readonly loadMore = output<string>();
   readonly dropped = output<BoardDrop>();

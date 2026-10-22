@@ -41,6 +41,7 @@ import { dayMonth } from '@core/my-work';
 import { DEFAULT_SORT, statusHue } from '@core/project-list';
 import { PagedList, type PagedListState } from '@core/task-filters';
 import { BoardDrag, type Pickup } from '../../board/task-board/board-drag';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { groupHueColors } from '../../projects/project-colors';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
@@ -107,6 +108,8 @@ export class TaskCalendarComponent {
   private readonly api = inject(FLUX_API);
   private readonly edits = inject(TaskEditService);
   private readonly taskChanges = inject(TaskChangesService);
+  /** Tasks with a status change still to send: their rows show the glyph. */
+  protected readonly pendingTaskIds = inject(WriteQueueService).pendingTaskIds;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly drawer = viewChild<string, ElementRef<HTMLIonModalElement>>(
     'drawer',

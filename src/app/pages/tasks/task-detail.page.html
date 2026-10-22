@@ -260,16 +260,20 @@
     }
     @case ('comments') {
       @if (comments().state; as state) {
-        @if (state.items.length) {
+        @if (state.items.length || pendingComments().length) {
           <app-task-comments
             [comments]="state.items"
             [myId]="myId()"
+            [me]="account()"
             [now]="now()"
             [canReact]="canReact()"
             [canWrite]="canComment()"
+            [pending]="pendingComments()"
             (react)="react($event)"
             (addReaction)="openCommentSheet('react', $event)"
             (actions)="openCommentSheet('actions', $event)"
+            (copyText)="copyPendingComment($event)"
+            (discard)="deleteFailedComment($event)"
           />
         } @else {
           <app-empty-state

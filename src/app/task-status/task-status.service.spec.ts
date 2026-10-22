@@ -119,7 +119,7 @@ describe('TaskStatusService', () => {
 
     expect(send).not.toHaveBeenCalled();
     expect(writeQueue.items()).toHaveLength(1);
-    expect(writeQueue.items()[0].to.slug).toBe('done');
+    expect(writeQueue.items()[0]).toMatchObject({ to: { slug: 'done' } });
   });
 
   it('cancels a queued change with Undo', async () => {

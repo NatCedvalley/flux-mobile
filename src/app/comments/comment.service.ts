@@ -3,6 +3,12 @@ import { ToastController } from '@ionic/angular';
 import type { CommentReaction, TaskComment } from '@core/api';
 import { ApiError } from '@core/auth';
 import { reactionToggles } from '@core/comments';
+import { ConnectivityService } from '../offline/connectivity.service';
+import {
+  OFFLINE_MESSAGES,
+  OfflineToastService,
+} from '../offline/offline-toast.service';
+import { WriteQueueService } from '../offline/write-queue.service';
 import { FLUX_API } from '../providers/flux-api.token';
 
 const TOAST_MS = 3000;
@@ -11,6 +17,8 @@ const TOAST_MS = 3000;
 export type CommentTarget = {
   projectId: string;
   taskId: string;
+  /** Names the task in the replay's toasts. */
+  taskKey?: string;
   /** The docked footer the toasts sit above, if any. */
   anchor?: HTMLElement | string;
 };
@@ -19,19 +27,32 @@ export type CommentTarget = {
  * Comment writes from task detail: posting, editing, deleting and reacting.
  * Each resolves with the server's answer for the page to show, or
  * `undefined` / `false` once the failure has been shown as a toast with the
- * server's message (COMMENT_NOT_AUTHOR, COMMENT_HAS_REPLIES, …).
+ * server's message (COMMENT_NOT_AUTHOR, COMMENT_HAS_REPLIES, …). A new
+ * comment is queued while offline (`WriteQueueService`); edits, deletes and
+ * reactions need a connection.
  */
 @Injectable({ providedIn: 'root' })
 export class CommentService {
   private readonly api = inject(FLUX_API);
   private readonly toasts = inject(ToastController);
+  private readonly online = inject(ConnectivityService).online;
+  private readonly offlineToast = inject(OfflineToastService);
+  private readonly writeQueue = inject(WriteQueueService);
 
-  /** Posts a Markdown comment. The response has no reactions or replies. */
+  /**
+   * Posts a Markdown comment. The response has no reactions or replies.
+   * Resolves `'queued'` when it was queued instead: offline, when the POST
+   * got no response (it may still have arrived, which the replay checks),
+   * or behind a comment of the task's still queued, to keep their order.
+   */
   async post(
     target: CommentTarget,
     body: string,
     mentionedAccountIds: readonly string[]
-  ): Promise<TaskComment | undefined> {
+  ): Promise<TaskComment | 'queued' | undefined> {
+    if (!this.online() || this.writeQueue.commentPending(target.taskId)) {
+      return this.enqueue(target, body, mentionedAccountIds, false);
+    }
     try {
       return await this.api.addTaskComment(target.projectId, target.taskId, {
         body,
@@ -41,6 +62,9 @@ export class CommentService {
           : undefined,
       });
     } catch (error) {
+      if (error instanceof ApiError && error.status === 0) {
+        return this.enqueue(target, body, mentionedAccountIds, true);
+      }
       await this.error(error, 'Couldn’t post the comment', target.anchor);
       return undefined;
     }
@@ -52,6 +76,10 @@ export class CommentService {
     comment: TaskComment,
     body: string
   ): Promise<TaskComment | undefined> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.edit, target.anchor);
+      return undefined;
+    }
     try {
       return await this.api.updateTaskComment(
         target.projectId,
@@ -67,6 +95,13 @@ export class CommentService {
 
   /** Deletes the comment. Resolves with whether the server took it. */
   async remove(target: CommentTarget, comment: TaskComment): Promise<boolean> {
+    if (!this.online()) {
+      await this.offlineToast.show(
+        OFFLINE_MESSAGES.deleteComment,
+        target.anchor
+      );
+      return false;
+    }
     try {
       await this.api.deleteTaskComment(
         target.projectId,
@@ -92,6 +127,10 @@ export class CommentService {
     comment: TaskComment,
     emoji: string
   ): Promise<CommentReaction[] | undefined> {
+    if (!this.online()) {
+      await this.offlineToast.show(OFFLINE_MESSAGES.react, target.anchor);
+      return undefined;
+    }
     let reactions: CommentReaction[] | undefined;
     try {
       for (const key of reactionToggles(comment.reactions, emoji)) {
@@ -106,6 +145,28 @@ export class CommentService {
       await this.error(error, 'Couldn’t change the reaction', target.anchor);
     }
     return reactions;
+  }
+
+  /** Queues the comment, or says it couldn't (no account loaded yet). */
+  private async enqueue(
+    target: CommentTarget,
+    body: string,
+    mentionedAccountIds: readonly string[],
+    attempted: boolean
+  ): Promise<'queued' | undefined> {
+    const queued = await this.writeQueue.enqueueComment({
+      projectId: target.projectId,
+      taskId: target.taskId,
+      taskKey: target.taskKey,
+      body,
+      mentionedAccountIds: [...mentionedAccountIds],
+      attempted,
+    });
+    if (!queued) {
+      await this.toast('Couldn’t post the comment', target.anchor);
+      return undefined;
+    }
+    return 'queued';
   }
 
   private error(

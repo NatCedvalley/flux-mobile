@@ -61,6 +61,17 @@ ol {
 .age {
   font: var(--flux-font-meta);
   color: var(--flux-na10);
+
+  &.failure {
+    color: var(--flux-red11);
+  }
+}
+
+// A queued comment's "Waiting for connection": the status pill's sync glyph.
+.sync {
+  align-self: center;
+  font-size: 12px;
+  color: var(--flux-na10);
 }
 
 // Top-left corner at 4px, pointing at the avatar.
@@ -136,6 +147,25 @@ button {
     background: var(--flux-pa3);
     box-shadow: none;
     color: var(--flux-pa11);
+  }
+}
+
+// A refused queued comment: two text buttons under the bubble.
+.failed-actions {
+  display: flex;
+  gap: var(--flux-space-16);
+  margin-top: var(--flux-space-6);
+
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: var(--flux-font-meta);
+    color: var(--flux-pa11);
+  }
+
+  .delete {
+    color: var(--flux-red11);
   }
 }
 

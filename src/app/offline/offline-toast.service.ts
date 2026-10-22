@@ -13,6 +13,8 @@ export const OFFLINE_MESSAGES = {
   reorder: 'Reordering needs a connection.',
   create: 'Creating tasks needs a connection.',
   upload: 'Uploading files needs a connection.',
+  deleteComment: 'Deleting comments needs a connection.',
+  react: 'Reacting needs a connection.',
 } as const;
 
 /** A short toast for an action that needs a connection, worded alike everywhere. */

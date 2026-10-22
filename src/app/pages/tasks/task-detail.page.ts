@@ -44,6 +44,7 @@ import type {
   TaskActivity,
   TaskComment,
 } from '@core/api';
+import type { QueuedComment } from '@core/offline';
 import { ApiError } from '@core/auth';
 import {
   canEditComment,
@@ -241,7 +242,7 @@ export class TaskDetailPage {
   private readonly taskChanges = inject(TaskChangesService);
   private readonly myProjects = inject(MyProjectsService);
   private readonly route = inject(ActivatedRoute);
-  private readonly account = inject(AuthService).account;
+  protected readonly account = inject(AuthService).account;
   private readonly online = inject(ConnectivityService).online;
   private readonly offlineToast = inject(OfflineToastService);
   private readonly writeQueue = inject(WriteQueueService);
@@ -579,9 +580,16 @@ export class TaskDetailPage {
     state: undefined,
     error: undefined,
   });
+  /** The caller's comments for this task still in the write queue. */
+  protected readonly pendingComments = computed(() =>
+    this.writeQueue.pendingComments(this.taskId())
+  );
   protected readonly commentTotal = computed(() => {
     const state = this.comments().state;
-    return state ? commentCount(state.items, state.total) : undefined;
+    const waiting = this.pendingComments().filter(
+      (c) => c.state !== 'failed'
+    ).length;
+    return state ? commentCount(state.items, state.total) + waiting : undefined;
   });
   /** A comment is posting: Send waits. */
   protected readonly sending = signal(false);
@@ -657,6 +665,24 @@ export class TaskDetailPage {
         }
       });
     });
+    // A queued comment of this task's was posted: the server's copy takes
+    // its place. One posted before this page opened is in the thread.
+    const posted = this.writeQueue.sentComment();
+    effect(() => {
+      const sent = this.writeQueue.sentComment();
+      untracked(() => {
+        const items = this.comments().state?.items;
+        if (
+          sent &&
+          sent !== posted &&
+          sent.taskId === this.taskId() &&
+          items &&
+          !items.some((c) => c.id === sent.comment.id)
+        ) {
+          this.commentList.edit((list) => [...list, sent.comment], 1);
+        }
+      });
+    });
     effect(() => {
       const refresher = this.refresher();
       if (refresher && !this.task.isLoading()) {
@@ -709,7 +735,10 @@ export class TaskDetailPage {
         return;
       }
       this.composer()?.clear();
-      this.commentList.edit((items) => [...items, posted], 1);
+      // A queued one shows from the write queue.
+      if (posted !== 'queued') {
+        this.commentList.edit((items) => [...items, posted], 1);
+      }
       afterNextRender(() => void this.content()?.scrollToBottom(300), {
         injector: this.injector,
       });
@@ -754,6 +783,16 @@ export class TaskDetailPage {
     if (!comment || !choice) {
       return;
     }
+    // Before the text sheet or the confirm, so nothing typed is lost.
+    if (choice.kind !== 'react' && !this.online()) {
+      void this.offlineToast.show(
+        choice.kind === 'edit'
+          ? OFFLINE_MESSAGES.edit
+          : OFFLINE_MESSAGES.deleteComment,
+        this.anchor()
+      );
+      return;
+    }
     switch (choice.kind) {
       case 'react':
         void this.react({ comment, emoji: choice.emoji });
@@ -794,6 +833,34 @@ export class TaskDetailPage {
     }
   }
 
+  /** A failed queued comment's Copy text. */
+  protected async copyPendingComment(item: QueuedComment): Promise<void> {
+    try {
+      await Clipboard.write({ string: item.body });
+      await this.toast('Copied the comment');
+    } catch (error) {
+      console.error('Copying the comment failed', error);
+      await this.toast('Couldn’t copy the comment');
+    }
+  }
+
+  /** Drops a failed queued comment once confirmed: its text is nowhere else. */
+  protected async deleteFailedComment(item: QueuedComment): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'Delete this comment?',
+      message: 'It was never posted, so its text will be lost.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Delete', role: 'destructive' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    if (role === 'destructive') {
+      await this.writeQueue.discard(item.id);
+    }
+  }
+
   /** Deletes the caller's comment once confirmed. */
   private async confirmDeleteComment(comment: TaskComment): Promise<void> {
     const alert = await this.alerts.create({
@@ -829,6 +896,11 @@ export class TaskDetailPage {
    * picker when that's the only source (web).
    */
   protected openAttachSource(): void {
+    // Before the source sheet, rather than once a source is picked.
+    if (!this.online()) {
+      void this.offlineToast.show(OFFLINE_MESSAGES.upload, this.anchor());
+      return;
+    }
     if (this.fileSources.length === 1) {
       void this.attach(this.fileSources[0]);
       return;
@@ -908,7 +980,11 @@ export class TaskDetailPage {
 
   /** The task comments are written on, and where their toasts sit. */
   private commentTarget(): CommentTarget {
-    return { ...this.ids(), anchor: this.anchor() };
+    return {
+      ...this.ids(),
+      taskKey: this.header()?.taskKey,
+      anchor: this.anchor(),
+    };
   }
 
   protected async copyKey(): Promise<void> {

@@ -1157,6 +1157,139 @@ describe('TaskDetailPage', () => {
       );
       expect(texts('.thread > li > .comment .author')).toHaveLength(2);
     });
+
+    describe('offline', () => {
+      let writeQueue: WriteQueueService;
+
+      /** Types `body` into the composer and taps Send. */
+      async function send(body: string): Promise<void> {
+        element()
+          .querySelector('app-comment-composer ion-textarea')!
+          .dispatchEvent(
+            new CustomEvent('ionInput', { detail: { value: body } })
+          );
+        await settle();
+        element()
+          .querySelector<HTMLElement>('app-comment-composer .send')!
+          .click();
+        await settle();
+      }
+
+      beforeEach(async () => {
+        await openComments();
+        writeQueue = TestBed.inject(WriteQueueService);
+        await writeQueue.queue.load('a1');
+      });
+
+      it('queues a comment, shows it waiting, then swaps in the posted one', async () => {
+        online.set(false);
+        const add = vi.spyOn(api, 'addTaskComment');
+
+        await send('On my way');
+
+        expect(add).not.toHaveBeenCalled();
+        expect(writeQueue.items()).toHaveLength(1);
+        expect(texts('.thread > li > .comment .bubble').at(-1)).toBe(
+          'On my way'
+        );
+        expect(texts('.thread > li > .comment .age').at(-1)).toBe(
+          'You · Waiting for connection'
+        );
+        expect(element().querySelector('.thread .sync')).not.toBeNull();
+        expect(text('[role=tab] .count')).toBe('4');
+        expect(
+          element().querySelector<HTMLIonButtonElement>(
+            'app-comment-composer .send'
+          )?.disabled
+        ).toBe(true);
+        // A comment adds no sync glyph to the status pill.
+        expect(element().querySelector('.status .sync')).toBeNull();
+
+        online.set(true);
+        await writeQueue.queue.replay(api);
+        await settle();
+
+        expect(add).toHaveBeenCalledTimes(1);
+        expect(
+          texts('.thread > li > .comment .bubble').filter(
+            (b) => b === 'On my way'
+          )
+        ).toHaveLength(1);
+        expect(element().querySelector('.thread .sync')).toBeNull();
+        expect(text('[role=tab] .count')).toBe('4');
+      });
+
+      it('shows a refused comment as failed, with Copy text and Delete', async () => {
+        await writeQueue.enqueueComment({
+          projectId: 'p1',
+          taskId: '1',
+          body: 'On my way',
+          mentionedAccountIds: [],
+        });
+        vi.spyOn(api, 'addTaskComment').mockRejectedValue(
+          new ApiError(403, { message: 'Insufficient project role' })
+        );
+        await writeQueue.queue.replay(api);
+        await settle();
+
+        expect(text('.comment.failed .age')).toBe(
+          'Not posted · Insufficient project role'
+        );
+        expect(element().querySelector('.comment.failed .sync')).toBeNull();
+        expect(text('[role=tab] .count')).toBe('3');
+
+        element().querySelector<HTMLElement>('.failed-actions .copy')!.click();
+        await settle();
+        expect(clipboard.write).toHaveBeenLastCalledWith({
+          string: 'On my way',
+        });
+        expect(lastToast()).toBe('Copied the comment');
+
+        alert.role = 'cancel';
+        element()
+          .querySelector<HTMLElement>('.failed-actions .delete')!
+          .click();
+        await settle();
+        expect(alert.create).toHaveBeenLastCalledWith(
+          expect.objectContaining({ header: 'Delete this comment?' })
+        );
+        expect(writeQueue.items()).toHaveLength(1);
+
+        alert.role = 'destructive';
+        element()
+          .querySelector<HTMLElement>('.failed-actions .delete')!
+          .click();
+        await settle();
+        expect(writeQueue.items()).toEqual([]);
+        expect(element().querySelector('.comment.failed')).toBeNull();
+      });
+
+      it('says editing and deleting need a connection before the sheet or the confirm', async () => {
+        const [c1] = await thread();
+        online.set(false);
+
+        choose(c1.replies![0], { kind: 'edit' });
+        await settle();
+        expect(commentPage().editor()).toBeUndefined();
+        expect(lastToast()).toBe('Editing needs a connection.');
+
+        choose(c1.replies![0], { kind: 'delete' });
+        await settle();
+        expect(alert.create).not.toHaveBeenCalled();
+        expect(lastToast()).toBe('Deleting comments needs a connection.');
+      });
+
+      it('says reacting needs a connection', async () => {
+        online.set(false);
+        const toggle = vi.spyOn(api, 'toggleCommentReaction');
+
+        element().querySelectorAll<HTMLElement>('.reaction')[1].click();
+        await settle();
+
+        expect(toggle).not.toHaveBeenCalled();
+        expect(lastToast()).toBe('Reacting needs a connection.');
+      });
+    });
   });
 
   describe('attachments', () => {
@@ -1289,6 +1422,18 @@ describe('TaskDetailPage', () => {
       expect(
         element().querySelector('app-comment-composer .attach')
       ).toBeNull();
+    });
+
+    it('says uploading needs a connection before asking where from', async () => {
+      await create();
+      await settle();
+      online.set(false);
+
+      attachmentPage().openAttachSource();
+      await settle();
+
+      expect(attachmentPage().editor()).toBeUndefined();
+      expect(lastToast()).toBe('Uploading files needs a connection.');
     });
 
     it('goes straight to the file picker when that is the only source', async () => {

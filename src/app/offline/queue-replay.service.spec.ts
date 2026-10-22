@@ -5,7 +5,11 @@ import { ToastController } from '@ionic/angular';
 import type { Account } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
-import { MemoryCacheStore, type StatusChangeRequest } from '@core/offline';
+import {
+  MemoryCacheStore,
+  type CommentRequest,
+  type StatusChangeRequest,
+} from '@core/offline';
 import { AuthService } from '../auth/auth.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { NETWORK_FLUX_API } from '../providers/network-flux-api.token';
@@ -24,6 +28,15 @@ const TO_TODO: StatusChangeRequest = {
   taskKey: 'CHK-142',
   from: { slug: 'in_progress' },
   to: { slug: 'todo', name: 'To Do', category: 'TODO' },
+};
+
+/** A comment on CHK-142. */
+const COMMENT: CommentRequest = {
+  projectId: 'p1',
+  taskId: '1',
+  taskKey: 'CHK-142',
+  body: 'On my way',
+  mentionedAccountIds: [],
 };
 
 describe('QueueReplayService', () => {
@@ -209,6 +222,66 @@ describe('QueueReplayService', () => {
       'assigned',
       'watching',
     ]);
+  });
+
+  describe('comments', () => {
+    beforeEach(async () => {
+      // Comments only: the status change is cancelled, as Undo does.
+      await writeQueue.enqueueStatus({
+        ...TO_TODO,
+        from: TO_TODO.to,
+        to: TO_TODO.from,
+      });
+      await writeQueue.enqueueComment(COMMENT);
+    });
+
+    it('posts a comment and fetches neither the task nor My Work', async () => {
+      const getTask = vi.spyOn(api, 'getTask');
+      const list = vi.spyOn(api, 'listMyTasks');
+      online.set(true);
+
+      await service.replay();
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(writeQueue.items()).toEqual([]);
+      expect(writeQueue.sentComment()?.comment.body).toBe('On my way');
+      expect(getTask).not.toHaveBeenCalled();
+      expect(list).not.toHaveBeenCalled();
+      expect(changes.changed()).toBeUndefined();
+      expect(toasts.create).not.toHaveBeenCalled();
+    });
+
+    it('keeps a refused comment and says why', async () => {
+      vi.spyOn(api, 'addTaskComment').mockRejectedValue(
+        new ApiError(403, { message: 'Insufficient project role' })
+      );
+      online.set(true);
+
+      await service.replay();
+
+      expect(writeQueue.items()[0].state).toBe('failed');
+      expect(toasts.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            'Couldn’t post your comment on CHK-142: Insufficient project role',
+        })
+      );
+    });
+
+    it('counts several refused comments in one toast', async () => {
+      await writeQueue.enqueueComment({ ...COMMENT, body: 'Again' });
+      vi.spyOn(api, 'addTaskComment').mockRejectedValue(new ApiError(404));
+      online.set(true);
+
+      await service.replay();
+
+      expect(toasts.create).toHaveBeenCalledTimes(1);
+      expect(toasts.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '2 comments couldn’t be posted.',
+        })
+      );
+    });
   });
 
   it('fetches nothing more when nothing settled', async () => {

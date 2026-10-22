@@ -2,7 +2,7 @@ import { Injectable, Injector, effect, inject, untracked } from '@angular/core';
 import { App } from '@capacitor/app';
 import { ToastController } from '@ionic/angular';
 import type { Task } from '@core/api';
-import type { QueuedStatusChange, ReplayOutcome } from '@core/offline';
+import type { QueueItem, ReplayOutcome } from '@core/offline';
 import { ApiError } from '@core/auth';
 import { localIsoDate, myWorkQueries } from '@core/my-work';
 import { AuthService } from '../auth/auth.service';
@@ -16,13 +16,16 @@ const TAB_BAR = 'tab-bar';
 const TOAST_MS = 4000;
 
 /**
- * Sends the status changes made offline, in the foreground only: at launch,
- * on sign-in, when the connection comes back and on resume. Each one sent
- * is fetched again and reported (`TaskChangesService`), so the screens show
- * the server's copy. A change that wasn't sent (a conflict) or was refused
- * puts the server's copy back and says so in a toast. My Work's cached
- * lists are fetched again too, since My Work may be hidden meanwhile and
- * would otherwise reload its old rows from the cache once offline.
+ * Sends the status changes and comments made offline, in the foreground
+ * only: at launch, on sign-in, when the connection comes back and on
+ * resume. Each task whose status change settled is fetched again and
+ * reported (`TaskChangesService`), so the screens show the server's copy.
+ * A change that wasn't sent (a conflict) or was refused puts the server's
+ * copy back and says so in a toast. My Work's cached lists are fetched
+ * again too, since My Work may be hidden meanwhile and would otherwise
+ * reload its old rows from the cache once offline. A posted comment reaches
+ * task detail through `WriteQueueService.sentComment`; a refused one stays
+ * in the thread as failed, and the toast says so.
  */
 @Injectable({ providedIn: 'root' })
 export class QueueReplayService {
@@ -63,8 +66,10 @@ export class QueueReplayService {
     const { queue } = this.writeQueue;
     await queue.load(accountId);
     const outcomes = await queue.replay(this.network);
-    await Promise.all(outcomes.map((outcome) => this.settle(outcome)));
-    if (outcomes.length) {
+    // A comment changes neither its task nor My Work.
+    const statuses = outcomes.filter((o) => o.item.kind === 'status');
+    await Promise.all(statuses.map((outcome) => this.settle(outcome)));
+    if (statuses.length) {
       void this.refreshMyWork();
     }
     await this.tell(outcomes);
@@ -98,7 +103,12 @@ export class QueueReplayService {
   /** One toast for the changes that weren't sent, if any. */
   private async tell(outcomes: readonly ReplayOutcome[]): Promise<void> {
     const conflicts = outcomes.filter((o) => o.kind === 'conflict');
-    const failures = outcomes.filter((o) => o.kind === 'failed');
+    const failures = outcomes.filter(
+      (o) => o.kind === 'failed' && o.item.kind === 'status'
+    );
+    const unposted = outcomes.filter(
+      (o) => o.kind === 'failed' && o.item.kind === 'comment'
+    );
     const lines = [
       conflicts.length === 1
         ? `${key(conflicts[0].item)} changed on the server, so your status change wasn’t sent.`
@@ -109,6 +119,11 @@ export class QueueReplayService {
         ? `Couldn’t move ${key(failures[0].item)}: ${failures[0].error.message}`
         : failures.length > 1
           ? `${failures.length} status changes couldn’t be sent.`
+          : '',
+      unposted.length === 1 && unposted[0].kind === 'failed'
+        ? `Couldn’t post your comment on ${key(unposted[0].item)}: ${unposted[0].error.message}`
+        : unposted.length > 1
+          ? `${unposted.length} comments couldn’t be posted.`
           : '',
     ].filter(Boolean);
     if (!lines.length) {
@@ -124,11 +139,11 @@ export class QueueReplayService {
   }
 }
 
-function key(item: QueuedStatusChange): string {
+function key(item: QueueItem): string {
   return item.taskKey ?? 'A task';
 }
 
 /** Enough of a task to take its row out. */
-function placeholder(item: QueuedStatusChange): Task {
+function placeholder(item: QueueItem): Task {
   return { id: item.taskId, projectId: item.projectId, taskKey: item.taskKey };
 }

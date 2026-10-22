@@ -1,25 +1,41 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
+import type { TaskComment } from '@core/api';
+import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { ConnectivityService } from '../offline/connectivity.service';
+import { WriteQueueService } from '../offline/write-queue.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { CommentService } from './comment.service';
 
 describe('CommentService', () => {
   let api: InMemoryFluxApi;
   let toast: { create: ReturnType<typeof vi.fn> };
+  let online: ReturnType<typeof signal<boolean>>;
+  let writeQueue: WriteQueueService;
   let service: CommentService;
-  const target = { projectId: 'p1', taskId: '1', anchor: 'bar' };
+  const target = {
+    projectId: 'p1',
+    taskId: '1',
+    taskKey: 'CHK-142',
+    anchor: 'bar',
+  };
   const lastToast = () => toast.create.mock.calls.at(-1)?.[0];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     api = new InMemoryFluxApi();
     toast = { create: vi.fn().mockResolvedValue({ present: vi.fn() }) };
+    online = signal(true);
     TestBed.configureTestingModule({
       providers: [
         { provide: FLUX_API, useValue: api },
         { provide: ToastController, useValue: toast },
+        { provide: ConnectivityService, useValue: { online } },
       ],
     });
+    writeQueue = TestBed.inject(WriteQueueService);
+    await writeQueue.queue.load('a1');
     service = TestBed.inject(CommentService);
   });
 
@@ -27,7 +43,7 @@ describe('CommentService', () => {
     const add = vi.spyOn(api, 'addTaskComment');
     const posted = await service.post(target, 'Hi @Ben Tan', ['a2']);
 
-    expect(posted?.body).toBe('Hi @Ben Tan');
+    expect((posted as TaskComment).body).toBe('Hi @Ben Tan');
     expect(add).toHaveBeenCalledWith('p1', '1', {
       body: 'Hi @Ben Tan',
       bodyFormat: 'MARKDOWN',
@@ -39,6 +55,84 @@ describe('CommentService', () => {
     const add = vi.spyOn(api, 'addTaskComment');
     await service.post(target, 'Hi', []);
     expect(add.mock.calls[0][2].mentionedAccountIds).toBeUndefined();
+  });
+
+  describe('offline', () => {
+    it('queues a comment without trying the server', async () => {
+      online.set(false);
+      const add = vi.spyOn(api, 'addTaskComment');
+
+      expect(await service.post(target, 'Hi @Ben Tan', ['a2'])).toBe('queued');
+
+      expect(add).not.toHaveBeenCalled();
+      expect(writeQueue.items()).toEqual([
+        expect.objectContaining({
+          kind: 'comment',
+          projectId: 'p1',
+          taskId: '1',
+          taskKey: 'CHK-142',
+          body: 'Hi @Ben Tan',
+          mentionedAccountIds: ['a2'],
+          state: 'queued',
+        }),
+      ]);
+      expect(writeQueue.items()[0]).not.toHaveProperty('attempted');
+    });
+
+    it('queues a comment whose POST got no response, as attempted', async () => {
+      vi.spyOn(api, 'addTaskComment').mockRejectedValue(new ApiError(0));
+
+      expect(await service.post(target, 'Hi', [])).toBe('queued');
+
+      expect(writeQueue.items()[0]).toMatchObject({ attempted: true });
+      expect(toast.create).not.toHaveBeenCalled();
+    });
+
+    it('queues behind a comment of the task’s still queued', async () => {
+      online.set(false);
+      await service.post(target, 'First', []);
+      online.set(true);
+      const add = vi.spyOn(api, 'addTaskComment');
+
+      expect(await service.post(target, 'Second', [])).toBe('queued');
+
+      expect(add).not.toHaveBeenCalled();
+      expect(writeQueue.items()).toHaveLength(2);
+    });
+
+    it('keeps the text when there is no account to queue for', async () => {
+      online.set(false);
+      await writeQueue.queue.load(undefined);
+
+      expect(await service.post(target, 'Hi', [])).toBeUndefined();
+      expect(lastToast()).toMatchObject({
+        message: 'Couldn’t post the comment',
+        positionAnchor: 'bar',
+      });
+    });
+
+    it('says edits, deletes and reactions need a connection', async () => {
+      online.set(false);
+      const update = vi.spyOn(api, 'updateTaskComment');
+      const remove = vi.spyOn(api, 'deleteTaskComment');
+      const toggle = vi.spyOn(api, 'toggleCommentReaction');
+
+      expect(
+        await service.update(target, { id: 'c2' }, 'Edited')
+      ).toBeUndefined();
+      expect(lastToast()).toMatchObject({
+        message: 'Editing needs a connection.',
+        positionAnchor: 'bar',
+      });
+      expect(await service.remove(target, { id: 'c2' })).toBe(false);
+      expect(lastToast().message).toBe('Deleting comments needs a connection.');
+      expect(await service.react(target, { id: 'c2' }, 'eyes')).toBeUndefined();
+      expect(lastToast().message).toBe('Reacting needs a connection.');
+
+      expect(update).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+      expect(toggle).not.toHaveBeenCalled();
+    });
   });
 
   it('shows the server’s message above the anchor when refused', async () => {

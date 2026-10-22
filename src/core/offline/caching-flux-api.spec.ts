@@ -143,6 +143,32 @@ describe('CachingFluxApi', () => {
     expect(list).toHaveBeenCalledWith('p1', 't1', { page: 2, size: 100 });
   });
 
+  describe('a saved view setting', () => {
+    it('replaces the cached settings, so offline opens the view chosen last', async () => {
+      await api.updateTaskViewSettings('p1', { viewMode: 'board' });
+      await api.getTaskViewSettings('p1');
+
+      await api.updateTaskViewSettings('p1', { viewMode: 'list' });
+      online = false;
+
+      expect((await api.getTaskViewSettings('p1')).viewMode).toBe('list');
+    });
+
+    it('leaves the cached settings when the save fails', async () => {
+      await api.updateTaskViewSettings('p1', { viewMode: 'board' });
+      vi.spyOn(inner, 'updateTaskViewSettings').mockRejectedValue(
+        new ApiError(0)
+      );
+
+      await expect(
+        api.updateTaskViewSettings('p1', { viewMode: 'list' })
+      ).rejects.toMatchObject({ status: 0 });
+      online = false;
+
+      expect((await api.getTaskViewSettings('p1')).viewMode).toBe('board');
+    });
+  });
+
   describe('a queued status change', () => {
     const DONE: QueuedStatus = {
       slug: 'done',

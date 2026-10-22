@@ -30,7 +30,12 @@ import {
   type SegmentCustomEvent,
 } from '@ionic/angular';
 import type { MyTask, Page } from '@core/api';
-import { FOCUS_DAYS, addDays, focusBuckets, localIsoDate } from '@core/my-work';
+import {
+  type MyWorkSegment,
+  focusBuckets,
+  localIsoDate,
+  myWorkQueries,
+} from '@core/my-work';
 import { avatarFillIndex, initials } from '@core/people';
 import { can } from '@core/permissions';
 import { initialProject } from '@core/project-list';
@@ -52,12 +57,7 @@ import { TaskRowComponent } from '../../shared/task-row/task-row.component';
 import { CreateTaskFabComponent } from '../../task-create/create-task-fab/create-task-fab.component';
 import { CreateTaskLauncherService } from '../../task-create/create-task-launcher.service';
 
-type Segment = 'assigned' | 'focus' | 'watching';
-
-/** One page is plenty for a person's open tasks; the server caps it at 100. */
-const PAGE_SIZE = 100;
-
-const EMPTY_MESSAGES: Record<Segment, string> = {
+const EMPTY_MESSAGES: Record<MyWorkSegment, string> = {
   focus: 'Nothing due in the next 7 days.',
   assigned: 'No open tasks assigned to you.',
   watching: "You're not watching any open tasks.",
@@ -113,7 +113,7 @@ export class MyWorkPage {
   /** Tasks with a status change still to send: their rows show the glyph. */
   protected readonly pendingTaskIds = this.writeQueue.pendingTaskIds;
 
-  protected readonly segment = signal<Segment>('focus');
+  protected readonly segment = signal<MyWorkSegment>('focus');
   /** The local day. Read again on refresh, so Focus rolls over at midnight. */
   protected readonly today = signal(localIsoDate(new Date()));
   protected readonly todayDate = computed(() => {
@@ -122,34 +122,18 @@ export class MyWorkPage {
   });
 
   protected readonly focus = resource({
-    params: () => ({ dueDateTo: addDays(this.today(), FOCUS_DAYS) }),
-    loader: ({ params }) =>
-      this.api.listMyTasks({
-        scope: 'assigned',
-        openOnly: true,
-        dueDateTo: params.dueDateTo,
-        size: PAGE_SIZE,
-      }),
+    params: () => myWorkQueries(this.today()).focus,
+    loader: ({ params }) => this.api.listMyTasks(params),
   });
   /** Also gives the subtitle's count, so it loads up front. */
   protected readonly assigned = resource({
-    loader: () =>
-      this.api.listMyTasks({
-        scope: 'assigned',
-        openOnly: true,
-        size: PAGE_SIZE,
-      }),
+    loader: () => this.api.listMyTasks(myWorkQueries(this.today()).assigned),
   });
   /** Loaded the first time Watching is opened. */
   private readonly watchingOpened = signal(false);
   protected readonly watching = resource({
     params: () => (this.watchingOpened() ? {} : undefined),
-    loader: () =>
-      this.api.listMyTasks({
-        scope: 'watching',
-        openOnly: true,
-        size: PAGE_SIZE,
-      }),
+    loader: () => this.api.listMyTasks(myWorkQueries(this.today()).watching),
   });
 
   /** The resource behind the selected segment. */
@@ -230,7 +214,7 @@ export class MyWorkPage {
   }
 
   protected select(event: SegmentCustomEvent): void {
-    const segment = event.detail.value as Segment;
+    const segment = event.detail.value as MyWorkSegment;
     if (segment === 'watching') {
       this.watchingOpened.set(true);
     }

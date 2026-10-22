@@ -61,7 +61,8 @@ export type CachingFluxApiOptions = {
  *   and any other error is the caller's.
  * - Offline, no read touches the network (which would only fail, after the
  *   token refresh's backoff): it is the saved copy or an `ApiError(0)`.
- * - Writes always go straight to `inner`.
+ * - Writes always go straight to `inner`. A saved view setting also
+ *   replaces the cached copy, since the response is what a read returns.
  *
  * Tasks it reads, from either, show the status of a change still queued
  * for them (`queuedStatus`), so they match what the person did offline.
@@ -259,11 +260,15 @@ export class CachingFluxApi implements FluxApi {
     return this.read('getTaskViewSettings', projectId);
   }
 
-  updateTaskViewSettings(
+  async updateTaskViewSettings(
     projectId: string,
     update: TaskViewSettingsUpdate
   ): Promise<TaskViewSettings> {
-    return this.inner.updateTaskViewSettings(projectId, update);
+    const settings = await this.inner.updateTaskViewSettings(projectId, update);
+    // The response is the project's whole settings, as a read gets them, so
+    // a launch offline opens the view or grouping chosen last.
+    this.save('getTaskViewSettings', [projectId], settings);
+    return settings;
   }
 
   listLabels(projectId: string): Promise<Label[]> {
@@ -378,9 +383,20 @@ export class CachingFluxApi implements FluxApi {
       }
       return fallback;
     }
+    this.save(method, args, value);
+    return value;
+  }
+
+  /** Saves `value` as what `method(...args)` returns, if that is cached. */
+  private save<Method extends keyof FluxApi>(
+    method: Method,
+    args: Parameters<FluxApi[Method]>,
+    value: Awaited<ReturnType<FluxApi[Method]>>
+  ): void {
+    const key = cacheKey(method, args);
+    const accountId = key === null ? undefined : this.options.accountId();
     if (key !== null && accountId !== undefined) {
       void this.cache.put(accountId, key, value);
     }
-    return value;
   }
 }

@@ -36,7 +36,7 @@ import {
   localIsoDate,
   myWorkQueries,
 } from '@core/my-work';
-import { avatarFillIndex, initials } from '@core/people';
+import { accountAvatar } from '@core/people';
 import { can } from '@core/permissions';
 import { initialProject } from '@core/project-list';
 import { AuthService } from '../../auth/auth.service';
@@ -170,14 +170,11 @@ export class MyWorkPage {
     () => EMPTY_MESSAGES[this.segment()]
   );
 
-  protected readonly avatarInitials = computed(() =>
-    initials(this.account() ?? {})
+  private readonly avatar = computed(() => accountAvatar(this.account() ?? {}));
+  protected readonly avatarInitials = computed(() => this.avatar().initials);
+  protected readonly avatarFill = computed(
+    () => `var(--flux-avatar-${this.avatar().fillIndex + 1})`
   );
-  protected readonly avatarFill = computed(() => {
-    const account = this.account();
-    const index = avatarFillIndex(account?.id ?? account?.email ?? '');
-    return `var(--flux-avatar-${index + 1})`;
-  });
 
   /** The projects the user may create tasks in; none hides the button. */
   private readonly creatable = resource({

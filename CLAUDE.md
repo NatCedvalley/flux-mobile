@@ -50,8 +50,9 @@ src/
               offline banner and toasts, the read cache's wipe, the
               write queue, its replay and the pending changes sheet
               (offline/), the Notifications
-              settings page (pages/notification-settings/), and the
-              providers that bridge into src/core
+              settings page (pages/notification-settings/), the About
+              page (pages/about/), and the providers that bridge into
+              src/core
 ```
 
 - Import `src/core` code only via the `@core/*` path alias
@@ -77,7 +78,13 @@ src/
 **My Work** (`/tabs/my-work`, the default), **Projects** (`/tabs/projects`)
 and **Inbox** (`/tabs/inbox`). The design has no Settings tab: Settings is
 pushed onto the My Work stack (`/tabs/my-work/settings`) from the avatar
-button. The Inbox page lives in `src/app/pages/notifications/` (its route
+button. It opens with a read-only profile header (the avatar's fill and
+initials, from `accountAvatar()` in `src/core/people/`, then the name, email
+and timezone, each left out when the account lacks it); editing stays on the
+web. Its About row pushes `/tabs/my-work/settings/about`: version, the native
+build number (`App.getInfo().build`, hidden on web), commit, environment and
+a Privacy policy row that opens `privacyPolicyUrl` with `@capacitor/browser`
+on native or a new tab on web. The Inbox page lives in `src/app/pages/notifications/` (its route
 and file names predate the tab). Task detail is routed under every tab as
 `tasks/:projectId/:taskId` (tasks are project-scoped), so it pushes onto the
 tab it was opened from and back returns there; its route `data.backHref` is
@@ -1311,8 +1318,10 @@ injected; nothing is hardcoded and nothing here is committed. Since anything
 shipped in a mobile bundle can be extracted, only put client-side keys here
 (e.g. a Sentry DSN) — never a real server secret.
 
-The Settings page shows the active environment name and the build version.
+The About page shows the active environment name and the build version.
 `webBaseUrl` is flux-web's origin, used by task detail's Copy link.
+`privacyPolicyUrl` is a placeholder (`https://example.com/privacy`) in all
+three files until the store release supplies the real page.
 
 ## 7. Theme
 

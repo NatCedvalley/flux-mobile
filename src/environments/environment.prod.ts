@@ -7,4 +7,5 @@ export const environment = {
   iamBaseUrl: 'https://iam.api.justflux.asia/api/v1',
   notificationWsUrl: 'wss://notification.api.justflux.asia/ws',
   webBaseUrl: 'https://justflux.asia',
+  privacyPolicyUrl: 'https://example.com/privacy',
 } satisfies AppEnvironment;

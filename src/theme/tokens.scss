@@ -445,6 +445,12 @@ $flux-type: (
       size: 13px,
       weight: 650,
     ),
+  // Initials in Settings' 56px profile avatar. Not in the handoff, which has
+  // no Settings screen: the avatar's weight, scaled with its size.
+  profile-avatar: (
+      size: 20px,
+      weight: 650,
+    ),
   // Project task list (3b): the switcher button's subline and 30px avatar,
   // the group-by strip, group headers (status word and count) and the
   // row's 28px assignee avatar.

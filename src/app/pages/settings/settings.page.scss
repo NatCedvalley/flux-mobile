@@ -1,0 +1,50 @@
+// Read-only profile header: the 56px avatar (My Work's fill and initials),
+// then the name, email and timezone.
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-16);
+  padding: var(--flux-space-24) var(--flux-space-16);
+}
+
+.avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--flux-radius-pill);
+  color: var(--flux-avatar-text);
+  font: var(--flux-font-profile-avatar);
+  letter-spacing: var(--flux-tracking-profile-avatar);
+}
+
+.profile-text {
+  min-width: 0;
+
+  p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.name {
+  color: var(--flux-n12);
+  font: var(--flux-font-detail-title);
+  letter-spacing: var(--flux-tracking-detail-title);
+}
+
+.email {
+  color: var(--flux-na11);
+  font: var(--flux-font-body);
+  letter-spacing: var(--flux-tracking-body);
+}
+
+.timezone {
+  color: var(--flux-na11);
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+}

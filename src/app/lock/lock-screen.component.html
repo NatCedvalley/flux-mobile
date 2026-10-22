@@ -20,4 +20,9 @@
   >
     Sign in with password
   </ion-button>
+  @if (unsent(); as unsent) {
+    <ion-text color="medium">
+      <p class="lock-hint unsent">{{ unsent }}</p>
+    </ion-text>
+  }
 </main>

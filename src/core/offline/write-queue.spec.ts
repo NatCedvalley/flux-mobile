@@ -207,19 +207,20 @@ describe('WriteQueue', () => {
       expect(queue.items).toEqual([]);
     });
 
-    it('discards a failed comment, and nothing else', async () => {
+    it('discards a failed or queued comment', async () => {
       vi.spyOn(api, 'addTaskComment').mockRejectedValueOnce(
         new ApiError(403, { message: 'Nope' })
       );
       await queue.enqueueComment(comment('One'));
       await queue.replay(api);
       await queue.enqueueComment(comment('Two'));
-      const [failed, queued] = queue.items;
+      await queue.enqueueComment(comment('Three'));
+      const [failed, queued, kept] = queue.items;
 
       await queue.discard(queued.id);
       await queue.discard(failed.id);
 
-      expect(queue.items).toEqual([queued]);
+      expect(queue.items).toEqual([kept]);
     });
 
     it('loads items saved before comments as status changes', async () => {
@@ -364,7 +365,18 @@ describe('WriteQueue', () => {
       expect(send).not.toHaveBeenCalled();
       expect(outcome.kind).toBe('conflict');
       expect(outcome.kind === 'conflict' && outcome.task.status).toBe('done');
-      expect(queue.items[0].state).toBe('conflict');
+      expect(status()).toMatchObject({
+        state: 'conflict',
+        current: {
+          slug: 'done',
+          category: 'DONE',
+          isClosed: true,
+          resolution: 'done',
+        },
+      });
+      const again = new WriteQueue(store);
+      await again.load('a1');
+      expect((again.items[0] as QueuedStatusChange).current?.slug).toBe('done');
     });
 
     it.each([400, 403, 404, 422])(
@@ -617,6 +629,118 @@ describe('WriteQueue', () => {
       await Promise.all([queue.replay(api), queue.replay(api)]);
 
       expect(send).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('resolving', () => {
+    /** CHK-142 queued to To Do, then a conflict with Done on the server. */
+    async function conflict(): Promise<string> {
+      await closeOnServer();
+      await queue.enqueueStatus(change(TODO));
+      await queue.replay(api);
+      return status().id;
+    }
+
+    it('applies mine from the server’s status', async () => {
+      const id = await conflict();
+
+      await queue.applyMine(id);
+
+      expect(status()).toMatchObject({
+        state: 'queued',
+        from: { slug: 'done' },
+        to: { slug: 'todo' },
+      });
+      expect(status().current).toBeUndefined();
+      const [outcome] = await queue.replay(api);
+      expect(outcome.kind).toBe('sent');
+      expect((await api.getTask('p1', '1')).status).toBe('todo');
+      expect(queue.items).toEqual([]);
+    });
+
+    it('makes a new conflict when the task changed again meanwhile', async () => {
+      const id = await conflict();
+      await queue.applyMine(id);
+      await api.changeTaskStatus('p1', '1', { status: 'in_progress' });
+      const send = vi.spyOn(api, 'changeTaskStatus');
+
+      const [outcome] = await queue.replay(api);
+
+      expect(outcome.kind).toBe('conflict');
+      expect(send).not.toHaveBeenCalled();
+      expect(status().current?.slug).toBe('in_progress');
+    });
+
+    it('leaves a conflict saved without the server’s status', async () => {
+      await store.write(
+        'write-queue.a1.json',
+        JSON.stringify({
+          items: [
+            {
+              ...change(TODO),
+              kind: 'status',
+              id: 'old',
+              state: 'conflict',
+              queuedAt: 1,
+            },
+          ],
+        })
+      );
+      const old = new WriteQueue(store);
+      await old.load('a1');
+
+      await old.applyMine('old');
+
+      expect(old.items[0].state).toBe('conflict');
+    });
+
+    it('keeps theirs by discarding the conflict', async () => {
+      const id = await conflict();
+
+      await queue.discard(id);
+
+      expect(queue.items).toEqual([]);
+    });
+
+    it('retries a failed item without its message', async () => {
+      vi.spyOn(api, 'addTaskComment').mockRejectedValueOnce(
+        new ApiError(422, { message: 'Archived' })
+      );
+      await queue.enqueueComment(comment());
+      await queue.replay(api);
+
+      await queue.retry(queue.items[0].id);
+
+      expect(queue.items[0]).toMatchObject({
+        state: 'queued',
+        attempted: true,
+      });
+      expect(queue.items[0].message).toBeUndefined();
+      const [outcome] = await queue.replay(api);
+      expect(outcome.kind).toBe('sent');
+    });
+
+    it('retries only a failed item', async () => {
+      const id = await conflict();
+
+      await queue.retry(id);
+
+      expect(status().state).toBe('conflict');
+    });
+
+    it('doesn’t discard an item being sent', async () => {
+      await queue.enqueueStatus(change(TODO));
+      let left: string[] = [];
+      vi.spyOn(api, 'getTask').mockImplementationOnce(async (p, t) => {
+        await queue.discard(status().id);
+        left = queue.items.map((i) => i.state);
+        return new InMemoryFluxApi().getTask(p, t);
+      });
+
+      await queue.replay(api);
+
+      expect(left).toEqual(['sending']);
+      expect((await api.getTask('p1', '1')).status).toBe('todo');
     });
   });
 

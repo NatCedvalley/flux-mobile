@@ -71,6 +71,16 @@ export class WriteQueueService {
     { equal: sameEntries }
   );
 
+  /** How many items are still in the queue, in any state. */
+  readonly waiting = computed(() => this.list().length);
+
+  /** How many conflicts and failures wait for the person to decide. */
+  readonly attention = computed(
+    () =>
+      this.list().filter((i) => i.state === 'conflict' || i.state === 'failed')
+        .length
+  );
+
   private readonly sent = signal<SentComment | undefined>(undefined);
   /** The latest queued comment the replay posted, for a thread to show. */
   readonly sentComment = this.sent.asReadonly();
@@ -118,9 +128,19 @@ export class WriteQueueService {
     return this.queue.commentPending(taskId);
   }
 
-  /** Removes a failed item. */
+  /** Removes an item, unless it's being sent. */
   discard(id: string): Promise<void> {
     return this.queue.discard(id);
+  }
+
+  /** Queues a failed item again. */
+  retry(id: string): Promise<void> {
+    return this.queue.retry(id);
+  }
+
+  /** Queues a conflict again, as a change from the server's status. */
+  applyMine(id: string): Promise<void> {
+    return this.queue.applyMine(id);
   }
 
   /** Forgets the task's conflicts and failures, after a newer change landed. */

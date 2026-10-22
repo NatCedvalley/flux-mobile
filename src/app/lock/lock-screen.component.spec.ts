@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AuthService } from '../auth/auth.service';
+import { WriteQueueService } from '../offline/write-queue.service';
 import { AppLockService } from './app-lock.service';
 import { LockScreenComponent } from './lock-screen.component';
 
@@ -47,5 +48,27 @@ describe('LockScreenComponent', () => {
     await fixture.whenStable();
 
     expect(auth.logout).toHaveBeenCalled();
+  });
+
+  it('says what signing in with a password leaves unsent', async () => {
+    const text = () =>
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.unsent')
+        ?.textContent?.trim();
+    expect(text()).toBeUndefined();
+    const writeQueue = TestBed.inject(WriteQueueService);
+    await writeQueue.queue.load('a1');
+
+    await writeQueue.enqueueComment({
+      projectId: 'p1',
+      taskId: '1',
+      body: 'Hi',
+      mentionedAccountIds: [],
+    });
+    fixture.detectChanges();
+
+    expect(text()).toBe(
+      '1 change hasn’t been sent. It’ll send when you sign in to this account again.'
+    );
   });
 });

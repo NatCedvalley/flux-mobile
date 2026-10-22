@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Account } from '@core/api';
+import { ApiError } from '@core/auth';
 import { MemoryCacheStore, type StatusChangeRequest } from '@core/offline';
 import { AuthService } from '../auth/auth.service';
 import { WRITE_QUEUE_STORE } from '../providers/write-queue-store.token';
@@ -134,5 +135,31 @@ describe('WriteQueueService', () => {
     });
 
     expect(service.queuedStatuses()).toBe(before);
+  });
+
+  it('counts what waits and what needs attention', async () => {
+    service.init();
+    await settle();
+    await service.enqueueStatus(TO_TODO);
+    await service.enqueueComment({
+      projectId: 'p1',
+      taskId: '2',
+      body: 'Hi',
+      mentionedAccountIds: [],
+    });
+    expect(service.waiting()).toBe(2);
+    expect(service.attention()).toBe(0);
+
+    await service.queue.replay({
+      getTask: () => Promise.resolve({ id: '1', status: 'done' }),
+      changeTaskStatus: vi.fn(),
+      listTaskComments: vi.fn(),
+      addTaskComment: () =>
+        Promise.reject(new ApiError(403, { message: 'Nope' })),
+    });
+
+    expect(service.items().map((i) => i.state)).toEqual(['conflict', 'failed']);
+    expect(service.waiting()).toBe(2);
+    expect(service.attention()).toBe(2);
   });
 });

@@ -1,12 +1,42 @@
-@if (!connectivity.online()) {
-  <div
-    class="banner"
-    role="status"
-  >
-    <ion-icon
-      name="cloud-off"
-      aria-hidden="true"
-    ></ion-icon>
-    Offline · showing cached work
-  </div>
+@if (band(); as band) {
+  @if (band.opens) {
+    <button
+      type="button"
+      class="banner"
+      (click)="open.set(true)"
+    >
+      <ion-icon
+        [name]="band.icon"
+        aria-hidden="true"
+      ></ion-icon>
+      <span class="text">{{ band.text }}</span>
+      <ion-icon
+        class="more"
+        name="chevron-right"
+        aria-hidden="true"
+      ></ion-icon>
+    </button>
+  } @else {
+    <div class="banner">
+      <ion-icon
+        [name]="band.icon"
+        aria-hidden="true"
+      ></ion-icon>
+      <span class="text">{{ band.text }}</span>
+    </div>
+  }
 }
+
+<!-- Outside the band, which goes once nothing needs attention, so the sheet
+     isn't destroyed while it shows the last changes. -->
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="open()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="open.set(false)"
+>
+  <ng-template>
+    <app-pending-changes-sheet (done)="open.set(false)" />
+  </ng-template>
+</ion-modal>

@@ -1,6 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { IonButton, IonText } from '@ionic/angular';
 import { AuthService } from '../auth/auth.service';
+import { unsentChangesMessage } from '../offline/pending-changes';
+import { WriteQueueService } from '../offline/write-queue.service';
 import { AppLockService } from './app-lock.service';
 
 /**
@@ -16,8 +18,18 @@ import { AppLockService } from './app-lock.service';
 export class LockScreenComponent {
   private readonly lock = inject(AppLockService);
   private readonly auth = inject(AuthService);
+  private readonly writeQueue = inject(WriteQueueService);
 
   protected readonly signingOut = signal(false);
+
+  /**
+   * What signing in with a password leaves unsent. A note rather than an
+   * alert, which would open under this screen (it covers Ionic's overlays).
+   */
+  protected readonly unsent = computed(() => {
+    const waiting = this.writeQueue.waiting();
+    return waiting ? unsentChangesMessage(waiting) : undefined;
+  });
 
   constructor() {
     void this.unlock();

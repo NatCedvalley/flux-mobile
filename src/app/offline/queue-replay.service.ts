@@ -84,16 +84,26 @@ export class QueueReplayService {
   }
 
   /** Shows the server's copy of the task, now that its change has settled. */
-  private async settle(outcome: ReplayOutcome): Promise<void> {
-    const { item } = outcome;
+  private settle(outcome: ReplayOutcome): Promise<void> {
+    return this.refreshTask(
+      outcome.item,
+      outcome.kind === 'conflict' ? outcome.task : undefined
+    );
+  }
+
+  /**
+   * Shows the server's copy of the item's task, once its change has settled
+   * or been given up (offline, the cached copy), else `fallback` if given.
+   */
+  async refreshTask(item: QueueItem, fallback?: Task): Promise<void> {
     try {
       // Through FLUX_API, so the cache keeps the new copy too.
       this.changes.report(await this.api.getTask(item.projectId, item.taskId));
     } catch (error) {
       if (error instanceof ApiError && [403, 404].includes(error.status)) {
         this.changes.report(placeholder(item), true);
-      } else if (outcome.kind === 'conflict') {
-        this.changes.report(outcome.task);
+      } else if (fallback) {
+        this.changes.report(fallback);
       } else {
         console.error('Fetching a task after its queued change failed', error);
       }

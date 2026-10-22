@@ -47,8 +47,9 @@ src/
               and its Unscheduled drawer (calendar/), push, opening
               one and the Inbox's permission card (push/), the Inbox's unread
               counts and its row (inbox/), the connection state, the
-              offline banner and toasts, the read cache's wipe, and the
-              write queue and its replay (offline/), the Notifications
+              offline banner and toasts, the read cache's wipe, the
+              write queue, its replay and the pending changes sheet
+              (offline/), the Notifications
               settings page (pages/notification-settings/), and the
               providers that bridge into src/core
 ```
@@ -753,9 +754,12 @@ until that first check, and a failed check keeps the last value.
 
 `app-offline-banner` is the handoff's offline band: 28px (a min-height),
 `--flux-ambera3` with `--flux-amber11` text, `cloud-off` and "Offline ·
-showing cached work". My Work, Projects (all three views), Inbox and task
-detail put it last in their `ion-header`, as the app shell has no header
-of its own.
+showing cached work", or "Offline · 2 changes waiting" with the write
+queue's count. Back online it stays as "1 change needs attention" (`info`)
+while a queued item is a conflict or failed. My Work, Projects (all three
+views), Inbox and task detail put it last in their `ion-header`, as the
+app shell has no header of its own. See Pending changes below for what a
+tap on it opens.
 
 **Read cache** (FM-48). A cache, not offline-first: only responses
 already fetched are served back, never queried or merged.
@@ -794,7 +798,7 @@ already fetched are served back, never queried or merged.
   the cache keeps the old view.
 
 **Write queue** (FM-49, FM-50). Status changes and new top-level comments
-are queued; the pending changes sheet comes in FM-51.
+are queued.
 
 - `WriteQueue` (`src/core/offline/`) keeps status changes and comments
   made offline, in order, as one blob per account
@@ -831,9 +835,10 @@ are queued; the pending changes sheet comes in FM-51.
   holds the new copy) and reported; a 403 or 404 reports it removed. A
   conflict or failure puts the server's status back and says so in one
   toast ("CHK-142 changed on the server, so your status change wasn’t
-  sent.", "Couldn’t move CHK-142: …", or a count). Conflicts and
-  failures stay in the queue for FM-51, until a newer change to that task
-  is queued or sent online (`dropUnsent()`). After a replay that settled
+  sent.", "Couldn’t move CHK-142: …", or a count). A conflict keeps the
+  server's status as `current`. Conflicts and failures stay in the queue
+  until the person settles them in the pending changes sheet, or a newer
+  change to that task is queued or sent online (`dropUnsent()`). After a replay that settled
   anything, My Work's three lists (`myWorkQueries()`) are fetched again
   through `FLUX_API`: Ionic doesn't run a hidden page's effects, so a
   hidden My Work would otherwise reload its old cached rows once offline.
@@ -890,6 +895,37 @@ are queued; the pending changes sheet comes in FM-51.
   (`@capacitor/preferences`, keys `write-queue/…`, which the OS never
   purges, unlike the read cache's Cache directory) and `MemoryCacheStore`
   on web, the token's default, so a browser reload loses it.
+
+**Pending changes** (FM-51). With changes listed, the banner is a button
+that opens `app-pending-changes-sheet` (an inline `flux-sheet
+flux-sheet-auto` `ion-modal`, declared outside the band so the band going
+doesn't take an open sheet). Nothing in the queue is overwritten or
+dropped without the person choosing it.
+
+- Each row is the task key, the change ("Move to In review", or the
+  comment's text clamped to 2 lines), its state and its age
+  (`relativeTime()`). Status names come from the project's workflow
+  statuses (cached), through `statusPill()`.
+- Waiting: Discard. A status change is dropped at once and its task
+  refetched (`QueueReplayService.refreshTask()`, the cached copy offline,
+  now without the queued status); a comment asks first with an
+  `ion-alert`. Sending: nothing.
+- Conflict ("CHK-142 is now Done"): **Apply mine** makes the item a change
+  from `current` and replays. It isn't a blind send: if the task changed
+  again meanwhile, the replay makes a new conflict. **Keep theirs**
+  discards it and refetches the task. A conflict saved before FM-51 has
+  no `current`: it says "CHK-142 changed on the server" and offers only
+  Keep theirs.
+- Failed ("Not sent · …" or "Not posted · …"): Retry (back to `queued`,
+  then a replay; a comment keeps `attempted`), Discard, and for a comment
+  Copy text. Task detail's failed comment keeps its own Copy text and
+  Delete.
+- The sheet closes itself once the queue is empty.
+- Signing out keeps the queue, so Settings' "Log out of Flux?" alert says
+  "2 changes haven’t been sent. They’ll send when you sign in to this
+  account again." (`unsentChangesMessage()`). The lock screen covers
+  Ionic's overlays, so it shows that line under "Sign in with password"
+  instead of an alert.
 
 **Screens offline** (`OfflineToastService`, `OFFLINE_MESSAGES`):
 
@@ -1637,5 +1673,4 @@ which allows the overlap.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-the pending changes sheet with conflict resolution (FM-51), app store
-assets, and Play Store upload.
+app store assets and Play Store upload.

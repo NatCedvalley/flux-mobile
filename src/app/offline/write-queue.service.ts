@@ -75,6 +75,11 @@ export class WriteQueueService {
     return this.queue.enqueueStatus(change);
   }
 
+  /** Forgets the task's conflicts and failures, after a newer change landed. */
+  dropUnsent(taskId: string): Promise<void> {
+    return this.queue.dropUnsent(taskId);
+  }
+
   /** The task's change still to settle: queued, sending or a conflict. */
   pending(taskId: string): QueuedStatusChange | undefined {
     return this.queue.pending(taskId);

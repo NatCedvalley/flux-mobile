@@ -349,4 +349,28 @@ describe('WriteQueue', () => {
       expect(send).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('dropUnsent', () => {
+    it('forgets a task’s conflict and failure, and keeps the rest', async () => {
+      await closeOnServer();
+      await queue.enqueueStatus(change(TODO));
+      await queue.replay(api);
+      await queue.enqueueStatus(change(DONE, TODO, '2'));
+      expect(queue.items.map((i) => `${i.taskId} ${i.state}`)).toEqual([
+        '1 conflict',
+        '2 queued',
+      ]);
+
+      await queue.dropUnsent('1');
+      await queue.dropUnsent('2');
+
+      expect(queue.items.map((i) => `${i.taskId} ${i.state}`)).toEqual([
+        '2 queued',
+      ]);
+      expect(queue.pending('1')).toBeUndefined();
+      const again = new WriteQueue(store);
+      await again.load('a1');
+      expect(again.items).toHaveLength(1);
+    });
+  });
 });

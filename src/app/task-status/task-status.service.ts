@@ -100,6 +100,8 @@ export class TaskStatusService {
     if (queue) {
       return this.enqueue(task, to, resolution, view, undoable);
     }
+    // An earlier conflict or failure is moot now, and would keep the glyph.
+    void this.writeQueue.dropUnsent(taskId);
     const fresh = await this.refetch(projectId, taskId);
     if (fresh) {
       view.apply(fresh);

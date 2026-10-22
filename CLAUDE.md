@@ -823,7 +823,8 @@ FM-50 and the pending changes sheet in FM-51.
   conflict or failure puts the server's status back and says so in one
   toast ("CHK-142 changed on the server, so your status change wasn’t
   sent.", "Couldn’t move CHK-142: …", or a count). Conflicts and
-  failures stay in the queue for FM-51.
+  failures stay in the queue for FM-51, until a newer change to that task
+  is queued or sent online (`dropUnsent()`).
 - `CachingFluxApi` takes `queuedStatus`, and `getTask`, `listMyTasks`
   (with `statusName`), `listProjectTasks` and `listChildTasks` show a
   `queued` or `sending` change's status, from the network or the cache. A

@@ -172,6 +172,23 @@ export class WriteQueue {
   }
 
   /**
+   * Forgets the task's conflicts and failures once a newer change to it has
+   * reached the server: they no longer say anything about the task.
+   */
+  dropUnsent(taskId: string): Promise<void> {
+    return this.run(async () => {
+      const kept = this.list.filter(
+        (i) =>
+          i.taskId !== taskId || i.state === 'queued' || i.state === 'sending'
+      );
+      if (kept.length !== this.list.length) {
+        this.list = kept;
+        await this.save();
+      }
+    });
+  }
+
+  /**
    * Sends the queued changes in order, one at a time, through `api`, which
    * must reach the server rather than a cache. Before each one the task is
    * fetched: if its status is no longer the one the change was made from,

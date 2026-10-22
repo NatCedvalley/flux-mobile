@@ -173,4 +173,22 @@ describe('TaskStatusService', () => {
       expect.objectContaining({ message: 'Archiving needs a connection.' })
     );
   });
+
+  it('forgets the task’s old conflict once a change is sent online', async () => {
+    online.set(false);
+    await service.move(task, TODO, undefined, view);
+    await api.changeTaskStatus('p1', '1', {
+      status: 'done',
+      resolution: 'done',
+    });
+    await writeQueue.queue.replay(api);
+    expect(writeQueue.pending('1')?.state).toBe('conflict');
+    online.set(true);
+
+    const fresh = await api.getTask('p1', '1');
+    expect(await service.move(fresh, TODO, undefined, view)).toBe('sent');
+
+    expect(writeQueue.items()).toEqual([]);
+    expect(writeQueue.pendingTaskIds().has('1')).toBe(false);
+  });
 });

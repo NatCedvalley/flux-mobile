@@ -6,6 +6,7 @@ import { buildInfo } from '../../../environments/build-info';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
+import { WriteQueueService } from '../../offline/write-queue.service';
 import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
@@ -99,6 +100,36 @@ describe('SettingsPage', () => {
 
     expect(alert.present).toHaveBeenCalled();
     expect(auth.logout).toHaveBeenCalled();
+  });
+
+  it('says what stays unsent, and keeps it', async () => {
+    const writeQueue = TestBed.inject(WriteQueueService);
+    await writeQueue.queue.load('a1');
+    for (const taskId of ['1', '2']) {
+      await writeQueue.enqueueStatus({
+        projectId: 'p1',
+        taskId,
+        from: { slug: 'in_progress' },
+        to: { slug: 'todo' },
+      });
+    }
+
+    await tapLogoutAndChoose('confirm');
+
+    expect(alerts.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'Log out of Flux?',
+        message:
+          '2 changes haven’t been sent. They’ll send when you sign in to this account again.',
+      })
+    );
+    expect(writeQueue.waiting()).toBe(2);
+  });
+
+  it('asks without a message when nothing is waiting', async () => {
+    await tapLogoutAndChoose('cancel');
+
+    expect(alerts.create.mock.calls[0][0].message).toBeUndefined();
   });
 
   it('stays signed in when the user cancels', async () => {

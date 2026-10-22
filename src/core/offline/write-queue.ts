@@ -32,6 +32,8 @@ export type QueuedStatusChange = {
   to: QueuedStatus;
   state: QueueItemState;
   message?: string;
+  /** With a conflict: the status the server had instead of `from`. */
+  current?: QueuedStatus;
   /** Epoch milliseconds. */
   queuedAt: number;
 };
@@ -77,8 +79,13 @@ export type CommentRequest = Pick<
 export type ReplayOutcome =
   /** Sent, or the server already had it. */
   | { kind: 'sent' | 'already'; item: QueuedStatusChange }
-  /** Not sent: `task` is the server's copy. */
-  | { kind: 'conflict'; item: QueuedStatusChange; task: Task }
+  /** Not sent: `task` is the server's copy, and `current` its status. */
+  | {
+      kind: 'conflict';
+      item: QueuedStatusChange;
+      task: Task;
+      current: QueuedStatus;
+    }
   /** Posted, or found already posted: `comment` is the server's. */
   | { kind: 'sent' | 'already'; item: QueuedComment; comment: TaskComment }
   | { kind: 'failed'; item: QueueItem; error: ApiError };
@@ -294,9 +301,41 @@ export class WriteQueue {
     });
   }
 
-  /** Removes a failed item, which the person has given up on. */
+  /** Removes an item the person has given up on, unless it's being sent. */
   discard(id: string): Promise<void> {
-    return this.run(() => this.remove(id, (i) => i.state === 'failed'));
+    return this.run(() => this.remove(id, (i) => i.state !== 'sending'));
+  }
+
+  /** Queues a failed item again, to go with the next replay. */
+  retry(id: string): Promise<void> {
+    return this.run(async () => {
+      if (this.list.some((i) => i.id === id && i.state === 'failed')) {
+        await this.update(id, { state: 'queued', message: undefined });
+      }
+    });
+  }
+
+  /**
+   * Queues a conflict again as a change from the server's status, so the
+   * next replay sends it, unless the task changes on the server once more
+   * (a new conflict). A conflict saved without `current` stays as it is.
+   */
+  applyMine(id: string): Promise<void> {
+    return this.run(async () => {
+      const item = this.list.find(
+        (i): i is QueuedStatusChange =>
+          i.id === id && i.kind === 'status' && i.state === 'conflict'
+      );
+      const from = item?.current;
+      if (from) {
+        this.list = this.list.map((i) =>
+          i === item
+            ? { ...item, from, state: 'queued', current: undefined }
+            : i
+        );
+        await this.save();
+      }
+    });
   }
 
   /**
@@ -361,7 +400,10 @@ export class WriteQueue {
       }
       await this.run(() => {
         if (outcome.kind === 'conflict') {
-          return this.update(item.id, { state: 'conflict' });
+          return this.update(item.id, {
+            state: 'conflict',
+            current: outcome.current,
+          });
         }
         if ('comment' in outcome && this.list.some((i) => i.id === item.id)) {
           // Before the removal below, in the same tick.
@@ -389,7 +431,11 @@ export class WriteQueue {
   /** Changes an item still in the list (another account's is gone). */
   private async update(
     id: string,
-    change: Pick<QueueItem, 'state'> & { message?: string; attempted?: boolean }
+    change: Pick<QueueItem, 'state'> & {
+      message?: string;
+      attempted?: boolean;
+      current?: QueuedStatus;
+    }
   ): Promise<void> {
     if (this.list.some((i) => i.id === id)) {
       this.list = this.list.map((i) =>
@@ -446,6 +492,7 @@ async function send(
   const task = await api.getTask(item.projectId, item.taskId);
   const server: QueuedStatus = normalised({
     slug: task.status ?? '',
+    category: task.statusCategory,
     isClosed: task.isClosedStatus,
     resolution: task.resolution,
   });
@@ -453,7 +500,7 @@ async function send(
     return { kind: 'already', item };
   }
   if (server.slug !== item.from.slug) {
-    return { kind: 'conflict', item, task };
+    return { kind: 'conflict', item, task, current: server };
   }
   await api.changeTaskStatus(item.projectId, item.taskId, {
     status: item.to.slug,

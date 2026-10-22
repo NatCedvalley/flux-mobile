@@ -190,6 +190,17 @@ describe('QueueReplayService', () => {
     });
   });
 
+  it('refreshes a task whose change was given up, from the cache offline', async () => {
+    const [item] = writeQueue.items();
+
+    await service.refreshTask(item);
+
+    expect(changes.changed()).toEqual({
+      task: expect.objectContaining({ id: '1', status: 'in_progress' }),
+      removed: false,
+    });
+  });
+
   it('counts several refusals in one toast', async () => {
     await writeQueue.enqueueStatus({
       ...TO_TODO,

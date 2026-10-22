@@ -1,0 +1,131 @@
+// The status sheet's anatomy (3h): a title and subtitle, the rows, and an
+// outline Close. Each row is the task key and age, the change, its state,
+// then its actions.
+header {
+  padding: var(--flux-space-16) var(--flux-space-16) var(--flux-space-10);
+}
+
+h1 {
+  margin: 0;
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
+}
+
+.subtitle {
+  margin: var(--flux-space-2) 0 0;
+  font: var(--flux-font-sheet-subtitle);
+  color: var(--flux-na11);
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  padding: var(--flux-space-12) var(--flux-space-16);
+  border-top: 1px solid var(--flux-na3);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--flux-space-8);
+}
+
+.key {
+  font: var(--flux-font-key);
+  letter-spacing: var(--flux-tracking-key);
+  color: var(--flux-pa11);
+}
+
+.age {
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+}
+
+// A comment's text runs to two lines at most.
+.change {
+  display: -webkit-box;
+  margin: var(--flux-space-4) 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font: var(--flux-font-sheet-item);
+  letter-spacing: var(--flux-tracking-sheet-item);
+  color: var(--flux-n12);
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-4);
+  margin: var(--flux-space-4) 0 0;
+  font: var(--flux-font-meta);
+  letter-spacing: var(--flux-tracking-meta);
+  color: var(--flux-na10);
+
+  ion-icon {
+    flex: none;
+    font-size: 12px;
+  }
+}
+
+.conflict .state {
+  font: var(--flux-font-meta-strong);
+  letter-spacing: var(--flux-tracking-meta-strong);
+  color: var(--flux-amber11);
+}
+
+.failed .state {
+  color: var(--flux-red11);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--flux-space-8);
+  margin-top: var(--flux-space-8);
+
+  ion-button {
+    --border-radius: var(--flux-radius-docked);
+    margin: 0;
+    font: var(--flux-font-meta-strong);
+  }
+
+  .keep,
+  .retry {
+    --border-color: var(--flux-na5);
+    --border-width: 1px;
+    --color: var(--flux-n12);
+  }
+
+  .copy {
+    --color: var(--flux-pa11);
+  }
+
+  .discard {
+    --color: var(--flux-red11);
+  }
+}
+
+footer {
+  margin-top: var(--flux-space-8);
+  padding: var(--flux-space-14) var(--flux-space-16)
+    calc(var(--flux-space-8) + var(--ion-safe-area-bottom, 0px));
+  border-top: 1px solid var(--flux-na4);
+}
+
+.close {
+  --border-color: var(--flux-na5);
+  --border-width: 1px;
+  --border-radius: var(--flux-radius-docked);
+  --color: var(--flux-n12);
+  height: 48px;
+  margin: 0;
+  font: var(--flux-font-sheet-button);
+}

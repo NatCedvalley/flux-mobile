@@ -1,0 +1,97 @@
+<header>
+  <h1>Pending changes</h1>
+  <p class="subtitle">{{ subtitle() }}</p>
+</header>
+
+<div class="body">
+  <ul class="items">
+    @for (row of rows(); track row.item.id) {
+      <li
+        class="item"
+        [class]="row.tone"
+      >
+        <div class="head">
+          <span class="key">{{ row.key }}</span>
+          <span class="age">{{ row.age }}</span>
+        </div>
+        <p class="change">{{ row.change }}</p>
+        <p class="state">
+          @if (row.tone === 'waiting') {
+            <ion-icon
+              name="refresh-cw"
+              aria-hidden="true"
+            ></ion-icon>
+          }
+          {{ row.state }}
+        </p>
+        @if (row.item.state !== 'sending') {
+          <div class="actions">
+            @switch (row.item.state) {
+              @case ('conflict') {
+                @if (row.item.kind === 'status' && row.item.current) {
+                  <ion-button
+                    class="apply"
+                    size="small"
+                    (click)="applyMine(row.item)"
+                    >Apply mine</ion-button
+                  >
+                }
+                <ion-button
+                  class="keep"
+                  size="small"
+                  fill="outline"
+                  (click)="keepTheirs(row.item)"
+                  >Keep theirs</ion-button
+                >
+              }
+              @case ('failed') {
+                <ion-button
+                  class="retry"
+                  size="small"
+                  fill="outline"
+                  (click)="retry(row.item)"
+                  >Retry</ion-button
+                >
+                @if (row.item.kind === 'comment') {
+                  <ion-button
+                    class="copy"
+                    size="small"
+                    fill="clear"
+                    (click)="copyText(row.item)"
+                    >Copy text</ion-button
+                  >
+                }
+                <ion-button
+                  class="discard"
+                  size="small"
+                  fill="clear"
+                  (click)="discard(row.item)"
+                  >Discard</ion-button
+                >
+              }
+              @default {
+                <ion-button
+                  class="discard"
+                  size="small"
+                  fill="clear"
+                  (click)="discard(row.item)"
+                  >Discard</ion-button
+                >
+              }
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+</div>
+
+<footer>
+  <ion-button
+    class="close"
+    fill="outline"
+    expand="block"
+    (click)="done.emit()"
+    >Close</ion-button
+  >
+</footer>

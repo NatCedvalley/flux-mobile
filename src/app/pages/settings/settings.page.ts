@@ -18,6 +18,8 @@ import { buildInfo } from '../../../environments/build-info';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
+import { unsentChangesMessage } from '../../offline/pending-changes';
+import { WriteQueueService } from '../../offline/write-queue.service';
 
 @Component({
   selector: 'app-settings',
@@ -42,6 +44,7 @@ export class SettingsPage {
   private readonly auth = inject(AuthService);
   private readonly alerts = inject(AlertController);
   private readonly lock = inject(AppLockService);
+  private readonly writeQueue = inject(WriteQueueService);
 
   protected readonly account = this.auth.account;
   protected readonly environmentName = environment.name;
@@ -56,10 +59,15 @@ export class SettingsPage {
     return this.lock.setEnabled(enabled);
   }
 
-  /** AuthService opens /login once the session is gone. */
+  /**
+   * AuthService opens /login once the session is gone. Changes still in the
+   * queue stay for this account, and the alert says so.
+   */
   protected async confirmLogout(): Promise<void> {
+    const waiting = this.writeQueue.waiting();
     const alert = await this.alerts.create({
       header: 'Log out of Flux?',
+      message: waiting ? unsentChangesMessage(waiting) : undefined,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         { text: 'Log out', role: 'confirm' },

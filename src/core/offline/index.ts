@@ -9,8 +9,12 @@ export {
   type ResponseCacheOptions,
 } from './response-cache';
 export {
+  POSTED_CLOCK_SKEW_MS,
   WriteQueue,
+  type CommentRequest,
+  type QueueItem,
   type QueueItemState,
+  type QueuedComment,
   type QueuedStatus,
   type QueuedStatusChange,
   type ReplayApi,

@@ -561,7 +561,9 @@ sheet (an inline `flux-sheet` `ion-modal`):
 writes. Each one waits for the server, then changes the loaded thread in
 place with `PagedList.edit()` and `withComment()`/`withoutComment()`
 (`src/core/comments/`), or shows the server's message in a toast. No write
-refetches the thread.
+refetches the thread. A new comment written offline is queued instead
+(see Write queue under [Offline](#offline)); edits, deletes and reactions
+toast that they need a connection.
 
 - On the Comments tab a COMMENTER+ gets the composer
   (`comment-composer/`, 3f) in place of the action bar: an
@@ -791,15 +793,17 @@ already fetched are served back, never queried or merged.
   opens the view chosen last. One switched while offline isn't saved, and
   the cache keeps the old view.
 
-**Write queue** (FM-49). Only status changes are queued; comments come in
-FM-50 and the pending changes sheet in FM-51.
+**Write queue** (FM-49, FM-50). Status changes and new top-level comments
+are queued; the pending changes sheet comes in FM-51.
 
-- `WriteQueue` (`src/core/offline/`) keeps status changes made offline,
-  in order, as one blob per account (`write-queue.<accountId>.json`).
-  Signing out hides them and deletes nothing: they replay once that
-  account signs in again, and another account never sees them. An item
-  is `queued`, `sending` (back to `queued` at load, in case the app was
-  killed mid-send), `conflict` or `failed`.
+- `WriteQueue` (`src/core/offline/`) keeps status changes and comments
+  made offline, in order, as one blob per account
+  (`write-queue.<accountId>.json`). Each item has a `kind` (`status` or
+  `comment`; an item saved before comments has none and loads as a
+  status change). Signing out hides them and deletes nothing: they replay
+  once that account signs in again, and another account never sees them.
+  An item is `queued`, `sending` (back to `queued` at load, in case the
+  app was killed mid-send), `conflict` (status changes only) or `failed`.
 - Changes to one task merge while queued: the first `from`, the last
   `to`. One back at its `from` (same slug and resolution) is dropped,
   which is how Undo cancels it. A change after a `sending` one is a new
@@ -838,8 +842,9 @@ FM-50 and the pending changes sheet in FM-51.
   `queued` or `sending` change's status, from the network or the cache. A
   conflict's isn't shown.
 - `WriteQueueService` holds the queue as signals: `items`,
-  `pendingTaskIds` (queued, sending or conflict; the rows' glyph) and
-  `queuedStatuses`, which only changes when a shown status does. My Work
+  `pendingTaskIds` (status changes queued, sending or conflict; the rows'
+  glyph) and `queuedStatuses`, which only changes when a shown status
+  does. My Work
   reloads its lists on it; the Projects list and board move a task that
   arrives in its old status's group into its queued one; task detail
   applies a reported change for its own task.
@@ -847,6 +852,40 @@ FM-50 and the pending changes sheet in FM-51.
   to sync"): in My Work rows' status, at the end of project rows' meta
   line (list, Unscheduled drawer, day sheet), after a board card's key,
   and in task detail's status pill.
+- **Comments.** `CommentService.post()` queues the comment (body,
+  `mentionedAccountIds`, sent as MARKDOWN) when `online()` is false, when
+  the POST gets an `ApiError(0)`, or when the task already has a queued or
+  sending comment (so they stay in order), and resolves `'queued'`; the
+  composer clears. Comments never merge, and edits, deletes and
+  reactions aren't queued.
+  - Replay sends them in their place among the status changes. A
+    comment's POST may land without an answer, so one whose POST went
+    out (the online POST that got no response, or any replay attempt,
+    including one cut short by an app kill) is marked `attempted`.
+    Before sending an attempted comment, the replay reads the newest
+    comments (the last page of 100; the list is oldest first and has no
+    sort) for a top-level one by the caller with the same trimmed body,
+    created no earlier than 5 minutes (`POSTED_CLOCK_SKEW_MS`) before it
+    was queued, and if there is one doesn't post it again.
+  - A refusal (403 role lost, 404 task deleted, archived) makes it
+    `failed`, with the server's message, and the replay's toast says
+    "Couldn’t post your comment on CHK-142: …" (or a count). There is no
+    conflict state: comments are append-only. `dropUnsent()` leaves
+    comments alone.
+  - Task detail shows the task's queued comments after the thread
+    (`WriteQueueService.pendingComments()`, `app-task-comments`'s
+    `pending`), as the caller's tinted bubbles with no ⋯ or reactions:
+    "You · Waiting for connection" with `refresh-cw`, or "Not posted ·
+    <message>" in red with Copy text (`@capacitor/clipboard`) and Delete
+    (asks first, then `discard()`). The tab's count includes the waiting
+    ones. A queued comment adds no glyph to rows or the status pill.
+  - When the replay posts one (or finds it posted), `WriteQueue` calls
+    `onCommentSent` just before the item leaves the list, and
+    `WriteQueueService.sentComment` hands the server's comment to task
+    detail, which appends it to a loaded thread (unless its id is there
+    already), so the pending row turns into it in one step. A comment
+    doesn't refetch its task or My Work, and the cached thread keeps its
+    old rows until it's fetched again, as after any write online.
 - `WRITE_QUEUE_STORE` is `PreferencesStore` on native
   (`@capacitor/preferences`, keys `write-queue/…`, which the OS never
   purges, unlike the read cache's Cache directory) and `MemoryCacheStore`
@@ -871,9 +910,12 @@ FM-50 and the pending changes sheet in FM-51.
   field edits ("Editing needs a connection.", `TaskEditService`),
   calendar reschedules ("Rescheduling …"), archive ("Archiving …"), a
   board reorder ("Reordering …"), create ("Creating tasks …", the sheet
-  keeps the draft) and attaching a file ("Uploading files …", before the
-  picker opens). Task delete, watch, Inbox mute and comment writes still
-  fail with their usual error.
+  keeps the draft), attaching a file ("Uploading files …", before the
+  composer's source sheet or the picker opens), and comment edits
+  ("Editing …"), deletes ("Deleting comments …") and reactions
+  ("Reacting …"). Edit and Delete check before the text sheet or the
+  confirm opens, so nothing typed is lost. Task delete, watch and Inbox
+  mute still fail with their usual error.
 - A screen with nothing cached shows the existing `app-error-state`.
 
 ## 4. API layer
@@ -1595,5 +1637,5 @@ which allows the overlap.
 ## 10. Out of scope so far
 
 Not yet built (tracked here so it isn't mistaken for an oversight):
-offline comments (FM-50), the pending changes sheet with conflict
-resolution (FM-51), app store assets, and Play Store upload.
+the pending changes sheet with conflict resolution (FM-51), app store
+assets, and Play Store upload.

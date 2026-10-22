@@ -1411,9 +1411,9 @@ describe('ProjectTasksPage', () => {
         expect(send).not.toHaveBeenCalled();
         expect(save).not.toHaveBeenCalled();
         expect(columns()).toContain('In Progress: CHK-142, CHK-150, CHK-1000');
-        expect(TestBed.inject(WriteQueueService).items()[0].to.slug).toBe(
-          'in_progress'
-        );
+        expect(TestBed.inject(WriteQueueService).items()[0]).toMatchObject({
+          to: { slug: 'in_progress' },
+        });
         const card = Array.from(
           element().querySelectorAll('app-board-card')
         ).find((c) => c.querySelector('.key')?.textContent === 'CHK-150');

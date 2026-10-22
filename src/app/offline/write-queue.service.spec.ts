@@ -65,6 +65,52 @@ describe('WriteQueueService', () => {
     expect(service.items()).toHaveLength(1);
   });
 
+  it('keeps comments out of the status signals, and lists them per task', async () => {
+    service.init();
+    await settle();
+
+    expect(
+      await service.enqueueComment({
+        projectId: 'p1',
+        taskId: '1',
+        body: 'Hi',
+        mentionedAccountIds: [],
+      })
+    ).toBe(true);
+
+    expect(service.pendingTaskIds().size).toBe(0);
+    expect(service.queuedStatuses().size).toBe(0);
+    expect(service.commentPending('1')).toBe(true);
+    expect(service.pendingComments('1').map((c) => c.body)).toEqual(['Hi']);
+    expect(service.pendingComments('2')).toEqual([]);
+  });
+
+  it('signals a comment the replay posted', async () => {
+    service.init();
+    await settle();
+    await service.enqueueComment({
+      projectId: 'p1',
+      taskId: '1',
+      body: 'Hi',
+      mentionedAccountIds: [],
+    });
+    const [item] = service.items();
+
+    await service.queue.replay({
+      getTask: vi.fn(),
+      changeTaskStatus: vi.fn(),
+      listTaskComments: vi.fn(),
+      addTaskComment: () => Promise.resolve({ id: 'c9', body: 'Hi' }),
+    });
+
+    expect(service.sentComment()).toEqual({
+      itemId: item.id,
+      taskId: '1',
+      comment: { id: 'c9', body: 'Hi' },
+    });
+    expect(service.pendingComments('1')).toEqual([]);
+  });
+
   it('queues nothing before an account is loaded', async () => {
     expect(await service.enqueueStatus(TO_TODO)).toBe(false);
   });
@@ -83,6 +129,8 @@ describe('WriteQueueService', () => {
         return Promise.reject(new Error('stop'));
       },
       changeTaskStatus: vi.fn(),
+      listTaskComments: vi.fn(),
+      addTaskComment: vi.fn(),
     });
 
     expect(service.queuedStatuses()).toBe(before);

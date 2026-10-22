@@ -20,7 +20,76 @@
       }
     </li>
   }
+  @for (item of pending(); track item.id) {
+    <li>
+      <ng-container
+        *ngTemplateOutlet="
+          queued;
+          context: { $implicit: item, comment: asComment(item) }
+        "
+      ></ng-container>
+    </li>
+  }
 </ol>
+
+<ng-template
+  #queued
+  let-item
+  let-comment="comment"
+>
+  <article
+    class="comment"
+    [class.failed]="item.state === 'failed'"
+  >
+    <span
+      class="avatar"
+      aria-hidden="true"
+      [style.background]="fill(comment)"
+      >{{ initials(comment) }}</span
+    >
+    <div class="body">
+      <div class="meta">
+        <span class="author">{{ author(comment) }}</span>
+        @if (item.state === 'failed') {
+          <span class="age failure"
+            >Not posted{{ item.message ? ' · ' + item.message : '' }}</span
+          >
+        } @else {
+          <span class="age">You · Waiting for connection</span>
+          <ion-icon
+            class="sync"
+            name="refresh-cw"
+            aria-hidden="true"
+          ></ion-icon>
+        }
+      </div>
+      <div class="bubble mine">
+        <app-rich-text
+          [body]="item.body"
+          format="MARKDOWN"
+        />
+      </div>
+      @if (item.state === 'failed') {
+        <div class="failed-actions">
+          <button
+            type="button"
+            class="copy"
+            (click)="copyText.emit(item)"
+          >
+            Copy text
+          </button>
+          <button
+            type="button"
+            class="delete"
+            (click)="discard.emit(item)"
+          >
+            Delete
+          </button>
+        </div>
+      }
+    </div>
+  </article>
+</ng-template>
 
 <ng-template
   #entry

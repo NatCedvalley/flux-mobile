@@ -2,8 +2,11 @@ import { ApiError } from '../auth/api-error';
 import { InMemoryFluxApi } from '../mock/in-memory-flux-api';
 import { MemoryCacheStore } from './cache-store';
 import {
+  POSTED_CLOCK_SKEW_MS,
   WriteQueue,
+  type CommentRequest,
   type QueuedStatus,
+  type QueuedStatusChange,
   type StatusChangeRequest,
 } from './write-queue';
 
@@ -35,6 +38,18 @@ function change(
   return { projectId: 'p1', taskId, taskKey: 'CHK-142', from, to };
 }
 
+/** A comment on CHK-142. */
+function comment(body = 'On my way', attempted = false): CommentRequest {
+  return {
+    projectId: 'p1',
+    taskId: '1',
+    taskKey: 'CHK-142',
+    body,
+    mentionedAccountIds: [],
+    attempted,
+  };
+}
+
 describe('WriteQueue', () => {
   let store: MemoryCacheStore;
   let queue: WriteQueue;
@@ -47,6 +62,9 @@ describe('WriteQueue', () => {
       resolution: 'done',
     });
   }
+
+  /** The queue's `i`th item, a status change. */
+  const status = (i = 0) => queue.items[i] as QueuedStatusChange;
 
   beforeEach(async () => {
     store = new MemoryCacheStore();
@@ -70,8 +88,8 @@ describe('WriteQueue', () => {
       await queue.enqueueStatus(change(DONE, TODO));
 
       expect(queue.items).toHaveLength(1);
-      expect(queue.items[0].from.slug).toBe('in_progress');
-      expect(queue.items[0].to).toEqual(DONE);
+      expect(status().from.slug).toBe('in_progress');
+      expect(status().to).toEqual(DONE);
     });
 
     it('drops a change that is back where it started (Undo)', async () => {
@@ -87,13 +105,13 @@ describe('WriteQueue', () => {
         change({ ...DONE, resolution: 'wont-do' }, IN_PROGRESS)
       );
 
-      expect(queue.items[0].to.resolution).toBe('wont-do');
+      expect(status().to.resolution).toBe('wont-do');
     });
 
     it('drops the resolution of an open status', async () => {
       await queue.enqueueStatus(change({ ...TODO, resolution: 'done' }));
 
-      expect(queue.items[0].to.resolution).toBeUndefined();
+      expect(status().to.resolution).toBeUndefined();
     });
 
     it('replaces a conflict with the newer change', async () => {
@@ -147,6 +165,101 @@ describe('WriteQueue', () => {
 
       expect(queue.items[0].state).toBe('failed');
       expect(queue.pending('1')).toBeUndefined();
+    });
+  });
+
+  describe('comments', () => {
+    it('queues each comment after everything already queued', async () => {
+      await queue.enqueueStatus(change(TODO));
+      expect(await queue.enqueueComment(comment('One'))).toBe(true);
+      await queue.enqueueComment(comment('Two'));
+
+      expect(
+        queue.items.map((i) => (i.kind === 'comment' ? i.body : i.kind))
+      ).toEqual(['status', 'One', 'Two']);
+      expect(queue.items[1]).toMatchObject({
+        kind: 'comment',
+        state: 'queued',
+        taskKey: 'CHK-142',
+      });
+      expect(queue.commentPending('1')).toBe(true);
+      expect(queue.commentPending('2')).toBe(false);
+    });
+
+    it('leaves the task’s status lookups and merges alone', async () => {
+      await queue.enqueueStatus(change(TODO));
+      await queue.enqueueComment(comment());
+      await queue.enqueueStatus(change(DONE, TODO));
+
+      expect(queue.items.map((i) => i.kind)).toEqual(['status', 'comment']);
+      expect(queue.queuedStatus('1')).toEqual(DONE);
+      expect(queue.pending('1')?.kind).toBe('status');
+
+      await queue.enqueueStatus(change(IN_PROGRESS, DONE));
+      expect(queue.items.map((i) => i.kind)).toEqual(['comment']);
+      expect(queue.queuedStatus('1')).toBeUndefined();
+    });
+
+    it('refuses without an account', async () => {
+      await queue.load(undefined);
+
+      expect(await queue.enqueueComment(comment())).toBe(false);
+      expect(queue.items).toEqual([]);
+    });
+
+    it('discards a failed comment, and nothing else', async () => {
+      vi.spyOn(api, 'addTaskComment').mockRejectedValueOnce(
+        new ApiError(403, { message: 'Nope' })
+      );
+      await queue.enqueueComment(comment('One'));
+      await queue.replay(api);
+      await queue.enqueueComment(comment('Two'));
+      const [failed, queued] = queue.items;
+
+      await queue.discard(queued.id);
+      await queue.discard(failed.id);
+
+      expect(queue.items).toEqual([queued]);
+    });
+
+    it('loads items saved before comments as status changes', async () => {
+      await store.write(
+        'write-queue.a1.json',
+        JSON.stringify({
+          items: [
+            {
+              id: 'x',
+              projectId: 'p1',
+              taskId: '1',
+              from: IN_PROGRESS,
+              to: TODO,
+              state: 'queued',
+              queuedAt: 1,
+            },
+          ],
+        })
+      );
+      const again = new WriteQueue(store);
+      await again.load('a1');
+
+      expect(again.items[0].kind).toBe('status');
+      expect(again.queuedStatus('1')).toEqual(TODO);
+    });
+
+    it('marks a comment that was sending as attempted when loaded', async () => {
+      await queue.enqueueComment(comment());
+      vi.spyOn(api, 'addTaskComment').mockImplementationOnce(async () => {
+        // Killed mid-send: another instance loads the saved blob.
+        const again = new WriteQueue(store);
+        await again.load('a1');
+        expect(again.items[0]).toMatchObject({
+          state: 'queued',
+          attempted: true,
+        });
+        throw new ApiError(0);
+      });
+
+      await queue.replay(api);
     });
   });
 
@@ -340,6 +453,163 @@ describe('WriteQueue', () => {
       expect(queue.items).toEqual([]);
     });
 
+    it('posts a comment as Markdown with its mentions', async () => {
+      const add = vi.spyOn(api, 'addTaskComment');
+      const list = vi.spyOn(api, 'listTaskComments');
+      await queue.enqueueComment({
+        ...comment('Hi @Ben Tan'),
+        mentionedAccountIds: ['a2'],
+      });
+
+      const [outcome] = await queue.replay(api);
+
+      expect(list).not.toHaveBeenCalled();
+      expect(add).toHaveBeenCalledWith('p1', '1', {
+        body: 'Hi @Ben Tan',
+        bodyFormat: 'MARKDOWN',
+        mentionedAccountIds: ['a2'],
+      });
+      expect(outcome).toMatchObject({
+        kind: 'sent',
+        comment: { body: 'Hi @Ben Tan', authorId: 'a1' },
+      });
+      expect(queue.items).toEqual([]);
+    });
+
+    it('sends comments and status changes in the order they were made', async () => {
+      const calls: string[] = [];
+      const add = api.addTaskComment.bind(api);
+      const move = api.changeTaskStatus.bind(api);
+      vi.spyOn(api, 'addTaskComment').mockImplementation((p, t, c) => {
+        calls.push(c.body);
+        return add(p, t, c);
+      });
+      vi.spyOn(api, 'changeTaskStatus').mockImplementation((p, t, s) => {
+        calls.push(s.status ?? '');
+        return move(p, t, s);
+      });
+      await queue.enqueueComment(comment('First'));
+      await queue.enqueueStatus(change(TODO));
+      await queue.enqueueComment(comment('Last'));
+
+      await queue.replay(api);
+
+      expect(calls).toEqual(['First', 'todo', 'Last']);
+    });
+
+    it.each([403, 404, 422])(
+      'makes a failed comment of a %i, with the server’s message',
+      async (code) => {
+        vi.spyOn(api, 'addTaskComment').mockRejectedValue(
+          new ApiError(code, { message: 'Task is archived' })
+        );
+        await queue.enqueueComment(comment());
+
+        const [outcome] = await queue.replay(api);
+
+        expect(outcome.kind).toBe('failed');
+        expect(queue.items[0]).toMatchObject({
+          kind: 'comment',
+          state: 'failed',
+          message: 'Task is archived',
+        });
+        expect(queue.commentPending('1')).toBe(false);
+      }
+    );
+
+    it.each([0, 503])(
+      'keeps a comment queued and attempted after a %i',
+      async (code) => {
+        vi.spyOn(api, 'addTaskComment').mockRejectedValue(new ApiError(code));
+        await queue.enqueueComment(comment());
+
+        expect(await queue.replay(api)).toEqual([]);
+        expect(queue.items[0]).toMatchObject({
+          state: 'queued',
+          attempted: true,
+        });
+      }
+    );
+
+    it('doesn’t post again an attempted comment the server already has', async () => {
+      const posted = await api.addTaskComment('p1', '1', {
+        body: 'On my way',
+      });
+      const add = vi.spyOn(api, 'addTaskComment');
+      await queue.enqueueComment(comment(' On my way ', true));
+
+      const [outcome] = await queue.replay(api);
+
+      expect(add).not.toHaveBeenCalled();
+      expect(outcome).toMatchObject({ kind: 'already', comment: posted });
+      expect(queue.items).toEqual([]);
+    });
+
+    it('checks the last page of a long thread', async () => {
+      const list = vi.spyOn(api, 'listTaskComments').mockResolvedValueOnce({
+        content: [],
+        totalPages: 3,
+      });
+      await queue.enqueueComment(comment('On my way', true));
+
+      await queue.replay(api);
+
+      expect(list.mock.calls.map((c) => c[2])).toEqual([
+        { page: 0, size: 100 },
+        { page: 2, size: 100 },
+      ]);
+    });
+
+    it('posts an attempted comment whose match is older than it', async () => {
+      await api.addTaskComment('p1', '1', { body: 'On my way' });
+      const later = new WriteQueue(store, {
+        now: () => Date.now() + POSTED_CLOCK_SKEW_MS + 60_000,
+      });
+      await later.load('a1');
+      const add = vi.spyOn(api, 'addTaskComment');
+      await later.enqueueComment(comment('On my way', true));
+
+      const [outcome] = await later.replay(api);
+
+      expect(add).toHaveBeenCalledTimes(1);
+      expect(outcome.kind).toBe('sent');
+    });
+
+    it('posts an attempted comment matched only by someone else’s', async () => {
+      vi.spyOn(api, 'listTaskComments').mockResolvedValue({
+        content: [
+          {
+            id: 'x',
+            authorId: 'a2',
+            body: 'On my way',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        totalPages: 1,
+      });
+      const add = vi.spyOn(api, 'addTaskComment');
+      await queue.enqueueComment(comment('On my way', true));
+
+      await queue.replay(api);
+
+      expect(add).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a posted comment before its item leaves the list', async () => {
+      const seen: number[] = [];
+      queue.onCommentSent((item, posted) => {
+        seen.push(queue.items.length);
+        expect(item.body).toBe('On my way');
+        expect(posted.id).toBeTruthy();
+      });
+      await queue.enqueueComment(comment());
+
+      await queue.replay(api);
+
+      expect(seen).toEqual([1]);
+      expect(queue.items).toEqual([]);
+    });
+
     it('joins a replay already running', async () => {
       await queue.enqueueStatus(change(TODO));
       const send = vi.spyOn(api, 'changeTaskStatus');
@@ -351,6 +621,20 @@ describe('WriteQueue', () => {
   });
 
   describe('dropUnsent', () => {
+    it('keeps a failed comment', async () => {
+      vi.spyOn(api, 'addTaskComment').mockRejectedValueOnce(
+        new ApiError(404, { message: 'Gone' })
+      );
+      await queue.enqueueComment(comment());
+      await queue.replay(api);
+
+      await queue.dropUnsent('1');
+
+      expect(queue.items.map((i) => `${i.kind} ${i.state}`)).toEqual([
+        'comment failed',
+      ]);
+    });
+
     it('forgets a task’s conflict and failure, and keeps the rest', async () => {
       await closeOnServer();
       await queue.enqueueStatus(change(TODO));

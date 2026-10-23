@@ -1,8 +1,10 @@
 // Bottom tab bar per the design handoff (3a): 52px of items above the home
-// indicator, which Ionic's safe-area padding adds. Colours come from the
-// --ion-tab-bar-* variables in src/theme/variables.scss.
+// indicator, which Ionic's safe-area padding adds; taller when larger text
+// needs it. Colours come from the --ion-tab-bar-* variables in
+// src/theme/variables.scss.
 ion-tab-bar {
-  height: 52px;
+  height: auto;
+  min-height: 52px;
 }
 
 ion-tab-button {
@@ -30,12 +32,16 @@ ion-badge {
   --padding-bottom: 0;
   --padding-start: var(--flux-space-4);
   --padding-end: var(--flux-space-4);
+  // ion-tab-button gives a slotted badge 1px of padding; the line height
+  // centres the count instead.
+  padding-top: 0;
+  padding-bottom: 0;
   top: 4px;
   left: calc(50% + 5px);
   min-width: 17px;
-  height: 17px;
+  min-height: 17px;
   border-radius: var(--flux-radius-pill);
   box-shadow: 0 0 0 2px var(--ion-tab-bar-background);
   font: var(--flux-font-badge);
-  line-height: 17px;
+  line-height: calc(17px * var(--flux-text-scale));
 }

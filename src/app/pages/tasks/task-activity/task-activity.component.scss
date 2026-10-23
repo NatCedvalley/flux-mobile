@@ -12,7 +12,7 @@
 .day-label {
   display: flex;
   align-items: center;
-  height: 36px;
+  min-height: 36px;
   margin: 0;
   font: var(--flux-font-section-header);
   letter-spacing: var(--flux-tracking-section-header);
@@ -103,7 +103,7 @@ ol {
 .pill {
   display: inline-flex;
   align-items: center;
-  height: 20px;
+  min-height: 20px;
   padding: 0 var(--flux-space-6);
   border-radius: var(--flux-radius-value-chip);
   background: var(--status-fill);

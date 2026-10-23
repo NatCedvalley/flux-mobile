@@ -26,7 +26,7 @@ ion-searchbar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 38px;
+  min-height: 38px;
   padding: 0 var(--flux-space-16);
   border-bottom: 1px solid var(--flux-na4);
   background: var(--ion-toolbar-background);

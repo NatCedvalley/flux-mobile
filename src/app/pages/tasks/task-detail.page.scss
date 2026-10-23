@@ -139,7 +139,7 @@ ion-back-button {
     display: inline-flex;
     align-items: center;
     gap: var(--flux-space-4);
-    height: 32px;
+    min-height: 32px;
     padding: 0 var(--flux-space-9);
     border-radius: var(--flux-radius-chip-select);
   }
@@ -215,7 +215,7 @@ ion-back-button {
   display: inline-flex;
   align-items: center;
   gap: var(--flux-space-6);
-  height: 40px;
+  min-height: 40px;
   padding: 0;
   border: 0;
   background: none;
@@ -244,10 +244,10 @@ ion-back-button {
   --padding-top: 0;
   --padding-bottom: 0;
   min-width: 17px;
-  height: 17px;
+  min-height: 17px;
   border-radius: var(--flux-radius-pill);
   font: var(--flux-font-tab-badge);
-  line-height: 17px;
+  line-height: calc(17px * var(--flux-text-scale));
 }
 
 ion-content {

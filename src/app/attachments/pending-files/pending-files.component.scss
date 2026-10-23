@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: var(--flux-space-8);
-  height: 36px;
+  min-height: 36px;
   padding: 0 var(--flux-space-4) 0 var(--flux-space-12);
   border-radius: var(--flux-radius-button);
   background: var(--flux-na3);

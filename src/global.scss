@@ -95,7 +95,7 @@ ion-modal.flux-sheet.flux-sheet-auto {
  */
 app-comment-composer ion-textarea[auto-grow] {
   .native-wrapper {
-    max-height: 120px;
+    max-height: calc(120px * var(--flux-text-scale));
   }
 
   // The doubled class outranks Ionic's

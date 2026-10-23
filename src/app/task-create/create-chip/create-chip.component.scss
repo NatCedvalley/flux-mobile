@@ -10,7 +10,7 @@ button {
   align-items: center;
   gap: var(--flux-space-6);
   min-width: 0;
-  height: 36px;
+  min-height: 36px;
   padding: 0 var(--flux-space-12);
   border: 1px dashed var(--flux-na6);
   border-radius: var(--flux-radius-button);

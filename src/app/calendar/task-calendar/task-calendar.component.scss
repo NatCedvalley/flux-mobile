@@ -39,7 +39,7 @@
 }
 
 .today-button {
-  height: 30px;
+  min-height: 30px;
   margin-inline-start: auto;
   padding: 0 var(--flux-space-11);
   border: 1px solid var(--flux-na5);
@@ -108,7 +108,7 @@
       justify-content: center;
       align-self: flex-start;
       min-width: 18px;
-      height: 18px;
+      min-height: 18px;
       border-radius: var(--flux-radius-pill);
       background: var(--flux-p9);
       font: var(--flux-font-calendar-today);
@@ -133,7 +133,7 @@
 .pill {
   display: block;
   flex: none;
-  height: 15px;
+  min-height: 15px;
   margin-top: var(--flux-space-3);
   padding-inline-start: var(--flux-space-3);
   overflow: hidden;
@@ -143,7 +143,6 @@
   white-space: nowrap;
   text-decoration: none;
   font: var(--flux-font-calendar-pill);
-  line-height: 15px;
   color: var(--flux-n12);
   -webkit-touch-callout: none;
   user-select: none;

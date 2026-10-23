@@ -230,7 +230,8 @@ button.field {
   }
 
   app-rich-text {
-    --rich-text-line: 21px;
+    // 21px at the default text size, in em so it follows the text size.
+    --rich-text-line: 1.5556em;
     font: var(--flux-font-detail-body);
     letter-spacing: var(--flux-tracking-detail-body);
     color: var(--flux-n12);

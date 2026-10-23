@@ -130,7 +130,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: var(--flux-space-4);
-  height: 26px;
+  min-height: 26px;
   padding: 0 var(--flux-space-8);
   border-radius: var(--flux-radius-pill);
   box-shadow: 0 0 0 1px var(--flux-na4);

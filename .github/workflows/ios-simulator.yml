@@ -153,6 +153,15 @@ jobs:
           MOCK_IAM_LOG: ${{ runner.temp }}/artifacts/mock-iam.log
         run: scripts/ci/ios-swipe-back.sh
 
+      # Screenshots My Work, the Projects list and task detail at the
+      # largest text size, for review (FM-54). They join the screenshot
+      # artifact below.
+      - name: Screenshot at the largest text size
+        env:
+          OUT_DIR: ${{ runner.temp }}/artifacts
+          MOCK_OPERATIONS_LOG: ${{ runner.temp }}/artifacts/mock-operations.log
+        run: scripts/ci/ios-large-text.sh
+
       - name: Take screenshot
         if: always() && env.UDID != ''
         run: |

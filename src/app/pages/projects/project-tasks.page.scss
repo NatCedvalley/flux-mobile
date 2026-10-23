@@ -115,7 +115,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--flux-space-10);
-  height: 38px;
+  min-height: 38px;
   padding: 0 var(--flux-space-16);
   border-bottom: 1px solid var(--flux-na4);
   background: var(--ion-toolbar-background);

@@ -49,7 +49,8 @@ src/
               counts and its row (inbox/), the connection state, the
               offline banner and toasts, the read cache's wipe, the
               write queue, its replay and the pending changes sheet
-              (offline/), the theme choice (theme/), the Notifications
+              (offline/), the theme choice (theme/), the OS text size
+              (text-scale/), the Notifications
               settings page (pages/notification-settings/), the About
               page (pages/about/), and the providers that bridge into
               src/core
@@ -1373,6 +1374,36 @@ the test setup) registers all of them with ionicons, so templates use
 `<ion-icon name="list-todo">`. The status bar's text follows the theme in
 effect (`ThemeService.dark`, through `StatusBarService`, native only); on Android the WebView runs edge to edge.
 
+Text follows the OS text size (iOS Dynamic Type, Android's font size) up to
+120%, as the handoff asks. `variables.scss` multiplies every type role's size
+and line height by `--flux-text-scale` (1 by default), except a role marked
+`fixed: true` in `tokens.scss` (the calendar's 9.5px pills, whose day is a
+seventh of the screen wide). `typography.scss` sets `<html>`'s font size from
+it too, so Ionic's own rem-based text (toasts, searchbars, the back button)
+follows: the browser's default size times the scale, or 17px on iOS, where
+Ionic's `typography.css` sets `font: -apple-system-body` and would otherwise
+follow Dynamic Type with no limit. `TextScaleService` (`src/app/text-scale/`,
+an awaited app initializer, again on resume) reads
+`@capacitor/text-zoom`'s `getPreferred()`, clamps it with `textScale()`
+(`src/core/text-scale/`, 1 to 1.2) and sets the variable on `<html>`. Native
+only; on web it stays 1. iOS's plugin has only `getPreferred()` (the body
+style's size ÷ 17). Android's WebView scales px text by the font size on its
+own, without a limit, so the service first pins its text zoom to 1 with
+`TextZoom.set()`. Changing Android's font size restarts the activity
+(`fontScale` isn't in `configChanges`), so the app reads it at launch.
+
+So text can grow: style text with the roles, and give a box that holds text
+a `min-height` rather than a `height`. A pill whose text is centred by a
+`line-height` equal to its height scales that line height
+(`calc(22px * var(--flux-text-scale))`), and so do values counted in lines
+of text (the composer's height cap; the description's `--rich-text-line` is
+in `em` instead). A fixed height is fine where the text still fits at 120%,
+as in Ionic buttons and chips and task detail's 22px chips. Avatar circles,
+icons, the board's 296px columns and the calendar drawer's 0.08 stop stay
+fixed; the initials and the drawer's head fit at 120%. To
+check a screen on web, set `--flux-text-scale` to 1.2 on `<html>` from the
+console.
+
 ## 8. Design mockups
 
 The current design is the Claude Design handoff in
@@ -1452,8 +1483,18 @@ runner loads the detail page; at 5% the script once swiped on the list
 before detail opened. Moving the login fields, the tab bar or the Projects list's
 first row means updating the points at the top of the script.
 
-Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`, and
-the final `flux-ios-simulator.png`) are uploaded as one artifact on every
+`scripts/ci/ios-large-text.sh` then sets the simulator to the largest
+standard text size (`simctl ui content_size extra-extra-extra-large`, which
+the app caps at 120%, see [§7](#7-theme)), relaunches the app (still signed
+in) and screenshots My Work, the Projects list and the first task, at the
+same tap points. Those screenshots are for review: the step fails only if the
+app doesn't load My Work again or stops running. Both scripts share
+`scripts/ci/sim-helpers.sh` (tap, screenshot, the pixel difference, settle
+and wait).
+
+Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`,
+`large-text-my-work.png`, `large-text-projects.png`, `large-text-detail.png`
+and the final `flux-ios-simulator.png`) are uploaded as one artifact on every
 run; the simulator's app log and both mock logs only if the job fails.
 
 ### Android signed build

@@ -38,6 +38,15 @@
     math.round(color.channel($c, 'blue', $space: rgb));
 }
 
+// A text size or line height, multiplied by the OS text size unless the
+// role is fixed.
+@function scaled($px, $fixed: false) {
+  @if $fixed {
+    @return $px;
+  }
+  @return calc(#{$px} * var(--flux-text-scale));
+}
+
 // A token value is either shared by both schemes or a (light, dark) pair.
 @function is-pair($value) {
   @return meta.type-of($value) == 'map';
@@ -148,6 +157,11 @@
   --flux-font-family: #{meta.inspect(tokens.$flux-font-family)};
   --flux-font-mono: #{meta.inspect(tokens.$flux-font-mono)};
 
+  // The OS text size, 1 to 1.2. TextScaleService sets it on <html> on
+  // native; every type role's size and line height, and Ionic's rem base
+  // (typography.scss), multiply by it.
+  --flux-text-scale: 1;
+
   // Each type role as a `font` shorthand (`font: var(--flux-font-row-title)`)
   // plus its letter-spacing, which the shorthand can't carry.
   @each $role, $t in tokens.$flux-type {
@@ -155,9 +169,10 @@
     @if map.get($t, mono) {
       $family: var(--flux-font-mono);
     }
-    $size: map.get($t, size);
+    $fixed: map.get($t, fixed);
+    $size: scaled(map.get($t, size), $fixed);
     @if map.get($t, line) {
-      $size: #{$size}/#{map.get($t, line)};
+      $size: #{$size}/#{scaled(map.get($t, line), $fixed)};
     }
     --flux-font-#{$role}: #{map.get($t, weight)} #{$size} #{$family};
     --flux-tracking-#{$role}: #{map.get($t, tracking) or normal};

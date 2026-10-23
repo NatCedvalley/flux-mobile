@@ -18,6 +18,21 @@
   src: url('./fonts/CommitMonoVariable.woff2') format('woff2');
 }
 
+// Ionic's own text (toasts, searchbars, the back button, datetime) is in
+// rem. Its base stays what it is at the OS's default size (the browser's,
+// or 17px on iOS, where Ionic's typography.css sets
+// `font: -apple-system-body`), and follows our capped text scale instead of
+// the OS's uncapped one. This file loads after Ionic's, so these win.
+html {
+  font-size: calc(100% * var(--flux-text-scale));
+}
+
+@supports (-webkit-touch-callout: none) {
+  html {
+    font-size: calc(17px * var(--flux-text-scale));
+  }
+}
+
 body {
   font: var(--flux-font-body);
   letter-spacing: var(--flux-tracking-body);

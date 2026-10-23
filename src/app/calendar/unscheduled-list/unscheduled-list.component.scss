@@ -34,13 +34,13 @@
 
 .count {
   min-width: 18px;
-  height: 18px;
+  min-height: 18px;
   padding: 0 5px;
   border-radius: var(--flux-radius-pill);
   background: var(--flux-na4);
   text-align: center;
   font: var(--flux-font-badge);
-  line-height: 18px;
+  line-height: calc(18px * var(--flux-text-scale));
   color: var(--flux-na11);
 }
 

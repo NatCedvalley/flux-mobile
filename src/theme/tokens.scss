@@ -352,7 +352,9 @@ $flux-font-mono:
 
 // Type scale. `line` is omitted where the handoff gives none; `mono: true`
 // uses $flux-font-mono. Minimum size is 10px (tab labels and badges only),
-// except the calendar's 9.5px day pills, which the handoff fixes.
+// except the calendar's 9.5px day pills, which the handoff fixes. These are
+// the sizes at the OS's default text size: variables.scss multiplies sizes
+// and line heights by --flux-text-scale (up to 1.2), except `fixed: true`.
 $flux-type: (
   body: (
     size: 13px,
@@ -730,11 +732,14 @@ $flux-type: (
     size: 11px,
     weight: 700,
   ),
+  // Fixed: a day is a seventh of the screen wide, so a larger key wouldn't
+  // fit its pill.
   calendar-pill: (
-    size: 9.5px,
-    line: 15px,
-    weight: 600,
-  ),
+      size: 9.5px,
+      line: 15px,
+      weight: 600,
+      fixed: true,
+    ),
   drawer-title: (
     size: 14px,
     weight: 600,

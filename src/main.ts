@@ -34,6 +34,7 @@ import { WRITE_QUEUE_STORE } from './app/providers/write-queue-store.token';
 import { PushOpenService } from './app/push/push-open.service';
 import { PushService } from './app/push/push.service';
 import { StatusBarService } from './app/status-bar/status-bar.service';
+import { TextScaleService } from './app/text-scale/text-scale.service';
 import { ThemeService } from './app/theme/theme.service';
 import { environment } from './environments/environment';
 
@@ -110,6 +111,8 @@ bootstrapApplication(AppComponent, {
     },
     // Applies Settings' theme before the first route renders.
     provideAppInitializer(() => inject(ThemeService).init()),
+    // Follows the OS text size (up to 120%) before the first route renders.
+    provideAppInitializer(() => inject(TextScaleService).init()),
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
     // Awaited, so a cold start that's already offline shows it at once.

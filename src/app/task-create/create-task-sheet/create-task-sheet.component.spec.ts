@@ -183,7 +183,7 @@ describe('CreateTaskSheetComponent', () => {
     expect(text('.callout')).toBe(
       'This epic will start in Backlog, assigned to you.'
     );
-    expect(text('app-create-chip:has(.set)')).toBe('AR Me');
+    expect(text('app-create-chip:has(.set)')).toBe('Assignee: AR Me');
   });
 
   it('says it starts in the board column it was added from, if its type may', async () => {

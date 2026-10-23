@@ -13,7 +13,7 @@
         class="reaction-choice"
         [class.mine]="reaction.key === mine()"
         [attr.aria-pressed]="reaction.key === mine()"
-        [attr.aria-label]="reaction.key.replace('_', ' ')"
+        [attr.aria-label]="reaction.name"
         (click)="choice.emit({ kind: 'react', emoji: reaction.key })"
       >
         {{ reaction.glyph }}

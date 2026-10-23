@@ -26,7 +26,7 @@ describe('PickerSheetComponent', () => {
 
   const element = () => fixture.nativeElement as HTMLElement;
   const rows = () =>
-    Array.from(element().querySelectorAll<HTMLElement>('ion-item'));
+    Array.from(element().querySelectorAll<HTMLElement>('button.choice'));
   const labels = () =>
     rows().map((r) => r.querySelector('.label')?.textContent?.trim());
   const search = (value: string) => {

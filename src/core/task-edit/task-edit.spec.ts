@@ -2,6 +2,7 @@ import type { Task } from '../api';
 import {
   canEditDescription,
   parentTypes,
+  plannedChange,
   taskUpdateBody,
   withChange,
   type TaskChange,
@@ -127,5 +128,48 @@ describe('canEditDescription', () => {
         descriptionFormat: 'MARKDOWN',
       })
     ).toBe(false);
+  });
+});
+
+describe('plannedChange', () => {
+  const ranged = {
+    plannedStartDate: '2026-10-05',
+    plannedEndDate: '2026-10-09',
+  };
+
+  it('moves one end and keeps the other', () => {
+    expect(plannedChange(ranged, 'start', '2026-10-07')).toEqual({
+      plannedStartDate: '2026-10-07',
+      plannedEndDate: '2026-10-09',
+    });
+    expect(plannedChange(ranged, 'end', '2026-10-12')).toEqual({
+      plannedStartDate: '2026-10-05',
+      plannedEndDate: '2026-10-12',
+    });
+  });
+
+  it('makes a one-day range when the other end is unset', () => {
+    expect(plannedChange({}, 'end', '2026-10-12')).toEqual({
+      plannedStartDate: '2026-10-12',
+      plannedEndDate: '2026-10-12',
+    });
+  });
+
+  it('moves the other end along rather than invert the range', () => {
+    expect(plannedChange(ranged, 'start', '2026-10-20')).toEqual({
+      plannedStartDate: '2026-10-20',
+      plannedEndDate: '2026-10-20',
+    });
+    expect(plannedChange(ranged, 'end', '2026-10-01')).toEqual({
+      plannedStartDate: '2026-10-01',
+      plannedEndDate: '2026-10-01',
+    });
+  });
+
+  it('clears both ends together', () => {
+    expect(plannedChange(ranged, 'end', undefined)).toEqual({
+      plannedStartDate: undefined,
+      plannedEndDate: undefined,
+    });
   });
 });

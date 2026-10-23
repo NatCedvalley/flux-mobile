@@ -11,6 +11,7 @@ export {
 export {
   REACTIONS,
   reactionGlyph,
+  reactionName,
   reactionToggles,
   type ReactionChoice,
 } from './reactions';

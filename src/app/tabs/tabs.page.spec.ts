@@ -61,7 +61,10 @@ describe('TabsPage', () => {
 
       expect(badge()?.textContent?.trim()).toBe('3');
       expect(badge()?.getAttribute('color')).toBe('danger');
-      expect(badge()?.getAttribute('aria-label')).toBe('3 unread');
+      expect(badge()?.getAttribute('aria-hidden')).toBe('true');
+      expect(
+        fixture.nativeElement.querySelector('.flux-sr-only')?.textContent
+      ).toBe('3 unread');
     });
 
     it('caps the count at 99+', () => {

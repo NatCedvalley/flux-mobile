@@ -43,7 +43,7 @@
             aria-haspopup="dialog"
             [attr.aria-label]="
               filterCount()
-                ? 'Filters, ' + filterCount() + ' in use'
+                ? 'Filters, ' + filterCount() + ' active'
                 : 'Filters'
             "
             (click)="openFilters()"
@@ -184,9 +184,14 @@
       (blocksRefresh)="refreshBlocked.set($event)"
     />
   } @else {
-    <ion-list lines="full">
+    <!-- Each group is a list of its rows; Ionic would make this the list
+         and leave the groups between it and the rows. -->
+    <ion-list
+      lines="full"
+      role="none"
+    >
       @for (group of pages().groups; track group.group.key) {
-        <ion-item-group>
+        <ion-item-group role="list">
           @if (group.group.label) {
             <ion-item-divider
               sticky="true"
@@ -198,6 +203,9 @@
               ></span>
               <span class="group-name">{{ group.group.label }}</span>
               <span class="group-count">{{ group.total }}</span>
+              <span class="flux-sr-only">{{
+                group.total === 1 ? 'task' : 'tasks'
+              }}</span>
             </ion-item-divider>
           }
           @for (task of group.tasks; track task.id) {
@@ -290,6 +298,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Switch project"
   [isOpen]="switcherOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -309,6 +318,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="View options"
   [isOpen]="viewOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -327,6 +337,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Filters"
   [isOpen]="filterOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -346,6 +357,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Move task"
   [isOpen]="sheetOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"

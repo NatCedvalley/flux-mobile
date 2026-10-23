@@ -16,6 +16,8 @@ import { IonIcon } from '@ionic/angular';
 export class CreateChipComponent {
   /** The field's icon; none when the label brings its own (an avatar). */
   readonly icon = input<string>();
+  /** What the chip sets; read before a chosen value ("Priority: High"). */
+  readonly field = input('');
   readonly set = input(false);
   readonly tone = input<'amber' | 'red'>();
 }

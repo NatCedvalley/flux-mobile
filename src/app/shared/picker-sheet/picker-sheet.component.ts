@@ -23,6 +23,7 @@ import {
   type SearchbarCustomEvent,
 } from '@ionic/angular';
 import { SEARCH_DEBOUNCE_MS, debounced } from '../debounced';
+import { SearchLabelDirective } from '../search-label.directive';
 
 /** A row of the picker. */
 export type PickerItem = {
@@ -47,6 +48,7 @@ export type PickerItem = {
   templateUrl: './picker-sheet.component.html',
   styleUrls: ['../sheet.scss', './picker-sheet.component.scss'],
   imports: [
+    SearchLabelDirective,
     IonHeader,
     IonToolbar,
     IonTitle,

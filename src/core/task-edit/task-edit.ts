@@ -45,6 +45,36 @@ export function taskUpdateBody(task: Task, change: TaskChange): TaskUpdate {
   };
 }
 
+/** One end of a task's planned range. */
+export type PlannedEnd = 'start' | 'end';
+
+/**
+ * The change that sets one end of a task's planned range to `date`, or
+ * clears the range when `date` is undefined. The server refuses a range
+ * with only one end, or one that ends before it starts, so the range stays
+ * whole: an end set while the other is unset gives a one-day range, and an
+ * end moved past the other moves that one with it.
+ */
+export function plannedChange(
+  task: Pick<Task, 'plannedStartDate' | 'plannedEndDate'>,
+  end: PlannedEnd,
+  date: string | undefined
+): TaskChange {
+  if (!date) {
+    return { plannedStartDate: undefined, plannedEndDate: undefined };
+  }
+  let start = end === 'start' ? date : (task.plannedStartDate ?? date);
+  let finish = end === 'end' ? date : (task.plannedEndDate ?? date);
+  if (start > finish) {
+    if (end === 'start') {
+      finish = start;
+    } else {
+      start = finish;
+    }
+  }
+  return { plannedStartDate: start, plannedEndDate: finish };
+}
+
 /** The task as it will be once `change` is saved, shown meanwhile. */
 export function withChange(task: Task, change: TaskChange): Task {
   return { ...task, ...change };

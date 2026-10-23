@@ -1,6 +1,7 @@
 <a
   class="card"
   draggable="false"
+  [class.reorderable]="reorderable()"
   [routerLink]="['tasks', task().projectId, task().id]"
   [state]="{ task: task() }"
 >
@@ -80,3 +81,18 @@
     }
   </div>
 </a>
+@if (reorderable()) {
+  <button
+    type="button"
+    class="reorder"
+    data-no-drag
+    aria-haspopup="dialog"
+    [attr.aria-label]="'Reorder ' + (task().taskKey ?? task().title)"
+    (click)="reorder.emit()"
+  >
+    <ion-icon
+      name="ellipsis"
+      aria-hidden="true"
+    ></ion-icon>
+  </button>
+}

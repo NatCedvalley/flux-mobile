@@ -1,6 +1,33 @@
 // Handoff 3c card: radius 14, `--bg`, the card shadow, 12px padding.
 :host {
+  position: relative;
   display: block;
+}
+
+// The reorder button (ours; 3c has only the drag): a 44px target over the
+// card's top end, beside the link rather than in it. The top row makes room.
+.reorder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--flux-na10);
+  -webkit-tap-highlight-color: transparent;
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+.card.reorderable .top {
+  padding-inline-end: var(--flux-space-24);
 }
 
 .card {

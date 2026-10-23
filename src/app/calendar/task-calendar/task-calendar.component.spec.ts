@@ -218,6 +218,38 @@ describe('TaskCalendarComponent', () => {
     ).toEqual(['CHK-120', 'CHK-142', 'CHK-150']);
   });
 
+  it('reads each day in full and marks today as the current date', async () => {
+    await render();
+
+    const today = day('2026-10-13');
+    expect(today.getAttribute('aria-current')).toBe('date');
+    expect(today.hasAttribute('aria-label')).toBe(false);
+    expect(today.querySelector('.flux-sr-only')?.textContent).toMatch(
+      /^Tue 13 Oct, today, \d+ tasks?$/
+    );
+    expect(day('2026-10-14').getAttribute('aria-current')).toBeNull();
+    expect(day('2026-10-14').querySelector('.flux-sr-only')?.textContent).toBe(
+      'Wed 14 Oct'
+    );
+  });
+
+  it('opens a day from the keyboard, but leaves a key on a pill to the pill', async () => {
+    await render();
+
+    const pillKey = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+    day('2026-10-13').querySelector('.pill')!.dispatchEvent(pillKey);
+    expect(calendar().sheetOpen()).toBe(false);
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
+    });
+    day('2026-10-13').dispatchEvent(space);
+    expect(calendar().sheetOpen()).toBe(true);
+    expect(space.defaultPrevented).toBe(true);
+  });
+
   it('opens a day in the sheet from a tap on it, but not from an empty day', async () => {
     await render();
 

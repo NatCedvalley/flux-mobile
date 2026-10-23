@@ -3,9 +3,10 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonIcon } from '@ionic/angular';
 import type { Task } from '@core/api';
+import { dayMonth } from '@core/my-work';
 import { type PersonName, avatarFillIndex, initials } from '@core/people';
 import { assigneeSummary, detailDue } from '@core/task-detail';
-import { canEditDescription } from '@core/task-edit';
+import { type PlannedEnd, canEditDescription } from '@core/task-edit';
 import { RichTextComponent } from '../../../shared/rich-text/rich-text.component';
 import { TYPE_ICONS } from '../../../shared/task-row/task-row.component';
 
@@ -21,10 +22,12 @@ type Person = {
 };
 
 /**
- * The Details tab (3e): assignee and reporter, the due date, release, parent
- * and labels, the description, and a container's subtasks. When `editable`,
- * the due date and labels rows and the description's pencil ask the page to
- * open their editors. The parent row always opens the parent; it changes
+ * The Details tab (3e): assignee and reporter, the due date, the planned
+ * range, release, parent and labels, the description, and a container's
+ * subtasks. When `editable`, the due date, planned and labels rows and the
+ * description's pencil ask the page to open their editors. The planned rows
+ * are ours (FM-55): 3e has none, and the calendar's drag was the only way to
+ * move a planned range. The parent row always opens the parent; it changes
  * from the overflow sheet. A description the app can't write (HTML,
  * Editor.js) gets a note to edit it on the web instead of the pencil. The
  * Attachments row shows their count and asks the page to open them.
@@ -49,6 +52,7 @@ export class TaskDetailsComponent {
   readonly attachmentCount = input('');
 
   readonly editDue = output();
+  readonly editPlanned = output<PlannedEnd>();
   readonly editLabels = output();
   readonly editDescription = output();
   readonly openAttachments = output();
@@ -80,6 +84,23 @@ export class TaskDetailsComponent {
   );
 
   protected readonly due = computed(() => detailDue(this.task(), this.today()));
+  protected readonly planned = computed(() => {
+    const { plannedStartDate, plannedEndDate } = this.task();
+    const label = (date: string | undefined) =>
+      date ? dayMonth(date.slice(0, 10), this.today()) : undefined;
+    return [
+      {
+        end: 'start' as const,
+        name: 'Planned start',
+        value: label(plannedStartDate),
+      },
+      {
+        end: 'end' as const,
+        name: 'Planned end',
+        value: label(plannedEndDate),
+      },
+    ];
+  });
   protected readonly release = computed(() => {
     const releases = this.task().linkedReleases ?? [];
     const first = releases[0];

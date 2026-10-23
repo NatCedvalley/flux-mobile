@@ -52,38 +52,42 @@
         >
       </p>
     } @else if (assignees(); as assignees) {
-      <ion-list
-        lines="full"
+      <div
+        role="group"
         aria-labelledby="filter-assignee"
       >
-        @for (option of assignees; track option.accountId) {
-          <ion-item
-            button="true"
-            detail="false"
-            role="checkbox"
-            [attr.aria-checked]="isAssignee(option.accountId)"
-            [class.current]="isAssignee(option.accountId)"
-            (click)="toggleAssignee(option.accountId)"
-          >
-            <span
-              slot="start"
-              class="avatar"
-              aria-hidden="true"
-              [style.background]="avatarFill(option)"
-              >{{ initials(option) }}</span
+        <ion-list lines="full">
+          @for (option of assignees; track option.accountId) {
+            <ion-item
+              detail="false"
+              [class.current]="isAssignee(option.accountId)"
             >
-            <span class="name">{{ option.label }}</span>
-            @if (isAssignee(option.accountId)) {
-              <ion-icon
-                slot="end"
-                class="current-mark"
-                name="circle-check"
-                aria-hidden="true"
-              ></ion-icon>
-            }
-          </ion-item>
-        }
-      </ion-list>
+              <button
+                type="button"
+                class="choice"
+                role="checkbox"
+                [attr.aria-checked]="isAssignee(option.accountId)"
+                (click)="toggleAssignee(option.accountId)"
+              >
+                <span
+                  class="avatar"
+                  aria-hidden="true"
+                  [style.background]="avatarFill(option)"
+                  >{{ initials(option) }}</span
+                >
+                <span class="name">{{ option.label }}</span>
+                @if (isAssignee(option.accountId)) {
+                  <ion-icon
+                    class="current-mark"
+                    name="circle-check"
+                    aria-hidden="true"
+                  ></ion-icon>
+                }
+              </button>
+            </ion-item>
+          }
+        </ion-list>
+      </div>
     } @else {
       <ion-skeleton-text
         animated="true"

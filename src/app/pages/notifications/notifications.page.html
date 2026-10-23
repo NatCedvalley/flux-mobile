@@ -27,6 +27,7 @@
   </ion-toolbar>
   <ion-toolbar class="segment-bar">
     <ion-segment
+      aria-label="Notifications to show"
       [value]="segment()"
       (ionChange)="select($event)"
     >
@@ -37,9 +38,10 @@
             @if (s.key === 'mentions' && inbox.mentions()) {
               <span
                 class="count"
-                [attr.aria-label]="inbox.mentions() + ' unread'"
+                aria-hidden="true"
                 >{{ inbox.mentions() }}</span
               >
+              <span class="flux-sr-only">, {{ inbox.mentions() }} unread</span>
             }
           </ion-label>
         </ion-segment-button>
@@ -75,9 +77,14 @@
       message="You're all caught up"
     />
   } @else {
-    <ion-list lines="full">
+    <!-- Each group is a list of its rows; Ionic would make this the list
+         and leave the groups between it and the rows. -->
+    <ion-list
+      lines="full"
+      role="none"
+    >
       @for (group of groups(); track group.key) {
-        <ion-item-group>
+        <ion-item-group role="list">
           <ion-item-divider sticky="true">{{ group.label }}</ion-item-divider>
           @for (n of group.items; track n.id) {
             <ion-item-sliding

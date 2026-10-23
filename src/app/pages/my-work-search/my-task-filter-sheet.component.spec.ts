@@ -29,7 +29,7 @@ describe('MyTaskFilterSheetComponent', () => {
   }
 
   function projectRows(): HTMLElement[] {
-    return Array.from(element().querySelectorAll('.project ion-item'));
+    return Array.from(element().querySelectorAll('.project button.choice'));
   }
 
   it('lists Any project and each project, Any project checked', () => {

@@ -34,7 +34,7 @@ ion-searchbar {
   --border-radius: var(--flux-radius-field);
   --box-shadow: none;
   --icon-color: var(--flux-na10);
-  --placeholder-color: var(--flux-na9);
+  --placeholder-color: var(--flux-na11);
   --placeholder-opacity: 1;
   padding: 0;
   min-height: 40px;
@@ -53,7 +53,7 @@ ion-list {
 // with a pin); All projects on an `--na2` wash with a bottom border (34px).
 ion-item-divider {
   --background: transparent;
-  --color: var(--flux-na10);
+  --color: var(--flux-na11);
   --padding-start: var(--flux-space-16);
   min-height: 30px;
   border: 0;
@@ -73,17 +73,56 @@ ion-item-divider {
   border-bottom: 1px solid var(--flux-na3);
 }
 
-// 64px rows: swatch, name over role and counts, then a mark.
+// 64px rows: swatch, name over role and counts, then a mark and the pin.
 ion-item {
   --min-height: 64px;
   --padding-start: var(--flux-space-16);
-  --inner-padding-end: var(--flux-space-16);
   --border-color: var(--flux-na3);
   --background: var(--flux-bg);
+
+  --inner-padding-end: var(--flux-space-4);
 
   &.current {
     --background:
       linear-gradient(var(--flux-pa2), var(--flux-pa2)), var(--flux-bg);
+  }
+}
+
+// The row's own button: swatch, name and mark, filling the row up to the
+// pin button.
+.open {
+  display: flex;
+  flex: auto;
+  align-items: center;
+  min-width: 0;
+  min-height: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    opacity: 0.6;
+  }
+}
+
+// Pins without a swipe (FM-55; 3j has only the swipe). Indigo while pinned.
+.pin-toggle {
+  --padding-start: 0;
+  --padding-end: 0;
+  --color: var(--flux-na10);
+  width: 44px;
+  height: 44px;
+  margin: 0;
+
+  &.is-pinned {
+    --color: var(--flux-pa11);
+  }
+
+  ion-icon {
+    font-size: 18px;
   }
 }
 
@@ -109,6 +148,7 @@ ion-item {
 }
 
 .name {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -118,6 +158,7 @@ ion-item {
 }
 
 .subline {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

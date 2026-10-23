@@ -77,17 +77,25 @@
             [class.today]="day.today"
             [class.over]="isOver(day)"
             [attr.tabindex]="hasTasks(day) ? 0 : -1"
-            [attr.aria-label]="dayLabel(day)"
+            [attr.aria-current]="day.today ? 'date' : null"
             (click)="openDay(day, $event)"
             (keydown.enter)="openDay(day, $event)"
+            (keydown.space)="openDay(day, $event)"
           >
-            <span class="number">{{ day.day }}</span>
+            <span
+              class="number"
+              aria-hidden="true"
+              >{{ day.day }}</span
+            >
+            <span class="flux-sr-only">{{ dayLabel(day) }}</span>
             @for (task of line.pills; track task.id) {
               <a
                 class="pill"
                 draggable="false"
                 [attr.data-task-id]="task.id"
-                [attr.aria-label]="task.taskKey + ': ' + task.title"
+                [attr.aria-label]="
+                  task.taskKey ? task.taskKey + ': ' + task.title : task.title
+                "
                 [class.overdue]="overdue(task)"
                 [class.picked]="isPicked(task)"
                 [style]="pillColors(task)"
@@ -101,6 +109,7 @@
                 type="button"
                 class="more"
                 [attr.aria-label]="'Show all of ' + dayLabel(day)"
+                aria-haspopup="dialog"
                 (click)="openSheet(day.iso)"
               >
                 +{{ line.more }} more
@@ -120,6 +129,7 @@
 <ion-modal
   #drawer
   class="flux-sheet unscheduled-drawer"
+  aria-label="Unscheduled tasks"
   [isOpen]="true"
   [breakpoints]="breakpoints"
   [initialBreakpoint]="collapsed"
@@ -150,6 +160,7 @@
 <ion-modal
   #daySheet
   class="flux-sheet flux-sheet-auto"
+  aria-label="Tasks on this day"
   [isOpen]="sheetOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"

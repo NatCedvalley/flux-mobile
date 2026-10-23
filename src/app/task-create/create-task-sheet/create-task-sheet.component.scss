@@ -109,7 +109,7 @@ ion-input.title {
   --padding-top: var(--flux-space-4);
   --padding-bottom: var(--flux-space-4);
   --highlight-color: transparent;
-  --placeholder-color: var(--flux-na9);
+  --placeholder-color: var(--flux-na11);
   --placeholder-opacity: 1;
   min-height: 0;
   font: var(--flux-font-create-title);
@@ -122,14 +122,14 @@ ion-input.title {
   margin: var(--flux-space-2) 0 var(--flux-space-10);
   font: var(--flux-font-meta);
   letter-spacing: var(--flux-tracking-meta);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 ion-textarea.description {
   --padding-top: 0;
   --padding-bottom: var(--flux-space-12);
   --highlight-color: transparent;
-  --placeholder-color: var(--flux-na9);
+  --placeholder-color: var(--flux-na11);
   --placeholder-opacity: 1;
   min-height: 0;
   font: var(--flux-font-create-description);

@@ -165,7 +165,8 @@ export class BoardDrag {
       return;
     }
     const target = event.target as Element | null;
-    if (!this.within(target)) {
+    // A control on a card (its reorder button) is never a long press.
+    if (!this.within(target) || target?.closest('[data-no-drag]')) {
       return;
     }
     const card = target?.closest<HTMLElement>('[data-task-id]');

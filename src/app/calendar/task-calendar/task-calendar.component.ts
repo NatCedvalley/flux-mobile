@@ -37,7 +37,7 @@ import {
   taskSpan,
   tasksByDay,
 } from '@core/calendar';
-import { dayMonth } from '@core/my-work';
+import { dayMonth, shortDate } from '@core/my-work';
 import { DEFAULT_SORT, statusHue } from '@core/project-list';
 import { PagedList, type PagedListState } from '@core/task-filters';
 import { BoardDrag, type Pickup } from '../../board/task-board/board-drag';
@@ -329,10 +329,17 @@ export class TaskCalendarComponent {
   }
 
   /** `13 Oct, 2 tasks`, for screen readers. */
+  /** What a screen reader hears for a day: `Thu 17 Sep, today, 2 tasks`. */
   protected dayLabel(day: CalendarDay): string {
     const count = this.byDay().get(day.iso)?.length ?? 0;
-    const date = dayMonth(day.iso, this.today());
-    return count ? `${date}, ${count} task${count === 1 ? '' : 's'}` : date;
+    const parts = [shortDate(day.iso, this.today())];
+    if (day.today) {
+      parts.push('today');
+    }
+    if (count) {
+      parts.push(`${count} task${count === 1 ? '' : 's'}`);
+    }
+    return parts.join(', ');
   }
 
   /** A pill's stripe and wash: its status's hue, or red once overdue. */
@@ -360,6 +367,13 @@ export class TaskCalendarComponent {
 
   /** A tap on a day, outside its pills: the day's tasks in a sheet. */
   protected openDay(day: CalendarDay, event: Event): void {
+    // A key pressed on a pill or `+n more` is theirs to handle.
+    if (event instanceof KeyboardEvent) {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+      event.preventDefault();
+    }
     if (!(event.target as Element | null)?.closest('a') && this.hasTasks(day)) {
       this.openSheet(day.iso);
     }

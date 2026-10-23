@@ -51,6 +51,9 @@
           ></span>
           <span class="name">{{ name(column.status) }}</span>
           <span class="count">{{ column.loaded.total }}</span>
+          <span class="flux-sr-only">{{
+            column.loaded.total === 1 ? 'task' : 'tasks'
+          }}</span>
           @if (refused) {
             <span class="reason">{{ refused }}</span>
           }
@@ -67,6 +70,8 @@
                 [task]="task"
                 [today]="today()"
                 [pending]="pending().has(task.id ?? '')"
+                [reorderable]="canReorder()"
+                (reorder)="openReorder(task, column)"
               />
             }
           } @else if (failed().has(column.loaded.group.key)) {
@@ -83,11 +88,11 @@
               >
             </div>
           } @else {
+            <span class="flux-sr-only">Loading</span>
             @for (card of skeletonCards; track card) {
               <div
                 class="skeleton-card"
-                aria-busy="true"
-                aria-label="Loading"
+                aria-hidden="true"
               >
                 <ion-skeleton-text animated="true"></ion-skeleton-text>
                 <ion-skeleton-text
@@ -101,6 +106,7 @@
             <button
               type="button"
               class="add"
+              aria-haspopup="dialog"
               (click)="add.emit(column.status)"
             >
               <ion-icon
@@ -143,3 +149,33 @@
     }
   </div>
 }
+
+<!-- Moves a card within its column without dragging (FM-55). -->
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  aria-label="Reorder"
+  [isOpen]="reorderOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="reorderOpen.set(false)"
+>
+  <ng-template>
+    <div class="reorder-sheet">
+      <h2 class="reorder-title">
+        Move {{ reordering()?.task?.taskKey ?? reordering()?.task?.title }}
+      </h2>
+      <ion-list lines="full">
+        @for (move of reorderMoves(); track move.label) {
+          <ion-item
+            button="true"
+            detail="false"
+            [disabled]="move.disabled"
+            (click)="reorderTo(move.index)"
+          >
+            <ion-label>{{ move.label }}</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    </div>
+  </ng-template>
+</ion-modal>

@@ -9,5 +9,8 @@
       [name]="name"
     ></ion-icon>
   }
+  @if (set()) {
+    <span class="flux-sr-only">{{ field() }}: </span>
+  }
   <ng-content />
 </button>

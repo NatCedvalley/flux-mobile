@@ -63,14 +63,21 @@
       #titleField
       class="title"
       aria-label="Title"
+      aria-describedby="create-title-helper"
       placeholder="Task title"
+      [required]="true"
       enterkeyhint="next"
       [value]="draft().title"
       [maxlength]="titleMax"
       (ionInput)="setTitle($event.detail.value)"
       (keydown.enter)="titleEntered($event)"
     ></ion-input>
-    <p class="helper">Required · {{ draft().title.length }}/{{ titleMax }}</p>
+    <p
+      id="create-title-helper"
+      class="helper"
+    >
+      Required · {{ draft().title.length }}/{{ titleMax }}
+    </p>
     <ion-textarea
       #descriptionField
       class="description"
@@ -90,6 +97,7 @@
   >
     <app-create-chip
       [icon]="assignee() ? undefined : 'user'"
+      field="Assignee"
       [set]="!!assignee()"
       (click)="openPicker('assignee')"
     >
@@ -107,6 +115,7 @@
     </app-create-chip>
     <app-create-chip
       [icon]="priority()?.icon ?? 'chevrons-up'"
+      field="Priority"
       [set]="!!priority()"
       [tone]="priorityTone()"
       (click)="openPicker('priority')"
@@ -115,6 +124,7 @@
     </app-create-chip>
     <app-create-chip
       icon="calendar"
+      field="Due date"
       [set]="!!due()"
       [tone]="due()?.overdue ? 'red' : undefined"
       (click)="openPicker('due')"
@@ -123,6 +133,7 @@
     </app-create-chip>
     <app-create-chip
       icon="tag"
+      field="Labels"
       [set]="!!labelsLabel()"
       (click)="openPicker('labels')"
     >
@@ -130,6 +141,7 @@
     </app-create-chip>
     <app-create-chip
       icon="layers"
+      field="Parent"
       [set]="!!draft().parent"
       (click)="openPicker('parent')"
     >
@@ -188,6 +200,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Add an attachment"
   [isOpen]="picker() === 'attach'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -205,6 +218,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Project"
   [isOpen]="picker() === 'project'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -225,6 +239,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Type"
   [isOpen]="picker() === 'type'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -244,6 +259,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Assignee"
   [isOpen]="picker() === 'assignee'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -266,6 +282,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Priority"
   [isOpen]="picker() === 'priority'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -285,6 +302,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Due date"
   [isOpen]="picker() === 'due'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -302,6 +320,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Labels"
   [isOpen]="picker() === 'labels'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -324,6 +343,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Parent"
   [isOpen]="picker() === 'parent'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"

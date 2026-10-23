@@ -13,9 +13,10 @@
         @if (assignees().more) {
           <span
             class="more"
-            [attr.aria-label]="'and ' + assignees().more + ' more'"
+            aria-hidden="true"
             >+{{ assignees().more }}</span
           >
+          <span class="flux-sr-only">and {{ assignees().more }} more</span>
         }
       } @else {
         <span
@@ -64,6 +65,7 @@
     <button
       type="button"
       class="field edit-due"
+      aria-haspopup="dialog"
       (click)="editDue.emit()"
     >
       <ng-container *ngTemplateOutlet="dueRow" />
@@ -77,6 +79,39 @@
     <div class="field">
       <ng-container *ngTemplateOutlet="dueRow" />
     </div>
+  }
+  @for (row of planned(); track row.end) {
+    <ng-template #plannedRow>
+      <ion-icon
+        name="calendar"
+        aria-hidden="true"
+      ></ion-icon>
+      <span class="field-label">{{ row.name }}</span>
+      <span
+        class="value"
+        [class.none]="!row.value"
+        >{{ row.value ?? 'None' }}</span
+      >
+    </ng-template>
+    @if (editable()) {
+      <button
+        type="button"
+        class="field edit-planned"
+        aria-haspopup="dialog"
+        (click)="editPlanned.emit(row.end)"
+      >
+        <ng-container *ngTemplateOutlet="plannedRow" />
+        <ion-icon
+          class="chevron"
+          name="chevron-right"
+          aria-hidden="true"
+        ></ion-icon>
+      </button>
+    } @else {
+      <div class="field">
+        <ng-container *ngTemplateOutlet="plannedRow" />
+      </div>
+    }
   }
   <div class="field">
     <ion-icon
@@ -137,6 +172,7 @@
     <button
       type="button"
       class="field edit-labels"
+      aria-haspopup="dialog"
       (click)="editLabels.emit()"
     >
       <ng-container *ngTemplateOutlet="labelsRow" />
@@ -161,6 +197,7 @@
         type="button"
         class="edit-description"
         aria-label="Edit the description"
+        aria-haspopup="dialog"
         (click)="editDescription.emit()"
       >
         <ion-icon
@@ -187,6 +224,7 @@
 <button
   type="button"
   class="card field attachments"
+  aria-haspopup="dialog"
   (click)="openAttachments.emit()"
 >
   <ion-icon

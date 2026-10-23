@@ -49,7 +49,7 @@ src/
               counts and its row (inbox/), the connection state, the
               offline banner and toasts, the read cache's wipe, the
               write queue, its replay and the pending changes sheet
-              (offline/), the Notifications
+              (offline/), the theme choice (theme/), the Notifications
               settings page (pages/notification-settings/), the About
               page (pages/about/), and the providers that bridge into
               src/core
@@ -81,7 +81,8 @@ pushed onto the My Work stack (`/tabs/my-work/settings`) from the avatar
 button. It opens with a read-only profile header (the avatar's fill and
 initials, from `accountAvatar()` in `src/core/people/`, then the name, email
 and timezone, each left out when the account lacks it); editing stays on the
-web. Its About row pushes `/tabs/my-work/settings/about`: version, the native
+web. Its Theme row opens the shared picker sheet with System, Light and Dark
+(see [§7](#7-theme)). Its About row pushes `/tabs/my-work/settings/about`: version, the native
 build number (`App.getInfo().build`, hidden on web), commit, environment and
 a Privacy policy row that opens `privacyPolicyUrl` with `@capacitor/browser`
 on native or a new tab on web. The Inbox page lives in `src/app/pages/notifications/` (its route
@@ -1347,8 +1348,17 @@ there:
   and card backgrounds, plus `--ion-font-family` and `--ion-padding` /
   `--ion-margin` (16px).
 
-Dark mode follows the OS setting: light values sit on `:root`, and dark ones
-override them under `prefers-color-scheme: dark`. Ionic's own dark palette is
+Dark mode follows the OS setting unless Settings overrides it: light values
+sit on `:root`, and the `dark-scheme` mixin's dark ones override them under
+`prefers-color-scheme: dark` (unless `<html>` has `flux-theme-light`) or
+whenever `<html>` has `flux-theme-dark`. `ThemeService` (`src/app/theme/`)
+sets those classes from the choice (System sets neither), keeps it in
+`@capacitor/preferences` (`theme`, on this device only and across logouts,
+since the account has no theme field), and applies it from an app
+initializer before the first screen. A component can't see the class through
+its style encapsulation, so a scheme-dependent component value is a variable
+set in both places instead of its own media query (`--flux-segment-checked`,
+the tab badge ring's `--ion-tab-bar-background`). Ionic's own dark palette is
 not imported, because it would override the tokens.
 
 `src/theme/typography.scss` bundles Inter and CommitMono (from
@@ -1356,8 +1366,8 @@ not imported, because it would override the tokens.
 `.flux-screen-title` class for tab-root titles. Icons are the handoff's
 Lucide set: `registerFluxIcons()` (`src/app/icons/`, called in `main.ts` and
 the test setup) registers all of them with ionicons, so templates use
-`<ion-icon name="list-todo">`. The status bar's text follows the theme
-(`StatusBarService`, native only); on Android the WebView runs edge to edge.
+`<ion-icon name="list-todo">`. The status bar's text follows the theme in
+effect (`ThemeService.dark`, through `StatusBarService`, native only); on Android the WebView runs edge to edge.
 
 ## 8. Design mockups
 

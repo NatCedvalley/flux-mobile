@@ -34,6 +34,7 @@ import { WRITE_QUEUE_STORE } from './app/providers/write-queue-store.token';
 import { PushOpenService } from './app/push/push-open.service';
 import { PushService } from './app/push/push.service';
 import { StatusBarService } from './app/status-bar/status-bar.service';
+import { ThemeService } from './app/theme/theme.service';
 import { environment } from './environments/environment';
 
 registerFluxIcons();
@@ -107,6 +108,8 @@ bootstrapApplication(AppComponent, {
           ? new PreferencesStore()
           : new MemoryCacheStore(),
     },
+    // Applies Settings' theme before the first route renders.
+    provideAppInitializer(() => inject(ThemeService).init()),
     // Decides whether a cold start is locked before the first route renders.
     provideAppInitializer(() => inject(AppLockService).init()),
     // Awaited, so a cold start that's already offline shows it at once.

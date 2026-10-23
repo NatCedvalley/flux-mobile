@@ -50,7 +50,7 @@ ion-segment {
 }
 
 ion-segment-button {
-  --indicator-color: var(--flux-n1);
+  --indicator-color: var(--flux-segment-checked);
   --indicator-box-shadow: var(--flux-shadow-segmented);
   --border-radius: var(--flux-radius-segmented);
   --color: var(--flux-na11);
@@ -62,12 +62,6 @@ ion-segment-button {
   &.segment-button-checked {
     font: var(--flux-font-segment-label-active);
     letter-spacing: var(--flux-tracking-segment-label-active);
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  ion-segment-button {
-    --indicator-color: var(--flux-n5);
   }
 }
 

@@ -35,13 +35,7 @@ ion-badge {
   min-width: 17px;
   height: 17px;
   border-radius: var(--flux-radius-pill);
-  box-shadow: 0 0 0 2px var(--flux-bg);
+  box-shadow: 0 0 0 2px var(--ion-tab-bar-background);
   font: var(--flux-font-badge);
   line-height: 17px;
-}
-
-@media (prefers-color-scheme: dark) {
-  ion-badge {
-    box-shadow: 0 0 0 2px var(--flux-panel);
-  }
 }

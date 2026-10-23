@@ -1359,7 +1359,11 @@ initializer before the first screen. A component can't see the class through
 its style encapsulation, so a scheme-dependent component value is a variable
 set in both places instead of its own media query (`--flux-segment-checked`,
 the tab badge ring's `--ion-tab-bar-background`). Ionic's own dark palette is
-not imported, because it would override the tokens.
+not imported, because it would override the tokens. On Android the app theme
+sets `android:forceDarkAllowed` to false (`styles.xml`): MIUI's dark mode for
+apps otherwise darkens the WebView's output, so Light showed dark and the dark
+tokens were re-darkened (seen on a Redmi Note 8 Pro). MIUI still dims a light
+app's whole screen a little in dark mode; that's the system's, not the app's.
 
 `src/theme/typography.scss` bundles Inter and CommitMono (from
 `src/theme/fonts/`), sets the body text defaults, and defines the

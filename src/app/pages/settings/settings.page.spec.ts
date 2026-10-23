@@ -2,8 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AlertController } from '@ionic/angular';
-import { buildInfo } from '../../../environments/build-info';
-import { environment } from '../../../environments/environment';
+import { avatarFillIndex } from '@core/people';
 import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
 import { WriteQueueService } from '../../offline/write-queue.service';
@@ -12,7 +11,10 @@ import { SettingsPage } from './settings.page';
 describe('SettingsPage', () => {
   let component: SettingsPage;
   let fixture: ComponentFixture<SettingsPage>;
-  let auth: { account: unknown; logout: ReturnType<typeof vi.fn> };
+  let auth: {
+    account: ReturnType<typeof signal<Record<string, string> | undefined>>;
+    logout: ReturnType<typeof vi.fn>;
+  };
   let alert: {
     present: ReturnType<typeof vi.fn>;
     onDidDismiss: ReturnType<typeof vi.fn>;
@@ -26,7 +28,12 @@ describe('SettingsPage', () => {
 
   beforeEach(async () => {
     auth = {
-      account: signal({ email: 'me@flux.test', displayName: 'Me Flux' }),
+      account: signal<Record<string, string> | undefined>({
+        id: 'account-1',
+        email: 'me@flux.test',
+        displayName: 'Me Flux',
+        timezone: 'Asia/Kuala_Lumpur',
+      }),
       logout: vi.fn().mockResolvedValue(undefined),
     };
     alert = {
@@ -76,15 +83,62 @@ describe('SettingsPage', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows the active environment and build version', () => {
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain(environment.name);
-    expect(text).toContain(buildInfo.version);
+  function profile(): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector('.profile');
+  }
+
+  function profileLines(): string[] {
+    return Array.from(profile()?.querySelectorAll('p') ?? []).map(
+      (p) => p.textContent?.trim() ?? ''
+    );
+  }
+
+  it("shows the account's profile", () => {
+    const avatar = profile()?.querySelector<HTMLElement>('.avatar');
+
+    expect(avatar?.textContent?.trim()).toBe('MF');
+    expect(avatar?.style.background).toBe(
+      `var(--flux-avatar-${avatarFillIndex('account-1') + 1})`
+    );
+    expect(profileLines()).toEqual([
+      'Me Flux',
+      'me@flux.test',
+      'Asia/Kuala_Lumpur',
+    ]);
   });
 
-  it('shows the signed-in account', () => {
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Me Flux');
+  it('names the account from its first and last name', () => {
+    auth.account.set({
+      email: 'ada@flux.test',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    });
+    fixture.detectChanges();
+
+    expect(profileLines()).toEqual(['Ada Lovelace', 'ada@flux.test']);
+  });
+
+  it('shows an account with only an email once', () => {
+    auth.account.set({ email: 'ada@flux.test' });
+    fixture.detectChanges();
+
+    expect(profile()?.querySelector('.avatar')?.textContent?.trim()).toBe('A');
+    expect(profileLines()).toEqual(['ada@flux.test']);
+  });
+
+  it('has no profile header without an account', () => {
+    auth.account.set(undefined);
+    fixture.detectChanges();
+
+    expect(profile()).toBeNull();
+  });
+
+  it('links to About', () => {
+    const item = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('ion-item')
+    ).find((el) => el.textContent?.includes('About'));
+
+    expect(item?.getAttribute('routerLink')).toBe('about');
   });
 
   it('links to the notification settings', () => {

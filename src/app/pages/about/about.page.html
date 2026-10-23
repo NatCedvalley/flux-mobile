@@ -1,0 +1,50 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/my-work/settings"></ion-back-button>
+    </ion-buttons>
+    <ion-title>About</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <ion-item>
+      <ion-label>Version</ion-label>
+      <ion-note
+        slot="end"
+        class="mono"
+        >{{ version }}</ion-note
+      >
+    </ion-item>
+    @if (build(); as build) {
+      <ion-item>
+        <ion-label>Build</ion-label>
+        <ion-note
+          slot="end"
+          class="mono"
+          >{{ build }}</ion-note
+        >
+      </ion-item>
+    }
+    <ion-item>
+      <ion-label>Commit</ion-label>
+      <ion-note
+        slot="end"
+        class="mono"
+        >{{ commit }}</ion-note
+      >
+    </ion-item>
+    <ion-item>
+      <ion-label>Environment</ion-label>
+      <ion-note slot="end">{{ environmentName }}</ion-note>
+    </ion-item>
+    <ion-item
+      button
+      detail="false"
+      (click)="openPrivacyPolicy()"
+    >
+      <ion-label>Privacy policy</ion-label>
+    </ion-item>
+  </ion-list>
+</ion-content>

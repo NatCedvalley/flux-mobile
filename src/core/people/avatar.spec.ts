@@ -1,4 +1,9 @@
-import { AVATAR_FILL_COUNT, avatarFillIndex, initials } from './avatar';
+import {
+  AVATAR_FILL_COUNT,
+  accountAvatar,
+  avatarFillIndex,
+  initials,
+} from './avatar';
 
 describe('initials', () => {
   it('uses the first and last name', () => {
@@ -41,5 +46,27 @@ describe('avatarFillIndex', () => {
       Array.from({ length: 30 }, (_, i) => avatarFillIndex(`account-${i}`))
     );
     expect(fills.size).toBeGreaterThan(1);
+  });
+});
+
+describe('accountAvatar', () => {
+  it('keys the fill by the account id over the email', () => {
+    expect(
+      accountAvatar({ id: 'account-1', email: 'ada@flux.test' }).fillIndex
+    ).toBe(avatarFillIndex('account-1'));
+  });
+
+  it('falls back to the email for the fill', () => {
+    expect(accountAvatar({ email: 'ada@flux.test' })).toEqual({
+      initials: 'A',
+      fillIndex: avatarFillIndex('ada@flux.test'),
+    });
+  });
+
+  it('copes with an empty account', () => {
+    expect(accountAvatar({})).toEqual({
+      initials: '?',
+      fillIndex: avatarFillIndex(''),
+    });
   });
 });

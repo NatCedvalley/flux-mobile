@@ -41,6 +41,20 @@ export function avatarFillIndex(key: string): number {
   return stableIndex(key, AVATAR_FILL_COUNT);
 }
 
+/**
+ * The signed-in account's avatar: its initials and fill, keyed by the
+ * account id (else the email), so every screen draws the same one.
+ */
+export function accountAvatar(account: PersonName & { id?: string }): {
+  initials: string;
+  fillIndex: number;
+} {
+  return {
+    initials: initials(account),
+    fillIndex: avatarFillIndex(account.id ?? account.email ?? ''),
+  };
+}
+
 /** An index from 0 to `count - 1` that is always the same for one key. */
 export function stableIndex(key: string, count: number): number {
   let hash = 0;

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   AlertController,
@@ -14,8 +14,7 @@ import {
   IonNote,
   IonToggle,
 } from '@ionic/angular';
-import { buildInfo } from '../../../environments/build-info';
-import { environment } from '../../../environments/environment';
+import { accountAvatar } from '@core/people';
 import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
 import { unsentChangesMessage } from '../../offline/pending-changes';
@@ -46,10 +45,28 @@ export class SettingsPage {
   private readonly lock = inject(AppLockService);
   private readonly writeQueue = inject(WriteQueueService);
 
-  protected readonly account = this.auth.account;
-  protected readonly environmentName = environment.name;
-  protected readonly appVersion = buildInfo.version;
-  protected readonly commit = buildInfo.commit;
+  /**
+   * The read-only profile header, without lines the account lacks. Editing
+   * stays on the web.
+   */
+  protected readonly profile = computed(() => {
+    const account = this.auth.account();
+    if (!account) {
+      return undefined;
+    }
+    const { initials, fillIndex } = accountAvatar(account);
+    const fullName = [account.firstName?.trim(), account.lastName?.trim()]
+      .filter(Boolean)
+      .join(' ');
+    const name = account.displayName?.trim() || fullName || account.email;
+    return {
+      initials,
+      fill: `var(--flux-avatar-${fillIndex + 1})`,
+      name,
+      email: account.email !== name ? account.email : undefined,
+      timezone: account.timezone,
+    };
+  });
   protected readonly loggingOut = signal(false);
   /** Only offered when the device has biometrics enrolled. */
   protected readonly biometricsAvailable = this.lock.available;

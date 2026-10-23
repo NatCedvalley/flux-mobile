@@ -8,26 +8,31 @@
 </ion-header>
 
 <ion-content>
+  @if (profile(); as profile) {
+    <div class="profile">
+      <span
+        class="avatar"
+        aria-hidden="true"
+        [style.background]="profile.fill"
+        >{{ profile.initials }}</span
+      >
+      <div class="profile-text">
+        @if (profile.name) {
+          <p class="name">{{ profile.name }}</p>
+        }
+        @if (profile.email) {
+          <p class="email">{{ profile.email }}</p>
+        }
+        @if (profile.timezone) {
+          <p class="timezone">{{ profile.timezone }}</p>
+        }
+      </div>
+    </div>
+  }
   <ion-list>
-    @if (account(); as account) {
-      <ion-item>
-        <ion-label>Signed in as</ion-label>
-        <ion-note slot="end">{{
-          account.displayName ?? account.email
-        }}</ion-note>
-      </ion-item>
-    }
     <ion-item>
       <ion-label>Theme</ion-label>
       <ion-note slot="end">System</ion-note>
-    </ion-item>
-    <ion-item>
-      <ion-label>Environment</ion-label>
-      <ion-note slot="end">{{ environmentName }}</ion-note>
-    </ion-item>
-    <ion-item>
-      <ion-label>App version</ion-label>
-      <ion-note slot="end">{{ appVersion }} ({{ commit }})</ion-note>
     </ion-item>
     @if (biometricsAvailable()) {
       <ion-item>
@@ -43,6 +48,12 @@
       routerLink="notifications"
     >
       <ion-label>Notifications</ion-label>
+    </ion-item>
+    <ion-item
+      button
+      routerLink="about"
+    >
+      <ion-label>About</ion-label>
     </ion-item>
     <ion-item
       button

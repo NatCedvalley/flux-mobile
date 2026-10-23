@@ -57,7 +57,9 @@ tap "$FIRST_TASK_ROW"
 wait_until 'large-text-detail.png' 'large-text-projects.png' above 0.2 \
   || echo "Warning: the first row didn't open (see large-text-detail.png)"
 
-if ! xcrun simctl spawn "$UDID" launchctl list | grep -q "UIKitApplication:$APP_ID"; then
+# Not grep -q: it would stop reading early, and under pipefail the SIGPIPE
+# that launchctl then gets fails the check while the app runs.
+if ! xcrun simctl spawn "$UDID" launchctl list | grep "UIKitApplication:$APP_ID" > /dev/null; then
   echo "The app stopped running at the largest text size"
   exit 1
 fi

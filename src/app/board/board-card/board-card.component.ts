@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonIcon } from '@ionic/angular';
 import type { Task } from '@core/api';
@@ -14,7 +14,8 @@ type CardChip = { kind: 'release' | 'label'; text: string };
  * up to two chips (the first release, then labels), the due date (red with
  * a clock when due today or overdue) and the assignee's avatar. The list
  * response carries no comment or attachment counts, so the card has none.
- * Opens task detail on the current tab's stack.
+ * Opens task detail on the current tab's stack. While its column can be
+ * reordered, a ⋯ button asks for a move without dragging (FM-55).
  */
 @Component({
   selector: 'app-board-card',
@@ -28,6 +29,9 @@ export class BoardCardComponent {
   readonly today = input.required<string>();
   /** A status change still to send: the key gets the sync glyph. */
   readonly pending = input(false);
+  /** The column can be reordered: the card shows its reorder button. */
+  readonly reorderable = input(false);
+  readonly reorder = output();
 
   protected readonly icon = computed(
     () => TYPE_ICONS[this.task().type ?? 'TASK'] ?? TYPE_ICONS.TASK

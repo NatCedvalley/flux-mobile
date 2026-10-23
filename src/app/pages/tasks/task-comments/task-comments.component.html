@@ -118,7 +118,7 @@
           <button
             type="button"
             class="more"
-            aria-label="Comment actions"
+            [attr.aria-label]="'Actions for your comment, ' + age(comment)"
             (click)="actions.emit(comment)"
           >
             <ion-icon
@@ -163,7 +163,9 @@
               <button
                 type="button"
                 class="add-reaction"
-                aria-label="Add reaction"
+                [attr.aria-label]="
+                  'React to ' + author(comment) + '’s comment, ' + age(comment)
+                "
                 (click)="addReaction.emit(comment)"
               >
                 <ion-icon

@@ -38,6 +38,43 @@ ion-content {
 }
 
 /*
+ * Ionic draws these in --ion-color-primary, which is too faint as text in
+ * dark mode; --flux-primary-text is indigo 11 there (variables.scss).
+ * Fills (the FAB, primary buttons) keep indigo 9.
+ */
+ion-back-button {
+  --color: var(--flux-primary-text);
+}
+
+ion-button.button-clear:not(.ion-color) {
+  --color: var(--flux-primary-text);
+}
+
+ion-toast {
+  --button-color: var(--flux-primary-text);
+}
+
+ion-alert .alert-button:not(.alert-button-role-destructive) {
+  color: var(--flux-primary-text);
+}
+
+/*
+ * Text for screen readers only (FM-55): a count's noun, a row's unread
+ * state, a day's full date. Hidden visually but kept in the reading order.
+ */
+.flux-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
  * Bottom sheets (the switcher 3j, filters, view options): they start 120px
  * from the top, over the scrim, with 22px top corners and the sheet shadow.
  * Global because an ion-modal's content is moved out of its page.

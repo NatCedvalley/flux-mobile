@@ -37,7 +37,7 @@
   white-space: nowrap;
   font: var(--flux-font-rail-label);
   letter-spacing: var(--flux-tracking-rail-label);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 
   .dot {
     width: 6px;
@@ -133,7 +133,7 @@
 .count {
   font: var(--flux-font-column-count);
   letter-spacing: var(--flux-tracking-column-count);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 .reason {
@@ -262,4 +262,31 @@ ion-skeleton-text {
   &:active {
     background: var(--flux-na3);
   }
+}
+
+// The reorder sheet: a title over four moves, like the calendar's day sheet.
+.reorder-sheet {
+  padding-bottom: var(--ion-safe-area-bottom);
+  background: var(--flux-bg);
+
+  ion-list {
+    padding: 0;
+  }
+
+  ion-item {
+    --min-height: 52px;
+    --background: var(--flux-bg);
+    --border-color: var(--flux-na3);
+    font: var(--flux-font-sheet-item);
+    letter-spacing: var(--flux-tracking-sheet-item);
+    color: var(--flux-n12);
+  }
+}
+
+.reorder-title {
+  margin: 0;
+  padding: var(--flux-space-24) var(--flux-space-16) var(--flux-space-8);
+  font: var(--flux-font-sheet-title);
+  letter-spacing: var(--flux-tracking-sheet-title);
+  color: var(--flux-n12);
 }

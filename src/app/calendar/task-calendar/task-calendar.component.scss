@@ -57,7 +57,7 @@
   text-align: center;
   font: var(--flux-font-calendar-weekday);
   letter-spacing: var(--flux-tracking-calendar-weekday);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 // Seven columns, the weeks sharing the height; only each day's top rule
@@ -91,9 +91,10 @@
     background: var(--flux-na1);
   }
 
-  &.outside .number,
-  &.weekend .number {
-    color: var(--flux-na8);
+  // 3d dims these days' numbers to --na8, under AA's 4.5:1 (FM-55), so the
+  // cell is dimmed instead: other months get a stronger wash than weekends.
+  &.outside {
+    background: var(--flux-na2);
   }
 
   // Today: the indigo wash and a 1.5px ring, the number in a filled circle.
@@ -126,7 +127,7 @@
 
 .number {
   font: var(--flux-font-calendar-day);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 // Stripe pills: 15px, the status's 9 as a 3px stripe on its wash.
@@ -169,7 +170,7 @@
   text-align: start;
   white-space: nowrap;
   font: var(--flux-font-calendar-pill);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 .grid-error {

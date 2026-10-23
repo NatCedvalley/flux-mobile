@@ -71,7 +71,7 @@ ion-item {
 .current-note {
   margin-inline-start: var(--flux-space-8);
   font: var(--flux-font-status-note);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 .check {
@@ -85,7 +85,7 @@ ion-item {
   gap: var(--flux-space-4);
   font: var(--flux-font-meta);
   letter-spacing: var(--flux-tracking-meta);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 
   ion-icon {
     font-size: 15px;
@@ -99,7 +99,9 @@ ion-item {
 }
 
 .blocked .hint {
-  color: var(--flux-na9);
+  // The reason is read even though the row is disabled, so it keeps AA
+  // contrast (3h's --na9 is 3.3:1).
+  color: var(--flux-na11);
 
   ion-icon {
     font-size: 13px;

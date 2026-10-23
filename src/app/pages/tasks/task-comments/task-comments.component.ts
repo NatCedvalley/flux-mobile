@@ -3,7 +3,7 @@ import { Component, input, output } from '@angular/core';
 import { IonIcon } from '@ionic/angular';
 import type { CommentReaction, TaskComment } from '@core/api';
 import type { QueuedComment } from '@core/offline';
-import { reactionGlyph } from '@core/comments';
+import { reactionGlyph, reactionName } from '@core/comments';
 import { avatarFillIndex, initials } from '@core/people';
 import { relativeTime } from '@core/task-detail';
 import { RichTextComponent } from '../../../shared/rich-text/rich-text.component';
@@ -54,7 +54,7 @@ export class TaskCommentsComponent {
   protected readonly glyph = reactionGlyph;
 
   protected reactionLabel(reaction: CommentReaction): string {
-    const name = (reaction.emoji ?? '').replace(/_/g, ' ');
+    const name = reactionName(reaction.emoji);
     return `${name} ${reaction.count ?? 0}${reaction.reactedByMe ? ', including you' : ''}`;
   }
 

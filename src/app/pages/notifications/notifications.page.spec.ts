@@ -191,7 +191,7 @@ describe('NotificationsPage', () => {
 
     expect(texts('ion-segment-button')).toEqual([
       'All',
-      'Mentions 1',
+      'Mentions 1, 1 unread',
       'Assigned',
     ]);
     expect(texts('ion-segment-button .count')).toEqual(['1']);
@@ -227,6 +227,7 @@ describe('NotificationsPage', () => {
     expect(texts('.project', first)).toEqual(['Checkout']);
     expect(texts('.avatar', first)).toEqual(['BT']);
     expect(first.querySelector('ion-item')!.classList).toContain('unread');
+    expect(texts('.flux-sr-only', first)).toEqual(['Unread,']);
   });
 
   it('leads with a glyph for state changes, and marks only unread rows', async () => {

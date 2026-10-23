@@ -38,9 +38,10 @@
       @if (unread(); as unread) {
         <ion-badge
           color="danger"
-          [attr.aria-label]="unread + ' unread'"
+          aria-hidden="true"
           >{{ unread > 99 ? '99+' : unread }}</ion-badge
         >
+        <span class="flux-sr-only">{{ unread }} unread</span>
       }
     </ion-tab-button>
   </ion-tab-bar>

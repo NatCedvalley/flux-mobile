@@ -9,7 +9,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { IonButton, IonIcon, IonSkeletonText } from '@ionic/angular';
+import {
+  IonButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonModal,
+  IonSkeletonText,
+} from '@ionic/angular';
 import type { Task, WorkflowStatus } from '@core/api';
 import { type LoadedGroup, statusHue } from '@core/project-list';
 import { blockedReason } from '@core/task-status';
@@ -61,7 +69,16 @@ export const GLIDE_AFTER_MS = 100;
   selector: 'app-task-board',
   templateUrl: './task-board.component.html',
   styleUrls: ['./task-board.component.scss'],
-  imports: [BoardCardComponent, IonButton, IonIcon, IonSkeletonText],
+  imports: [
+    BoardCardComponent,
+    IonButton,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonModal,
+    IonSkeletonText,
+  ],
   host: {
     '(pointerdown)': 'pressed($event)',
     '(document:pointerup)': 'released()',
@@ -170,6 +187,31 @@ export class TaskBoardComponent {
     return others.length ? { key, before: others[slot]?.id } : undefined;
   });
 
+  /** The card whose reorder sheet is open, and its column. */
+  protected readonly reordering = signal<
+    { task: Task; column: BoardColumn } | undefined
+  >(undefined);
+  protected readonly reorderOpen = signal(false);
+  /**
+   * The reorder sheet's moves. Each index counts the column without the
+   * card, as a drop's does; a move that changes nothing is disabled.
+   */
+  protected readonly reorderMoves = computed(() => {
+    const open = this.reordering();
+    if (!open) {
+      return [];
+    }
+    const tasks = open.column.loaded.tasks;
+    const at = tasks.findIndex((t) => t.id === open.task.id);
+    const last = tasks.length - 1;
+    return [
+      { label: 'Move to top', index: 0, disabled: at <= 0 },
+      { label: 'Move up', index: at - 1, disabled: at <= 0 },
+      { label: 'Move down', index: at + 1, disabled: at >= last },
+      { label: 'Move to bottom', index: last, disabled: at >= last },
+    ];
+  });
+
   protected readonly skeletonColumns = [0, 1];
   protected readonly skeletonCards = [0, 1, 2];
 
@@ -221,6 +263,21 @@ export class TaskBoardComponent {
     }
     const held = this.drag.dragging()?.taskId;
     return column.loaded.tasks.filter((t) => t.id !== held).at(-1) === task;
+  }
+
+  /** A card's ⋯: the moves within its column, without a drag. */
+  protected openReorder(task: Task, column: BoardColumn): void {
+    this.reordering.set({ task, column });
+    this.reorderOpen.set(true);
+  }
+
+  /** Places the card as a drop at `index` in its own column would. */
+  protected reorderTo(index: number): void {
+    const open = this.reordering();
+    this.reorderOpen.set(false);
+    if (open) {
+      this.dropped.emit({ task: open.task, status: open.column.status, index });
+    }
   }
 
   /** The page's refresher started: a press can't become a drag now. */

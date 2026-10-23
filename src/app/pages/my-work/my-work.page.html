@@ -37,6 +37,7 @@
   </ion-toolbar>
   <ion-toolbar class="segment-bar">
     <ion-segment
+      aria-label="Task lists"
       [value]="segment()"
       (ionChange)="select($event)"
     >
@@ -84,10 +85,15 @@
         [message]="emptyMessage()"
       />
     } @else {
-      <ion-list lines="full">
+      <!-- Each group is a list of its rows; Ionic would make this the list
+           and leave the groups between it and the rows. -->
+      <ion-list
+        lines="full"
+        role="none"
+      >
         @let b = buckets();
         @if (b.overdue.length) {
-          <ion-item-group>
+          <ion-item-group role="list">
             <ion-item-divider
               sticky="true"
               class="overdue"
@@ -108,7 +114,7 @@
           </ion-item-group>
         }
         @if (b.today.length) {
-          <ion-item-group>
+          <ion-item-group role="list">
             <ion-item-divider sticky="true">
               Today · {{ b.today.length }}
             </ion-item-divider>
@@ -122,7 +128,7 @@
           </ion-item-group>
         }
         @if (b.next7.length) {
-          <ion-item-group>
+          <ion-item-group role="list">
             <ion-item-divider sticky="true">
               Next 7 days · {{ b.next7.length }}
             </ion-item-divider>

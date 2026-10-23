@@ -25,6 +25,7 @@ import {
   projectSubline,
   switcherGroups,
 } from '@core/project-list';
+import { SearchLabelDirective } from '../../shared/search-label.directive';
 import { projectSwatch } from '../project-colors';
 
 /**
@@ -37,6 +38,7 @@ import { projectSwatch } from '../project-colors';
   templateUrl: './project-switcher.component.html',
   styleUrls: ['./project-switcher.component.scss'],
   imports: [
+    SearchLabelDirective,
     NgTemplateOutlet,
     IonHeader,
     IonToolbar,
@@ -89,6 +91,11 @@ export class ProjectSwitcherComponent {
 
   protected togglePin(project: MyProject, sliding: IonItemSliding): void {
     void sliding.close();
+    this.pinToggled.emit(project.project?.id ?? '');
+  }
+
+  /** The row's pin button: the same toggle without a swipe (FM-55). */
+  protected pinTapped(project: MyProject): void {
     this.pinToggled.emit(project.project?.id ?? '');
   }
 }

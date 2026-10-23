@@ -36,7 +36,7 @@ h2 {
   text-transform: uppercase;
   font: var(--flux-font-section-header);
   letter-spacing: var(--flux-tracking-section-header);
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 // A note under a section label, e.g. why the section is disabled.
@@ -80,6 +80,47 @@ ion-item {
   margin-inline-start: var(--flux-space-8);
   font-size: 19px;
   color: var(--flux-p9);
+}
+
+// A choice row's own button, the radio or checkbox itself, filling its
+// ion-item. On an `ion-item button` the role sat on the host around Ionic's
+// native button, which screen readers met as two controls (FM-55).
+.choice {
+  display: flex;
+  flex: auto;
+  align-items: center;
+  gap: var(--flux-space-8);
+  min-width: 0;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    opacity: 0.6;
+  }
+
+  ion-label,
+  .name {
+    flex: auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  // 12px from a leading avatar or icon to the text, with the gap.
+  .avatar,
+  .icon {
+    margin-inline-end: var(--flux-space-4);
+  }
+
+  .current-mark {
+    margin-inline-start: auto;
+  }
 }
 
 ion-skeleton-text.loading {

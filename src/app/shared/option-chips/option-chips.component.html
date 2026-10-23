@@ -4,7 +4,10 @@
     [attr.aria-checked]="isSelected(option.value)"
     [class.selected]="isSelected(option.value)"
     [disabled]="disabled()"
+    [attr.tabindex]="disabled() ? -1 : 0"
     (click)="toggle(option.value)"
+    (keydown.enter)="toggle(option.value)"
+    (keydown.space)="$event.preventDefault(); toggle(option.value)"
   >
     @if (option.dot) {
       <span

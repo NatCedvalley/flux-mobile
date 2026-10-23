@@ -189,6 +189,73 @@ describe('TaskBoardComponent', () => {
     expect(el.querySelector('.add')).toBeNull();
   });
 
+  describe('reorder menu', () => {
+    const THREE = [
+      column(STATUSES[1], [
+        TASK,
+        { ...TASK, id: 't2', taskKey: 'CHK-2' },
+        { ...TASK, id: 't3', taskKey: 'CHK-3' },
+      ]),
+    ];
+    const board = () =>
+      fixture.componentInstance as unknown as {
+        reorderOpen(): boolean;
+        reorderMoves(): { label: string; index: number; disabled: boolean }[];
+        reorderTo(index: number): void;
+      };
+    const reorderButton = (id: string) =>
+      card(id).querySelector<HTMLButtonElement>('button.reorder')!;
+
+    it('gives each card a reorder button only while the column can be reordered', () => {
+      render({ columns: THREE, canReorder: false });
+      expect(el.querySelector('button.reorder')).toBeNull();
+
+      render({ columns: THREE, canReorder: true });
+      expect(reorderButton('t2').getAttribute('aria-label')).toBe(
+        'Reorder CHK-2'
+      );
+      expect(reorderButton('t2').getAttribute('aria-haspopup')).toBe('dialog');
+    });
+
+    it('offers the moves that change the order, and drops the card there', () => {
+      render({ columns: THREE, canReorder: true });
+
+      reorderButton('t1').click();
+      expect(board().reorderOpen()).toBe(true);
+      expect(
+        board()
+          .reorderMoves()
+          .map((m) => [m.label, m.disabled])
+      ).toEqual([
+        ['Move to top', true],
+        ['Move up', true],
+        ['Move down', false],
+        ['Move to bottom', false],
+      ]);
+
+      reorderButton('t2').click();
+      expect(
+        board()
+          .reorderMoves()
+          .map((m) => m.index)
+      ).toEqual([0, 0, 2, 2]);
+      board().reorderTo(2);
+
+      expect(board().reorderOpen()).toBe(false);
+      expect(dropped).toEqual([
+        { task: THREE[0].loaded.tasks[1], status: STATUSES[1], index: 2 },
+      ]);
+    });
+
+    it('never starts a drag from the reorder button', () => {
+      render({ columns: THREE, canReorder: true });
+      reorderButton('t1').dispatchEvent(pointer('pointerdown'));
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+      fixture.detectChanges();
+      expect(card('t1').classList).not.toContain('picked');
+    });
+  });
+
   it('draws skeleton columns while loading', () => {
     render({ columns: undefined });
 

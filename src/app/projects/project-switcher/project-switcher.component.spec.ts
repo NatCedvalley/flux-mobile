@@ -63,6 +63,9 @@ describe('ProjectSwitcherComponent', () => {
     ]);
     expect(texts(el, '.swatch')).toEqual(['BI', 'CH', 'MK']);
     const current = el.querySelector('ion-item.current');
+    expect(current?.querySelector('.open')?.getAttribute('aria-current')).toBe(
+      'true'
+    );
     expect(current?.querySelector('.name')?.textContent).toBe('Checkout');
     expect(iconName(current?.querySelector('.current-mark'))).toBe(
       'circle-check'
@@ -104,7 +107,7 @@ describe('ProjectSwitcherComponent', () => {
     const selected = vi.fn();
     fixture.componentInstance.selected.subscribe(selected);
 
-    el.querySelectorAll<HTMLElement>('ion-item')[0].click();
+    el.querySelectorAll<HTMLElement>('button.open')[0].click();
 
     expect(selected).toHaveBeenCalledWith(PROJECTS[0]);
   });
@@ -118,6 +121,28 @@ describe('ProjectSwitcherComponent', () => {
     expect(texts(el, '.others ion-item-option')).toEqual(['Pin', 'Pin']);
 
     el.querySelector<HTMLElement>('.others ion-item-option')!.click();
+
+    expect(toggled).toHaveBeenCalledWith('p1');
+  });
+
+  it('pins and unpins from a button on each row, without a swipe', () => {
+    const el = render(['p2']);
+    const toggled = vi.fn();
+    fixture.componentInstance.pinToggled.subscribe(toggled);
+
+    const buttons = el.querySelectorAll<HTMLElement>('ion-button.pin-toggle');
+    expect(Array.from(buttons, (b) => b.getAttribute('aria-label'))).toEqual([
+      'Pin Checkout',
+      'Pin Billing',
+      'Pin Marketing',
+    ]);
+    expect(Array.from(buttons, (b) => b.getAttribute('aria-pressed'))).toEqual([
+      'true',
+      'false',
+      'false',
+    ]);
+
+    buttons[1].click();
 
     expect(toggled).toHaveBeenCalledWith('p1');
   });

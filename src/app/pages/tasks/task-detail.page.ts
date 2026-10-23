@@ -58,7 +58,13 @@ import { can } from '@core/permissions';
 import { priorityFact } from '@core/project-list';
 import { TASK_TYPES } from '@core/task-create';
 import { assigneeSummary, commentCount } from '@core/task-detail';
-import { TITLE_MAX, type TaskChange, parentTypes } from '@core/task-edit';
+import {
+  type PlannedEnd,
+  TITLE_MAX,
+  type TaskChange,
+  parentTypes,
+  plannedChange,
+} from '@core/task-edit';
 import {
   PRIORITY_OPTIONS,
   PagedList,
@@ -144,6 +150,7 @@ type Editor =
   | 'labels'
   | 'mention'
   | 'parent'
+  | 'planned'
   | 'priority'
   | 'title'
   | 'type';
@@ -448,6 +455,8 @@ export class TaskDetailPage {
   /** The overflow row chosen, run once its sheet has closed. */
   private overflowChoice: OverflowAction | undefined;
   protected readonly editor = signal<Editor | undefined>(undefined);
+  /** Which end of the planned range the planned sheet edits. */
+  protected readonly plannedEnd = signal<PlannedEnd>('start');
   private readonly textSheet = viewChild(TextEditSheetComponent);
 
   protected readonly priorityItems: PickerItem[] = PRIORITY_OPTIONS.map(
@@ -1086,6 +1095,20 @@ export class TaskDetailPage {
       this.parentQuery.set('');
     }
     this.editor.set(editor);
+  }
+
+  /** A planned row: the date sheet for that end of the range. */
+  protected openPlanned(end: PlannedEnd): void {
+    this.plannedEnd.set(end);
+    this.openEditor('planned');
+  }
+
+  /** Saves one end of the planned range, keeping the range whole. */
+  protected savePlanned(date: string | undefined): void {
+    const task = this.loadedTask();
+    if (task) {
+      this.save(plannedChange(task, this.plannedEnd(), date));
+    }
   }
 
   /** A sheet closed, however it was closed. */

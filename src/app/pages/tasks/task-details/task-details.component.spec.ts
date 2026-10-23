@@ -98,6 +98,8 @@ describe('TaskDetailsComponent', () => {
       'None',
       'None',
       'None',
+      'None',
+      'None',
     ]);
     expect(text('.description .none')).toBe('No description');
   });
@@ -188,6 +190,29 @@ describe('TaskDetailsComponent', () => {
 
       expect(asked).toEqual(['due', 'labels', 'description']);
       expect(text('.edit-due .value')).toBe('12 Sep · overdue');
+    });
+
+    it('edits either end of the planned range', () => {
+      edit({
+        ...TASK,
+        plannedStartDate: '2026-09-10',
+        plannedEndDate: '2026-09-14',
+      });
+      const asked: string[] = [];
+      fixture.componentInstance.editPlanned.subscribe((end) => asked.push(end));
+
+      const rows =
+        element().querySelectorAll<HTMLButtonElement>('.edit-planned');
+      expect(texts('.edit-planned .field-label')).toEqual([
+        'Planned start',
+        'Planned end',
+      ]);
+      expect(texts('.edit-planned .value')).toEqual(['10 Sep', '14 Sep']);
+      expect(rows[0].getAttribute('aria-haspopup')).toBe('dialog');
+      rows[1].click();
+      rows[0].click();
+
+      expect(asked).toEqual(['end', 'start']);
     });
 
     it('keeps the parent row a link', () => {

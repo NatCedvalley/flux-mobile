@@ -34,6 +34,7 @@ import { SEARCH_DEBOUNCE_MS, debounced } from '../../shared/debounced';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
+import { SearchLabelDirective } from '../../shared/search-label.directive';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 
 /**
@@ -46,6 +47,7 @@ import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.
   templateUrl: './project-search.page.html',
   styleUrls: ['../../shared/search-page.scss'],
   imports: [
+    SearchLabelDirective,
     IonHeader,
     IonToolbar,
     IonButtons,

@@ -25,6 +25,9 @@
   <div class="body">
     <div class="head">
       <span class="who">
+        @if (!notification().isRead) {
+          <span class="flux-sr-only">Unread, </span>
+        }
         <span class="lead">{{ view().lead }}</span>
         @if (view().verb) {
           <span class="verb"> {{ view().verb }}</span>

@@ -3,7 +3,9 @@ export {
   TITLE_MAX,
   canEditDescription,
   parentTypes,
+  plannedChange,
   taskUpdateBody,
   withChange,
+  type PlannedEnd,
   type TaskChange,
 } from './task-edit';

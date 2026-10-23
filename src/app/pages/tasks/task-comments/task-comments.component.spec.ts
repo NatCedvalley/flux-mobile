@@ -83,7 +83,7 @@ describe('TaskCommentsComponent', () => {
     expect(texts('.reaction')).toEqual(['👍2', '👀1']);
     expect(
       element().querySelector('.reaction.mine')?.getAttribute('aria-label')
-    ).toBe('thumbs up 2, including you');
+    ).toBe('Thumbs up 2, including you');
   });
 
   it('only shows reactions until the role is known', () => {

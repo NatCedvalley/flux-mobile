@@ -17,7 +17,7 @@ describe('ViewOptionsSheetComponent', () => {
   function rows(section: string): HTMLElement[] {
     return Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll(
-        `.${section} ion-item`
+        `.${section} button.choice`
       )
     );
   }

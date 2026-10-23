@@ -14,61 +14,69 @@
 <ion-content>
   <section class="group-by">
     <h2 id="view-group-by">Group by</h2>
-    <ion-list
-      lines="full"
+    <div
       role="radiogroup"
       aria-labelledby="view-group-by"
     >
-      @for (option of groupByOptions; track option.value) {
-        <ion-item
-          button="true"
-          detail="false"
-          role="radio"
-          [attr.aria-checked]="option.value === groupBy()"
-          [class.current]="option.value === groupBy()"
-          (click)="groupByChange.emit(option.value)"
-        >
-          {{ option.label }}
-          @if (option.value === groupBy()) {
-            <ion-icon
-              slot="end"
-              class="current-mark"
-              name="circle-check"
-              aria-hidden="true"
-            ></ion-icon>
-          }
-        </ion-item>
-      }
-    </ion-list>
+      <ion-list lines="full">
+        @for (option of groupByOptions; track option.value) {
+          <ion-item
+            detail="false"
+            [class.current]="option.value === groupBy()"
+          >
+            <button
+              type="button"
+              class="choice"
+              role="radio"
+              [attr.aria-checked]="option.value === groupBy()"
+              (click)="groupByChange.emit(option.value)"
+            >
+              {{ option.label }}
+              @if (option.value === groupBy()) {
+                <ion-icon
+                  class="current-mark"
+                  name="circle-check"
+                  aria-hidden="true"
+                ></ion-icon>
+              }
+            </button>
+          </ion-item>
+        }
+      </ion-list>
+    </div>
   </section>
 
   <section class="sort">
     <h2 id="view-sort">Sort</h2>
-    <ion-list
-      lines="full"
+    <div
       role="radiogroup"
       aria-labelledby="view-sort"
     >
-      @for (option of sortOptions; track option.value) {
-        <ion-item
-          button="true"
-          detail="false"
-          role="radio"
-          [attr.aria-checked]="option.value === sort()"
-          [class.current]="option.value === sort()"
-          (click)="sortChange.emit(option.value)"
-        >
-          {{ option.label }}
-          @if (option.value === sort()) {
-            <ion-icon
-              slot="end"
-              class="current-mark"
-              name="circle-check"
-              aria-hidden="true"
-            ></ion-icon>
-          }
-        </ion-item>
-      }
-    </ion-list>
+      <ion-list lines="full">
+        @for (option of sortOptions; track option.value) {
+          <ion-item
+            detail="false"
+            [class.current]="option.value === sort()"
+          >
+            <button
+              type="button"
+              class="choice"
+              role="radio"
+              [attr.aria-checked]="option.value === sort()"
+              (click)="sortChange.emit(option.value)"
+            >
+              {{ option.label }}
+              @if (option.value === sort()) {
+                <ion-icon
+                  class="current-mark"
+                  name="circle-check"
+                  aria-hidden="true"
+                ></ion-icon>
+              }
+            </button>
+          </ion-item>
+        }
+      </ion-list>
+    </div>
   </section>
 </ion-content>

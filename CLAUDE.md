@@ -151,7 +151,8 @@ project's tasks in groups under sticky headers. Its header opens the
 switcher sheet (3j, `src/app/projects/project-switcher/`, in an inline
 `ion-modal`), which lists `GET /projects/mine` (sent with the device's `tz`,
 so overdue counts match the local day) as Pinned, then All projects. Swiping
-a row pins or unpins it. The backend has no pinning, so the pins and the
+a row pins or unpins it, and so does the row's pin button (`aria-pressed`,
+ours: 3j has only the swipe, which screen readers can't reach). The backend has no pinning, so the pins and the
 last project opened live on the device in `@capacitor/preferences`
 (`ProjectPrefsService`, keys `projects.pinned` and `projects.last`). The tab
 reopens the last project, else the first pinned one, else the first listed.
@@ -309,6 +310,13 @@ create button.
     Undo or a change from task detail, a card goes where its position puts
     it (`boardIndex()`). Undo doesn't save the old column's order, and a
     reorder has no Undo, as on flux-web.
+  - Without a drag (FM-55, WCAG 2.5.7): while `canReorder`, each card has a
+    ⋯ button (`button.reorder`, a sibling of the card's link, marked
+    `data-no-drag` so a press on it never picks the card up). It opens the
+    board's reorder sheet: Move to top, Move up, Move down, Move to
+    bottom, each disabled where it would change nothing. A move emits
+    `dropped` with the index a drop there would give, so it saves like
+    one. 3c has no such button.
 - **Pull-to-refresh.** Ionic's gesture refresher (Android, web) only
   checks that the page is at its top. So the board turns it off
   (`blocksRefresh`) while a card is held, and for a touch that starts in a
@@ -388,7 +396,8 @@ subtitle reads `Calendar · October 2026`.
   - `rescheduleChange()` decides the write, as flux-web does. A task with
     both planned dates moves both by the days dragged, keeping its length,
     and its due date stays. Anything else, or a task from the drawer, gets
-    that day as its due date.
+    that day as its due date. Without a drag, the due date and the planned
+    range are edited on task detail.
   - `TaskEditService.reschedule()` writes it through `update()` (the PUT
     that sends every field back), then offers Undo. Undo puts the old dates
     back, so a drawer task returns to the drawer.
@@ -420,7 +429,8 @@ from `MyProjectsService`.
 - A task only carries its status slug, so the status pill's name and hue
   come from the project's workflow statuses (`status-pill.ts`).
 - **Details** (`task-details/`) shows the first assignee plus `+n`, the
-  reporter, due date (`12 Sep · overdue` in red), release (the first
+  reporter, due date (`12 Sep · overdue` in red), the planned start and
+  end (ours, FM-55: 3e has no planned rows), release (the first
   linked release, display-only), parent, labels (two, then `+n`), the
   description clamped to 6 lines with Show more, and subtasks for MASTER
   and EPIC only (`GET .../children`). Parent and subtask links push onto
@@ -522,8 +532,13 @@ sheet (an inline `flux-sheet` `ion-modal`):
   characters; Enter saves). The priority and type chips become buttons that
   open single-choice pickers. A type change can move the status; the server
   does that.
-- In Details, the Due date and Labels rows get a chevron. Due date opens
-  `ion-datetime presentation="date"` (with Clear). The description's pencil
+- In Details, the Due date, Planned start, Planned end and Labels rows get
+  a chevron. Due date opens `ion-datetime presentation="date"` (with
+  Clear), and so does each planned row. `plannedChange()`
+  (`src/core/task-edit/`) keeps the range whole, as the server refuses one
+  with a single end or that ends before it starts: an end set alone gives
+  a one-day range, an end moved past the other moves it along, and Clear
+  clears both. The description's pencil
   opens a Markdown textarea and saves `descriptionFormat: 'MARKDOWN'`.
   Descriptions stored as HTML or Editor.js (`canEditDescription()`) show
   "Formatted on the web — edit it there." instead. The Parent row keeps
@@ -632,6 +647,48 @@ account, and exposes `role(projectId)` and `can(projectId, action)`. The
 Projects tab and My Work search load their projects through it, and the
 Projects tab's pull-to-refresh calls `invalidate()` first, so the counts
 are fresh.
+
+### Accessibility
+
+FM-55 checked My Work, Projects (list, board, calendar), task detail, the
+Inbox, Settings and their sheets with axe (WCAG 2.2 A and AA) in light and
+dark. Keep to these patterns:
+
+- Decorative icons are `aria-hidden`; icon-only buttons have an
+  `aria-label`; a glyph that carries state is `role="img"` with a label
+  ("Waiting to sync").
+- Text for screen readers only goes in a `.flux-sr-only` span
+  (`global.scss`): a count's noun ("3 tasks"), an Inbox row's "Unread,",
+  a calendar day's full date. Never `aria-label` on a `span` or
+  `ion-badge`: a generic element's label isn't read. Hide the visible
+  number (`aria-hidden`) when the span repeats it.
+- Every sheet `ion-modal` has an `aria-label`, which Ionic moves onto its
+  dialog; the create sheet passes it in `htmlAttributes`. A button that
+  opens a sheet has `aria-haspopup="dialog"`.
+- `ion-searchbar` always names its input "search text", so searchbars set
+  `appSearchLabel` (`src/app/shared/search-label.directive.ts`).
+- A choice row (pickers, view options, filter sheets) is a plain
+  `ion-item` holding a native `button.choice` with `role="radio"` or
+  `"checkbox"` and `aria-checked`, inside a `div` with the radiogroup or
+  group role. On an `ion-item button` the role sat on the host around
+  Ionic's own native button, and Ionic can overwrite a role bound with
+  `[attr.role]` on its hosts.
+- Grouped lists (My Work's buckets, the Projects list, the Inbox, the
+  switcher) put `role="none"` on the `ion-list` and `role="list"` on each
+  `ion-item-group`, whose rows are the list items. Ionic gives the list the
+  list role and its groups the group role, which left the rows' listitem
+  role outside a list. Static attributes stick; bound ones may not.
+- Every swipe has another way in: the next status and More (task detail's
+  docked button and status pill), Archive (the overflow sheet), Inbox Mark
+  read (tapping the row) and Mute (the bell, or Stop watching), and the
+  switcher's pin button. Ionic keeps `ion-item-options` `display: none`
+  until a swipe starts, so a screen reader never meets them.
+- Known exceptions: the calendar's 15px pills and Ionic's sheet handles
+  are under 24px (WCAG 2.5.8), allowed because the day cell (its sheet
+  lists the same tasks) and the drawer's head do the same; `index.html`
+  keeps `user-scalable=no`, and text follows the OS size up to 120%
+  instead (see [§7](#7-theme)).
+- Not yet checked with VoiceOver: there's no Mac or iPhone here.
 
 ### Task create
 
@@ -1359,12 +1416,42 @@ since the account has no theme field), and applies it from an app
 initializer before the first screen. A component can't see the class through
 its style encapsulation, so a scheme-dependent component value is a variable
 set in both places instead of its own media query (`--flux-segment-checked`,
-the tab badge ring's `--ion-tab-bar-background`). Ionic's own dark palette is
+the tab badge ring's `--ion-tab-bar-background`, `--flux-primary-text`). Ionic's own dark palette is
 not imported, because it would override the tokens. On Android the app theme
 sets `android:forceDarkAllowed` to false (`styles.xml`): MIUI's dark mode for
 apps otherwise darkens the WebView's output, so Light showed dark and the dark
 tokens were re-darkened (seen on a Redmi Note 8 Pro). MIUI still dims a light
 app's whole screen a little in dark mode; that's the system's, not the app's.
+
+**Contrast** (FM-55). Text meets WCAG AA, 4.5:1 against its own background
+(an a3 pill over `--bg` or `--panel` included), in light and dark; icons
+need 3:1. The handoff claims this but its values don't all reach it, so
+these differ from it, each darkened just enough and noted in `tokens.scss`
+(dark values are unchanged):
+
+| Token                                    | Handoff                                           | Now                                               | Why                                     |
+| ---------------------------------------- | ------------------------------------------------- | ------------------------------------------------- | --------------------------------------- |
+| amber, green, blue, red, cyan 11 (light) | `#ab6400` `#218358` `#0d74ce` `#ce2c31` `#107d98` | `#a15e00` `#1f7a52` `#0c6bbf` `#c72a2f` `#0f7690` | 3.97–4.46:1 on their a3 washes          |
+| red 9                                    | `#e5484d`                                         | `#d34247`                                         | white badge and Archive text was 3.91:1 |
+| avatar teal, pink, cyan, orange          | `#12a594` `#d6409f` `#00a2c7` `#f76b15`           | `#0e8577` `#cb3d97` `#00819e` `#c45511`           | white initials were 2.97–4.12:1         |
+
+And in how tokens are used:
+
+- `--na10` is for icons only; text that 3a–3n set in `--na10` (3.9–4.2:1)
+  uses `--na11`.
+- Placeholders are `--na11` at full opacity (`--ion-placeholder-color`,
+  `--ion-placeholder-opacity`), not `--n9`/`--na9` (3.3:1).
+- `--flux-primary-text` is indigo 9 in light and 11 in dark, where 9 is
+  3.1–3.6:1. Ionic's primary-coloured text uses it (`global.scss`: the back
+  button, clear buttons, toast and alert buttons); fills stay indigo 9.
+- The inactive tab label is `--na11` (`--ion-tab-bar-color`); Ionic's
+  default was 4.36:1.
+- The calendar dims weekends and other months' days with a wash
+  (`--na1`, `--na2`) rather than a `--na8` number (1.9:1), and the status
+  sheet's blocked reason is `--na11`.
+
+Exempt: the `·` separators (`--na7`, decorative) and a disabled status
+row's name (`--na8`, inactive).
 
 `src/theme/typography.scss` bundles Inter and CommitMono (from
 `src/theme/fonts/`), sets the body text defaults, and defines the

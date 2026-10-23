@@ -40,6 +40,7 @@ export class CreateTaskLauncherService {
       component: CreateTaskSheetComponent,
       componentProps: options,
       cssClass: 'flux-create-sheet',
+      htmlAttributes: { 'aria-label': 'New task' },
       // The app's root outlet, a sibling of the modal: the whole app,
       // tab bar included, steps back behind the sheet.
       presentingElement:

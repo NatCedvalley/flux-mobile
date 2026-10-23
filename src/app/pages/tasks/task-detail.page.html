@@ -54,6 +54,7 @@
         class="icon-button more"
         aria-label="More actions"
         [disabled]="!loadedTask()"
+        aria-haspopup="dialog"
         (click)="openOverflow()"
       >
         <ion-icon
@@ -73,6 +74,7 @@
             type="button"
             class="edit-title"
             [attr.aria-label]="header.title + '. Edit the title'"
+            aria-haspopup="dialog"
             (click)="openEditor('title')"
           >
             {{ header.title }}
@@ -95,6 +97,7 @@
                 (statusPending() ? ', waiting to sync' : '') +
                 '. Change status'
               "
+              aria-haspopup="dialog"
               (click)="openSheet()"
             >
               <span
@@ -142,6 +145,7 @@
               class="chip priority"
               [attr.data-level]="priority.level"
               [attr.aria-label]="'Priority: ' + priority.label + '. Change it'"
+              aria-haspopup="dialog"
               (click)="openEditor('priority')"
             >
               <ion-icon
@@ -169,6 +173,7 @@
               type="button"
               class="chip type"
               [attr.aria-label]="'Type: ' + typeLabel() + '. Change it'"
+              aria-haspopup="dialog"
               (click)="openEditor('type')"
             >
               {{ typeLabel() }}
@@ -188,6 +193,7 @@
     <div
       class="tabs"
       role="tablist"
+      aria-label="Task sections"
     >
       <button
         type="button"
@@ -207,9 +213,10 @@
         @if (commentTotal()) {
           <ion-badge
             class="count"
-            [attr.aria-label]="commentTotal() + ' comments'"
+            aria-hidden="true"
             >{{ commentTotal() }}</ion-badge
           >
+          <span class="flux-sr-only">, {{ commentTotal() }}</span>
         }
       </button>
       <button
@@ -244,6 +251,7 @@
           [editable]="canEdit()"
           [attachmentCount]="attachmentCount()"
           (editDue)="openEditor('due')"
+          (editPlanned)="openPlanned($event)"
           (editLabels)="openEditor('labels')"
           (editDescription)="openEditor('description')"
           (openAttachments)="openAttachments()"
@@ -352,6 +360,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Comment actions"
   [isOpen]="commentSheetOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -372,6 +381,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Attachments"
   [isOpen]="editor() === 'attachments'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -397,6 +407,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Add an attachment"
   [isOpen]="editor() === 'attachSource'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -414,6 +425,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Mention someone"
   [isOpen]="editor() === 'mention'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -435,6 +447,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Edit comment"
   [isOpen]="editor() === 'comment'"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -455,6 +468,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Move task"
   [isOpen]="sheetOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -476,6 +490,7 @@
 
 <ion-modal
   class="flux-sheet flux-sheet-auto"
+  aria-label="Task actions"
   [isOpen]="overflowOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"
@@ -503,6 +518,7 @@
 @if (loadedTask(); as task) {
   <ion-modal
     class="flux-sheet flux-sheet-auto"
+    aria-label="Edit title"
     [isOpen]="editor() === 'title'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -524,6 +540,7 @@
 
   <ion-modal
     class="flux-sheet"
+    aria-label="Edit description"
     [isOpen]="editor() === 'description'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -544,6 +561,7 @@
 
   <ion-modal
     class="flux-sheet flux-sheet-auto"
+    aria-label="Due date"
     [isOpen]="editor() === 'due'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -561,6 +579,30 @@
 
   <ion-modal
     class="flux-sheet flux-sheet-auto"
+    aria-label="Planned date"
+    [isOpen]="editor() === 'planned'"
+    [breakpoints]="[0, 1]"
+    [initialBreakpoint]="1"
+    (didDismiss)="editorClosed('planned')"
+  >
+    <ng-template>
+      <app-date-sheet
+        [heading]="plannedEnd() === 'start' ? 'Planned start' : 'Planned end'"
+        [value]="
+          (plannedEnd() === 'start'
+            ? task.plannedStartDate
+            : task.plannedEndDate
+          )?.slice(0, 10)
+        "
+        (saved)="savePlanned($event)"
+        (done)="editor.set(undefined)"
+      />
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal
+    class="flux-sheet flux-sheet-auto"
+    aria-label="Priority"
     [isOpen]="editor() === 'priority'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -580,6 +622,7 @@
 
   <ion-modal
     class="flux-sheet flux-sheet-auto"
+    aria-label="Type"
     [isOpen]="editor() === 'type'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -599,6 +642,7 @@
 
   <ion-modal
     class="flux-sheet"
+    aria-label="Labels"
     [isOpen]="editor() === 'labels'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -621,6 +665,7 @@
 
   <ion-modal
     class="flux-sheet"
+    aria-label="Parent"
     [isOpen]="editor() === 'parent'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"
@@ -645,6 +690,7 @@
 
   <ion-modal
     class="flux-sheet"
+    aria-label="Assignees"
     [isOpen]="editor() === 'assignees'"
     [breakpoints]="[0, 1]"
     [initialBreakpoint]="1"

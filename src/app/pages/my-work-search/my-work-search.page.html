@@ -9,6 +9,7 @@
     <ion-searchbar
       placeholder="Search by key or title"
       aria-label="Search your tasks"
+      appSearchLabel="Search your tasks"
       showCancelButton="never"
       [debounce]="0"
       [value]="query()"
@@ -88,6 +89,7 @@
 
 <ion-modal
   class="flux-sheet"
+  aria-label="Filters"
   [isOpen]="filterOpen()"
   [breakpoints]="[0, 1]"
   [initialBreakpoint]="1"

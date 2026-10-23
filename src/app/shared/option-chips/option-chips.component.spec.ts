@@ -42,4 +42,29 @@ describe('OptionChipsComponent', () => {
 
     expect(changes).toEqual([['done', 'todo'], ['todo']]);
   });
+
+  it('can be reached and toggled from a keyboard', () => {
+    const changes: (readonly string[])[] = [];
+    fixture.componentInstance.selected.subscribe((v) => changes.push(v));
+    expect(chips().map((c) => c.getAttribute('tabindex'))).toEqual(['0', '0']);
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      cancelable: true,
+    });
+    chips()[0].dispatchEvent(space);
+    chips()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(space.defaultPrevented).toBe(true);
+    expect(changes).toEqual([['done', 'todo'], ['todo']]);
+  });
+
+  it('leaves disabled chips out of the tab order', () => {
+    fixture.componentRef.setInput('disabled', true);
+    fixture.detectChanges();
+    expect(chips().map((c) => c.getAttribute('tabindex'))).toEqual([
+      '-1',
+      '-1',
+    ]);
+  });
 });

@@ -133,12 +133,15 @@ $flux-indigo: (
 
 // Semantic and status hues: 9 is the dot/fill (shared by both schemes), 11
 // the text colour, a3 the pill background. Status is never colour alone.
+// Text meets WCAG AA (4.5:1) on its own background (FM-55), so a few values
+// are darker than the handoff's; each says so.
 $flux-hues: (
   // To Do
   blue: (
       9: #0090ff,
       11: (
-        light: #0d74ce,
+        // Ours: the handoff's #0d74ce is 4.15:1 on its a3 wash.
+        light: #0c6bbf,
         dark: #70b8ff,
       ),
       a3: (
@@ -150,7 +153,8 @@ $flux-hues: (
   amber: (
       9: #ffc53d,
       11: (
-        light: #ab6400,
+        // Ours: the handoff's #ab6400 is 4.28:1 on its a3 wash.
+        light: #a15e00,
         dark: #ffca16,
       ),
       a2: rgba(255, 222, 0, 0.08),
@@ -175,7 +179,8 @@ $flux-hues: (
   cyan: (
       9: #00a2c7,
       11: (
-        light: #107d98,
+        // Ours: the handoff's #107d98 is 4.10:1 on its a3 wash.
+        light: #0f7690,
         dark: #4ccce6,
       ),
       a3: (
@@ -187,7 +192,8 @@ $flux-hues: (
   green: (
       9: #30a46c,
       11: (
-        light: #218358,
+        // Ours: the handoff's #218358 is 4.21:1 on its a3 wash.
+        light: #1f7a52,
         dark: #3dd68c,
       ),
       a2: rgba(0, 164, 51, 0.05),
@@ -198,15 +204,18 @@ $flux-hues: (
     ),
   // Overdue, Urgent, destructive
   red: (
-      9: #e5484d,
+      // Ours: white text (badges, the Archive swipe) is 3.91:1 on the
+      // handoff's #e5484d.
+      9: #d34247,
       11: (
-        light: #ce2c31,
-        dark: #ff9592,
+        // Ours: the handoff's #ce2c31 is 4.46:1 on its a3 wash.
+        light: #c72a2f,
+        dark: #ff9592
       ),
       a3: (
         light: rgba(255, 1, 13, 0.09),
         dark: rgba(255, 80, 85, 0.2),
-      ),
+      )
     ),
   // Release
   violet: (
@@ -242,13 +251,15 @@ $flux-surfaces: (
     )
 ) !default;
 
-// Deterministic per-user avatar fills. Avatar text is always white.
+// Deterministic per-user avatar fills. Avatar text is always white. Teal,
+// pink, cyan and orange are darker than the handoff's (#12a594, #d6409f,
+// #00a2c7, #f76b15), whose white initials were 2.97–4.12:1.
 $flux-avatar-fills: (
   #6e56cf,
-  #12a594,
-  #d6409f,
-  #00a2c7,
-  #f76b15,
+  #0e8577,
+  #cb3d97,
+  #00819e,
+  #c45511,
   #8e4ec6
 ) !default;
 $flux-avatar-text: #ffffff !default;

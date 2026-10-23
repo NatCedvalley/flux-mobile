@@ -195,11 +195,20 @@
   --ion-toolbar-background: var(--flux-bg);
   --ion-toolbar-border-color: var(--flux-na4);
   --ion-tab-bar-background: var(--flux-bg);
+  // Ionic's default inactive tab colour is 4.36:1 on white (FM-55).
+  --ion-tab-bar-color: var(--flux-na11);
   --ion-tab-bar-color-selected: var(--flux-p9);
   --ion-card-background: var(--flux-surface);
-  --ion-placeholder-color: var(--flux-n9);
+  // The handoff's placeholders (--n9, --na9) are 3.3:1, so they use the
+  // secondary text colour to meet AA (FM-55), at full opacity.
+  --ion-placeholder-color: var(--flux-na11);
+  --ion-placeholder-opacity: 1;
   // The checked chip of a segmented control.
   --flux-segment-checked: var(--flux-n1);
+  // Text in the primary colour (the back button, clear buttons, alert and
+  // toast buttons). Indigo 9 is 3.1–3.6:1 on the dark surfaces, so dark mode
+  // uses 11, as the handoff does for the active tab.
+  --flux-primary-text: var(--flux-p9);
 }
 
 @mixin dark-scheme {
@@ -220,6 +229,7 @@
   --ion-tab-bar-background: var(--flux-panel);
   --ion-tab-bar-color-selected: var(--flux-p11);
   --flux-segment-checked: var(--flux-n5);
+  --flux-primary-text: var(--flux-p11);
 }
 
 // System follows the OS, unless Settings' Light or Dark put a class on

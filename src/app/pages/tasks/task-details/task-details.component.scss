@@ -19,12 +19,12 @@
   font: var(--flux-font-field-label);
   letter-spacing: var(--flux-tracking-field-label);
   text-transform: uppercase;
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 .none {
   margin: 0;
-  color: var(--flux-na10);
+  color: var(--flux-na11);
 }
 
 // Never wraps or shrinks: the title beside it truncates instead.
@@ -83,7 +83,7 @@
   color: var(--flux-n12);
 
   &.none {
-    color: var(--flux-na10);
+    color: var(--flux-na11);
   }
 }
 
@@ -149,7 +149,7 @@ button.field {
   text-align: end;
 
   &.none {
-    color: var(--flux-na10);
+    color: var(--flux-na11);
   }
 }
 

@@ -59,7 +59,9 @@ describe('TaskFilterSheetComponent', () => {
     ]);
     fixture.detectChanges();
     const rows = () =>
-      Array.from(element().querySelectorAll<HTMLElement>('.assignee ion-item'));
+      Array.from(
+        element().querySelectorAll<HTMLElement>('.assignee button.choice')
+      );
 
     expect(rows().map((r) => r.querySelector('.name')?.textContent)).toEqual([
       'Me',

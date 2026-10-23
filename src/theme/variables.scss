@@ -6,7 +6,8 @@
 // with a `flux-` prefix: `--flux-n12` (gray 12), `--flux-na3` (gray alpha 3),
 // `--flux-p9` / `--flux-pa3` (indigo), `--flux-red11` / `--flux-reda3`
 // (hues), `--flux-bg` / `--flux-panel` / `--flux-surface`. Light values go
-// on :root, and dark values override them under prefers-color-scheme: dark.
+// on :root, and dark values override them under prefers-color-scheme: dark,
+// or the flux-theme-dark class (see the end of this file).
 // Ionic's own dark palette isn't imported; the dark tokens replace it.
 //
 // For background on Ionic's theming variables, see:
@@ -182,23 +183,42 @@
   --ion-tab-bar-color-selected: var(--flux-p9);
   --ion-card-background: var(--flux-surface);
   --ion-placeholder-color: var(--flux-n9);
+  // The checked chip of a segmented control.
+  --flux-segment-checked: var(--flux-n1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    @each $name, $value in flux-tokens() {
-      @if is-pair($value) {
-        --flux-#{$name}: #{pick($value, dark)};
-      }
+@mixin dark-scheme {
+  color-scheme: dark;
+
+  @each $name, $value in flux-tokens() {
+    @if is-pair($value) {
+      --flux-#{$name}: #{pick($value, dark)};
     }
-
-    @include ionic-colors(dark);
-    @include ionic-surfaces(dark);
-
-    // Rows step up to `surface` over the `panel` canvas, the tab bar sits on
-    // `panel`, and the active tab uses indigo 11 for contrast.
-    --ion-item-background: var(--flux-surface);
-    --ion-tab-bar-background: var(--flux-panel);
-    --ion-tab-bar-color-selected: var(--flux-p11);
   }
+
+  @include ionic-colors(dark);
+  @include ionic-surfaces(dark);
+
+  // Rows step up to `surface` over the `panel` canvas, the tab bar sits on
+  // `panel`, and the active tab uses indigo 11 for contrast.
+  --ion-item-background: var(--flux-surface);
+  --ion-tab-bar-background: var(--flux-panel);
+  --ion-tab-bar-color-selected: var(--flux-p11);
+  --flux-segment-checked: var(--flux-n5);
+}
+
+// System follows the OS, unless Settings' Light or Dark put a class on
+// <html> (ThemeService). Both selectors outrank the light values on :root.
+@media (prefers-color-scheme: dark) {
+  :root:not(.flux-theme-light) {
+    @include dark-scheme;
+  }
+}
+
+:root.flux-theme-dark {
+  @include dark-scheme;
+}
+
+:root.flux-theme-light {
+  color-scheme: light;
 }

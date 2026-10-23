@@ -6,6 +6,7 @@ import { avatarFillIndex } from '@core/people';
 import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
 import { WriteQueueService } from '../../offline/write-queue.service';
+import { ThemeService, type ThemePreference } from '../../theme/theme.service';
 import { SettingsPage } from './settings.page';
 
 describe('SettingsPage', () => {
@@ -24,6 +25,10 @@ describe('SettingsPage', () => {
     available: ReturnType<typeof signal<boolean>>;
     enabled: ReturnType<typeof signal<boolean>>;
     setEnabled: ReturnType<typeof vi.fn>;
+  };
+  let theme: {
+    preference: ReturnType<typeof signal<ThemePreference>>;
+    set: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -46,6 +51,13 @@ describe('SettingsPage', () => {
       enabled: signal(false),
       setEnabled: vi.fn().mockResolvedValue(undefined),
     };
+    theme = {
+      preference: signal<ThemePreference>('system'),
+      set: vi.fn((preference: ThemePreference) => {
+        theme.preference.set(preference);
+        return Promise.resolve();
+      }),
+    };
     await TestBed.configureTestingModule({
       imports: [SettingsPage],
       providers: [
@@ -53,6 +65,7 @@ describe('SettingsPage', () => {
         { provide: AuthService, useValue: auth },
         { provide: AlertController, useValue: alerts },
         { provide: AppLockService, useValue: lock },
+        { provide: ThemeService, useValue: theme },
       ],
     }).compileComponents();
   });
@@ -131,6 +144,50 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(profile()).toBeNull();
+  });
+
+  function themeItem(): HTMLElement {
+    const item = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('ion-item')
+    ).find((el) => el.textContent?.includes('Theme'));
+    expect(item).toBeTruthy();
+    return item as HTMLElement;
+  }
+
+  function themeModal(): HTMLIonModalElement {
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      'ion-modal'
+    ) as HTMLIonModalElement;
+  }
+
+  it('shows the theme in use', () => {
+    expect(themeItem().querySelector('ion-note')?.textContent?.trim()).toBe(
+      'System'
+    );
+
+    theme.preference.set('dark');
+    fixture.detectChanges();
+
+    expect(themeItem().querySelector('ion-note')?.textContent?.trim()).toBe(
+      'Dark'
+    );
+  });
+
+  it('opens the theme picker, and applies a pick at once', () => {
+    themeItem().click();
+    fixture.detectChanges();
+    expect(themeModal().isOpen).toBe(true);
+
+    (component as unknown as { pickTheme(id: string): void }).pickTheme(
+      'light'
+    );
+    fixture.detectChanges();
+
+    expect(theme.set).toHaveBeenCalledWith('light');
+    expect(themeModal().isOpen).toBe(false);
+    expect(themeItem().querySelector('ion-note')?.textContent?.trim()).toBe(
+      'Light'
+    );
   });
 
   it('links to About', () => {

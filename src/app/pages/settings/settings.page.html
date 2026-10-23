@@ -30,9 +30,12 @@
     </div>
   }
   <ion-list>
-    <ion-item>
+    <ion-item
+      button
+      (click)="themeOpen.set(true)"
+    >
       <ion-label>Theme</ion-label>
-      <ion-note slot="end">System</ion-note>
+      <ion-note slot="end">{{ themeLabel() }}</ion-note>
     </ion-item>
     @if (biometricsAvailable()) {
       <ion-item>
@@ -65,3 +68,22 @@
     </ion-item>
   </ion-list>
 </ion-content>
+
+<ion-modal
+  class="flux-sheet flux-sheet-auto"
+  [isOpen]="themeOpen()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  (didDismiss)="themeOpen.set(false)"
+>
+  <ng-template>
+    <app-picker-sheet
+      heading="Theme"
+      [items]="themeItems"
+      [searchable]="false"
+      [selected]="[theme.preference()]"
+      (picked)="pickTheme($event)"
+      (done)="themeOpen.set(false)"
+    />
+  </ng-template>
+</ion-modal>

@@ -1,6 +1,8 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { ThemeService } from '../theme/theme.service';
 import { StatusBarService } from './status-bar.service';
 
 vi.mock('@capacitor/status-bar', () => ({
@@ -10,26 +12,15 @@ vi.mock('@capacitor/status-bar', () => ({
 
 describe('StatusBarService', () => {
   let service: StatusBarService;
-  let dark: boolean;
-  let onChange: (() => void) | undefined;
+  let dark: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(StatusBar.setStyle).mockResolvedValue(undefined);
-    dark = false;
-    onChange = undefined;
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) =>
-        ({
-          get matches() {
-            return dark;
-          },
-          media: query,
-          addEventListener: (_: string, listener: () => void) => {
-            onChange = listener;
-          },
-        }) as unknown as MediaQueryList
-    );
+    dark = signal(false);
+    TestBed.configureTestingModule({
+      providers: [{ provide: ThemeService, useValue: { dark } }],
+    });
     service = TestBed.inject(StatusBarService);
   });
 
@@ -41,6 +32,7 @@ describe('StatusBarService', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
 
     service.init();
+    TestBed.tick();
 
     expect(StatusBar.setStyle).not.toHaveBeenCalled();
   });
@@ -49,16 +41,18 @@ describe('StatusBarService', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
 
     service.init();
+    TestBed.tick();
 
     expect(StatusBar.setStyle).toHaveBeenCalledWith({ style: Style.Light });
   });
 
-  it('follows the OS switching to dark', () => {
+  it('follows the theme in effect switching to dark', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     service.init();
+    TestBed.tick();
 
-    dark = true;
-    onChange?.();
+    dark.set(true);
+    TestBed.tick();
 
     expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
   });
@@ -66,14 +60,28 @@ describe('StatusBarService', () => {
   it('forces light text while a card sheet is open, then follows the theme', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     service.init();
+    TestBed.tick();
 
     service.forceDark(true);
-    expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
-    onChange?.();
+    TestBed.tick();
     expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
 
     service.forceDark(false);
+    TestBed.tick();
     expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Light });
+  });
+
+  it('keeps light text after a card sheet on the dark theme', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    dark.set(true);
+    service.init();
+    service.forceDark(true);
+    TestBed.tick();
+
+    service.forceDark(false);
+    TestBed.tick();
+
+    expect(StatusBar.setStyle).toHaveBeenLastCalledWith({ style: Style.Dark });
   });
 
   it('ignores the override on web', () => {
@@ -81,6 +89,7 @@ describe('StatusBarService', () => {
     service.init();
 
     service.forceDark(true);
+    TestBed.tick();
 
     expect(StatusBar.setStyle).not.toHaveBeenCalled();
   });

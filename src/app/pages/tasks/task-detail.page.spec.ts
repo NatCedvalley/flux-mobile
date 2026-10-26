@@ -896,9 +896,11 @@ describe('TaskDetailPage', () => {
 
       await scrollTo(100);
       expect(collapsed()).toBe(true);
-      expect(text('.condensed .key')).toBe('CHK-142');
-      expect(text('.status-inline')).toBe('In Progress');
-      expect(text('.condensed-title')).toBe('Fix 3DS redirect on Safari');
+      expect(text('app-condensed-header .key')).toBe('CHK-142');
+      expect(text('app-condensed-header .status')).toBe('In Progress');
+      expect(text('app-condensed-header .title')).toBe(
+        'Fix 3DS redirect on Safari'
+      );
       // The title and chips go, and the nav row keeps only ⋯.
       expect(element().querySelector('.full-head')).toBeNull();
       expect(element().querySelector('.bell')).toBeNull();
@@ -912,7 +914,7 @@ describe('TaskDetailPage', () => {
 
       await scrollTo(0);
       expect(collapsed()).toBe(false);
-      expect(element().querySelector('.condensed')).toBeNull();
+      expect(element().querySelector('app-condensed-header')).toBeNull();
       expect(text('.title')).toBe('Fix 3DS redirect on Safari');
       expect(element().querySelector('.bell')).not.toBeNull();
       expect(element().querySelectorAll('h1')).toHaveLength(1);
@@ -962,7 +964,7 @@ describe('TaskDetailPage', () => {
       await scrollTo(100);
 
       const pill = element().querySelector<HTMLButtonElement>(
-        'button.status-inline'
+        'app-condensed-header button.status'
       )!;
       expect(pill.getAttribute('aria-label')).toBe(
         'Status: To Do. Change status'
@@ -979,8 +981,10 @@ describe('TaskDetailPage', () => {
       await settle();
       await open('Comments');
       await scrollTo(100);
-      expect(element().querySelector('button.status-inline')).toBeNull();
-      expect(text('span.status-inline')).toBe('To Do');
+      expect(
+        element().querySelector('app-condensed-header button.status')
+      ).toBeNull();
+      expect(text('app-condensed-header span.status')).toBe('To Do');
     });
   });
 

@@ -124,6 +124,7 @@ import {
   type CommentSheetMode,
   CommentSheetComponent,
 } from './comment-sheet/comment-sheet.component';
+import { CondensedHeaderComponent } from './condensed-header/condensed-header.component';
 import { statusPill } from './status-pill';
 import { TaskActionBarComponent } from './task-action-bar/task-action-bar.component';
 import { TaskActivityComponent } from './task-activity/task-activity.component';
@@ -235,6 +236,7 @@ type ListView<T> = {
     TaskOverflowSheetComponent,
     CommentComposerComponent,
     CommentSheetComponent,
+    CondensedHeaderComponent,
     PickerSheetComponent,
     TextEditSheetComponent,
     DateSheetComponent,

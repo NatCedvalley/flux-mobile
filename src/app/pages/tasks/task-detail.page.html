@@ -13,62 +13,15 @@
     <!-- Scrolled Comments or Activity (3f, 3g): key and status, then the
          title on one line, in place of the title and chips below. -->
     @if (collapsed() && header(); as header) {
-      <div class="condensed">
-        <div class="condensed-line">
-          <span class="key">{{ header.taskKey }}</span>
-          @if (status(); as status) {
-            @if (canMove()) {
-              <button
-                type="button"
-                class="status-inline"
-                [style]="status.colors"
-                [disabled]="!statusReady()"
-                [attr.aria-label]="
-                  'Status: ' +
-                  status.name +
-                  (statusPending() ? ', waiting to sync' : '') +
-                  '. Change status'
-                "
-                aria-haspopup="dialog"
-                (click)="openSheet()"
-              >
-                <span
-                  class="dot"
-                  aria-hidden="true"
-                ></span>
-                {{ status.name }}
-                @if (statusPending()) {
-                  <ion-icon
-                    class="sync"
-                    name="refresh-cw"
-                    aria-hidden="true"
-                  ></ion-icon>
-                }
-              </button>
-            } @else {
-              <span
-                class="status-inline"
-                [style]="status.colors"
-              >
-                <span
-                  class="dot"
-                  aria-hidden="true"
-                ></span>
-                {{ status.name }}
-                @if (statusPending()) {
-                  <ion-icon
-                    class="sync"
-                    name="refresh-cw"
-                    aria-label="Waiting to sync"
-                    role="img"
-                  ></ion-icon>
-                }
-              </span>
-            }
-          }
-        </div>
-        <h1 class="condensed-title">{{ header.title }}</h1>
-      </div>
+      <app-condensed-header
+        [taskKey]="header.taskKey"
+        [title]="header.title"
+        [status]="status()"
+        [canMove]="canMove()"
+        [statusDisabled]="!statusReady()"
+        [pending]="statusPending()"
+        (changeStatus)="openSheet()"
+      />
     } @else {
       <div class="key-group">
         @if (header(); as header) {

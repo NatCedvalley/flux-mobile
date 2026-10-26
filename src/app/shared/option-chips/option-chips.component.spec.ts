@@ -10,7 +10,7 @@ describe('OptionChipsComponent', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(OptionChipsComponent);
     fixture.componentRef.setInput('options', [
-      { value: 'todo', label: 'To Do', dot: 'var(--flux-blue9)' },
+      { value: 'todo', label: 'To Do', dot: 'var(--flux-bluedot)' },
       { value: 'done', label: 'Done' },
     ]);
     fixture.componentRef.setInput('selected', ['done']);

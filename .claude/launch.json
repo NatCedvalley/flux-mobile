@@ -6,6 +6,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
       "port": 8100
+    },
+    {
+      "name": "design-handoff",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8200",
+        "--directory",
+        "docs/design/mobile-v2"
+      ],
+      "port": 8200
     }
   ]
 }

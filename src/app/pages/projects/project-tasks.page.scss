@@ -1,6 +1,7 @@
-// Handoff 3b header: a 52px bar whose left side is the switcher button.
+// Handoff 3b header: a 52px bar whose left side is the switcher button,
+// its avatar on the 16px gutter.
 .project-bar {
-  --padding-start: var(--flux-space-12);
+  --padding-start: var(--flux-space-8);
   --padding-end: var(--flux-space-8);
   --min-height: 52px;
 }
@@ -225,7 +226,8 @@ ion-item-group:first-child ion-item-divider {
 // Swipe actions (3b): the next status on its hue (92px) and More on gray
 // (64px) at the end, Archive in red at the start.
 ion-item-option {
-  font: var(--flux-font-meta-strong);
+  font: var(--flux-font-swipe-action);
+  letter-spacing: var(--flux-tracking-swipe-action);
 
   ion-icon {
     margin-bottom: var(--flux-space-3);
@@ -233,8 +235,8 @@ ion-item-option {
   }
 
   &.next {
-    --background: var(--group-dot);
-    --color: var(--ion-color-primary-contrast);
+    --background: var(--group-solid);
+    --color: var(--group-on-solid);
     min-width: 92px;
   }
 

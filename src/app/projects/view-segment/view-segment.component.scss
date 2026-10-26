@@ -1,13 +1,21 @@
 // The segmented control as on My Work: `--na3` track, the checked chip in
 // `--n1` (dark `--n5`) with a small shadow.
+// Full width: the toolbar's content is an inline-flex box, where a block
+// shrinks to its labels.
 :host {
   display: block;
+  width: 100%;
 }
 
+// Full width: in a toolbar, Ionic sizes the segment to its labels.
 ion-segment {
   --background: var(--flux-na3);
+  width: 100%;
   min-height: 36px;
-  border-radius: var(--flux-radius-segmented);
+  // 3px above and below the 30px chip; Ionic's indicator adds 2px at
+  // the sides, so 1px here makes those 3px too.
+  padding: 3px 1px;
+  border-radius: var(--flux-radius-segmented-track);
 }
 
 ion-segment-button {
@@ -16,7 +24,8 @@ ion-segment-button {
   --border-radius: var(--flux-radius-segmented);
   --color: var(--flux-na11);
   --color-checked: var(--flux-n12);
-  min-height: 36px;
+  min-height: 30px;
+  margin: 0;
   font: var(--flux-font-segment-label);
   letter-spacing: var(--flux-tracking-segment-label);
 

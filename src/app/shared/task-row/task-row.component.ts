@@ -24,7 +24,7 @@ export const TYPE_ICONS: Record<NonNullable<MyTask['type']>, string> = {
 /** The status dot (hue 9) and word (hue 11) for each tone. */
 const TONE_COLORS: Record<StatusTone, [dot: string, text: string]> = {
   planning: ['n8', 'na11'],
-  todo: ['blue9', 'blue11'],
+  todo: ['bluedot', 'blue11'],
   progress: ['amber9', 'amber11'],
   done: ['green9', 'green11'],
 };

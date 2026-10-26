@@ -112,7 +112,9 @@ Android draws the app under its navigation bar, and some phones (MIUI on
 Android 10) report a 0 bottom inset while the gesture pill covers the tab
 bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
 `--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
-win. Releases (handoff screen 3k) has no tab.
+win. The same Redmi reports 0 with MIUI's button navigation too, where the
+47dp bar then covers the tab bar's labels (FM-60).
+Releases (handoff screen 3k) has no tab.
 
 ### My Work
 
@@ -1460,6 +1462,30 @@ Lucide set: `registerFluxIcons()` (`src/app/icons/`, called in `main.ts` and
 the test setup) registers all of them with ionicons, so templates use
 `<ion-icon name="list-todo">`. The status bar's text follows the theme in
 effect (`ThemeService.dark`, through `StatusBarService`, native only); on Android the WebView runs edge to edge.
+So do the navigation bar's buttons (Capacitor's `SystemBars`, FM-56):
+Android's own theme follows the OS, so Light over a dark OS left light
+buttons on the white tab bar. The create sheet's forced light status bar
+text doesn't apply to them.
+
+**Surfaces and specificity** (FM-56):
+
+- Cards (task detail's, the board's, comment bubbles) and sheets
+  (`ion-modal.flux-sheet`, the create sheet, `sheet.scss`) are on
+  `--surface`, not `--bg`: the same white in light, a step up from the
+  `--panel` canvas in dark (3n). Headers and docked bars stay `--bg`. A
+  field on a sheet is filled with `--na3`, not `--n3`, which is the same
+  colour as dark `--surface`.
+- `global.scss`'s primary colour for clear buttons is wrapped in
+  `:where()`, so a page's own `--color` wins (the header icons' `--na11`).
+  Ionic's toolbar rules outrank a plain class too: an outline button in a
+  toolbar draws its border in its text colour, and
+  `ion-buttons ion-button` has a 4px radius; Inbox's Mark all read beats
+  them with `ion-buttons ion-button.mark-all` and `::part(native)`.
+- Ionic pads every toolbar in a modal by 8px
+  (`html.ios ion-modal ion-toolbar`), so a sheet's toolbar sets 8px of its
+  own for the 16px gutter.
+- Segmented controls are a 36px track (`--flux-radius-segmented-track`,
+  11px) with the 30px chip 3px in, and full width.
 
 Text follows the OS text size (iOS Dynamic Type, Android's font size) up to
 120%, as the handoff asks. `variables.scss` multiplies every type role's size
@@ -1499,6 +1525,9 @@ The current design is the Claude Design handoff in
 tokens, screens `3a`–`3n`, and an Ionic component mapping to follow. Recreate
 screens with Ionic primitives; never port its `support.js` runtime or inline
 styles. When a design changes a token value, update `src/theme/tokens.scss`.
+To compare a screen, `.claude/launch.json`'s `design-handoff` serves the
+folder on `localhost:8200`; the phone frames are 390px wide, the screen
+starting 44px into each.
 
 ## 9. CI
 
@@ -1549,9 +1578,10 @@ It then checks iOS swipe-back. `scripts/ci/mock-iam.mjs` stands in for
 flux-iam on `localhost:9001` (the dev build's `iamBaseUrl`; any credentials
 sign in as a fixed test account), `scripts/ci/mock-operations.mjs` for
 flux-operations on `localhost:9003` (one project, `CI`, with its
-workflow statuses and three tasks dated around today, so My Work and the
-Projects list have rows, and empty comments, activity and subtasks for
-task detail; it answers GETs only), and
+workflow statuses (one closed) and three tasks dated around today, so My
+Work and the Projects list have rows; CI-1 has a comment thread and
+activity, and the Inbox three notifications, so the design screenshots
+below aren't empty states; it answers GETs only), and
 `scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects
@@ -1575,14 +1605,26 @@ standard text size (`simctl ui content_size extra-extra-extra-large`, which
 the app caps at 120%, see [§7](#7-theme)), relaunches the app (still signed
 in) and screenshots My Work, the Projects list and the first task, at the
 same tap points. Those screenshots are for review: the step fails only if the
-app doesn't load My Work again or stops running. Both scripts share
+app doesn't load My Work again or stops running.
+
+`scripts/ci/ios-design-screens.sh` (FM-56) then relaunches the app with
+the simulator in light, then dark (`simctl ui appearance`), and screenshots
+the handoff's screens for comparison with `docs/design/mobile-v2/`:
+`design-<light|dark>-<id>-<screen>.png` for My Work (3a), the Projects list
+(3b), board (3c), calendar (3d), task detail's three tabs (3e–3g), the
+status (3h), create (3i), switcher (3j) and overflow (3n) sheets, the Inbox
+(3l) and Settings. It reaches each by fixed tap points measured on web at
+402×874 with the iPhone's 62 pt and 34 pt safe areas, and a screen that
+doesn't open is only a warning. All three scripts share
 `scripts/ci/sim-helpers.sh` (tap, screenshot, the pixel difference, settle
-and wait).
+and wait). The job's timeout is 60 minutes; runs took 20–30 before this
+step.
 
 Screenshots (`my-work.png`, `list.png`, `detail.png`, `after-swipe.png`,
-`large-text-my-work.png`, `large-text-projects.png`, `large-text-detail.png`
-and the final `flux-ios-simulator.png`) are uploaded as one artifact on every
-run; the simulator's app log and both mock logs only if the job fails.
+`large-text-my-work.png`, `large-text-projects.png`, `large-text-detail.png`,
+the `design-*.png` set and the final `flux-ios-simulator.png`) are uploaded
+as one artifact on every run; the simulator's app log and both mock logs
+only if the job fails.
 
 ### Android signed build
 

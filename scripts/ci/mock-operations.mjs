@@ -1,8 +1,10 @@
-// A stand-in for the flux-operations endpoints My Work, the Projects tab and
-// task detail read, for CI runs that drive the app in a simulator with no
-// backend (see .github/workflows/ios-simulator.yml). It doesn't check the
-// token. Not for local development: use the real stack from the flux repo
-// (CLAUDE.md §5).
+// A stand-in for the flux-operations endpoints My Work, the Projects tab,
+// task detail and the Inbox read, for CI runs that drive the app in a
+// simulator with no backend (see .github/workflows/ios-simulator.yml). CI-1
+// has a comment thread and activity, and there are three notifications, so
+// the design screenshots (ios-design-screens.sh) aren't empty states. It
+// doesn't check the token, and answers GETs only. Not for local
+// development: use the real stack from the flux repo (CLAUDE.md §5).
 //
 //   node scripts/ci/mock-operations.mjs            # listens on :9003
 //   MOCK_OPERATIONS_PORT=9103 node scripts/ci/mock-operations.mjs
@@ -56,7 +58,182 @@ const STATUSES = [
     color: 'amber',
     position: 1,
   },
+  {
+    id: 'ci-s3',
+    projectId: 'ci-p1',
+    slug: 'done',
+    name: 'Done',
+    category: 'DONE',
+    color: 'green',
+    position: 2,
+    isClosed: true,
+  },
 ];
+
+// The signed-in account (mock-iam.mjs), and two teammates.
+const ME = { accountId: 'ci-account', firstName: 'CI', lastName: 'Tester' };
+const MIRA = { accountId: 'ci-a2', firstName: 'Mira', lastName: 'Kaur' };
+const JAE = { accountId: 'ci-a3', firstName: 'Jae', lastName: 'Doyle' };
+
+/** `days` days before now, at `hh:mm` local time. */
+function at(days, hh, mm) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hh, mm, 0, 0);
+  return d.toISOString();
+}
+
+/** `minutes` before now. */
+function ago(minutes) {
+  return new Date(Date.now() - minutes * 60_000).toISOString();
+}
+
+/** CI-1's thread: one by Mira with a reply and a reaction, then one of ours. */
+function comments() {
+  const by = (person) => ({
+    authorId: person.accountId,
+    authorFirstName: person.firstName,
+    authorLastName: person.lastName,
+  });
+  return [
+    {
+      id: 'ci-c1',
+      taskId: 'ci-t1',
+      ...by(MIRA),
+      body: 'Reproduced on an iPhone 15. Only happens when the description is longer than the screen.',
+      bodyFormat: 'MARKDOWN',
+      createdAt: at(1, 10, 4),
+      reactions: [{ emoji: 'thumbs_up', count: 2, reactedByMe: true }],
+      replies: [
+        {
+          id: 'ci-c2',
+          taskId: 'ci-t1',
+          parentCommentId: 'ci-c1',
+          ...by(JAE),
+          body: 'Same on the Pixel 7.',
+          bodyFormat: 'MARKDOWN',
+          createdAt: at(1, 11, 30),
+        },
+      ],
+    },
+    {
+      id: 'ci-c3',
+      taskId: 'ci-t1',
+      ...by(ME),
+      body: 'Root cause is the fixed `100vh` on the detail shell. Patch is up.',
+      bodyFormat: 'MARKDOWN',
+      createdAt: at(0, 8, 12),
+    },
+  ];
+}
+
+/** CI-1's activity, newest first, over two days. */
+function activities() {
+  const entry = (id, action, createdAt, fields = {}) => ({
+    id,
+    taskId: 'ci-t1',
+    projectId: 'ci-p1',
+    actorId: MIRA.accountId,
+    actorName: 'Mira Kaur',
+    action,
+    createdAt,
+    ...fields,
+  });
+  return [
+    entry('ci-e4', 'COMMENT_ADDED', at(0, 8, 12), {
+      actorId: ME.accountId,
+      actorName: 'CI Tester',
+    }),
+    entry('ci-e3', 'STATUS_CHANGED', at(0, 8, 2), {
+      field: 'status',
+      oldValue: 'todo',
+      newValue: 'in_progress',
+    }),
+    entry('ci-e2', 'FIELD_UPDATED', at(1, 16, 40), {
+      field: 'priority',
+      oldValue: 'MEDIUM',
+      newValue: 'HIGH',
+    }),
+    entry('ci-e1', 'CREATED', at(1, 9, 0), { actorName: 'Jae Doyle' }),
+  ];
+}
+
+/** Three notifications, newest first: two unread, one a mention. */
+function notifications() {
+  const about = (entityId, taskKey) => ({
+    entityType: 'TASK',
+    entityId,
+    taskKey,
+    projectId: 'ci-p1',
+    projectName: 'CI',
+  });
+  const by = (person) => ({
+    actorId: person.accountId,
+    actorFirstName: person.firstName,
+    actorLastName: person.lastName,
+  });
+  return [
+    {
+      id: 'ci-n1',
+      type: 'MENTION',
+      title: 'You were mentioned',
+      message: 'Mira Kaur mentioned you in: Check the swipe-back gesture',
+      ...about('ci-t1', 'CI-1'),
+      ...by(MIRA),
+      isRead: false,
+      createdAt: ago(18),
+    },
+    {
+      id: 'ci-n2',
+      type: 'ASSIGNMENT',
+      title: 'You were assigned to a task',
+      message: 'Jae Doyle assigned you to: Fix the overdue report',
+      ...about('ci-t2', 'CI-2'),
+      ...by(JAE),
+      isRead: false,
+      createdAt: ago(2 * 60),
+    },
+    {
+      id: 'ci-n3',
+      type: 'COMMENT',
+      title: 'New comment',
+      message: 'Jae Doyle commented on: Check the swipe-back gesture',
+      ...about('ci-t1', 'CI-1'),
+      ...by(JAE),
+      isRead: true,
+      createdAt: at(1, 11, 30),
+    },
+  ];
+}
+
+/** The notifications a `type` comma list and `isRead` let through. */
+function notificationsFor(query) {
+  const types = query.get('type')?.split(',') ?? [];
+  const isRead = query.get('isRead');
+  return notifications().filter(
+    (n) =>
+      (!types.length || types.includes(n.type)) &&
+      (isRead === null || String(n.isRead) === isRead)
+  );
+}
+
+const RESOLUTIONS = [
+  { id: 'ci-r1', name: 'Done', slug: 'done', position: 0 },
+  { id: 'ci-r2', name: 'Won’t do', slug: 'wont-do', position: 1 },
+  { id: 'ci-r3', name: 'Duplicate', slug: 'duplicate', position: 2 },
+];
+
+const LABELS = [
+  { id: 'ci-l1', projectId: 'ci-p1', name: 'gestures' },
+  { id: 'ci-l2', projectId: 'ci-p1', name: 'ios' },
+  { id: 'ci-l3', projectId: 'ci-p1', name: 'reports' },
+];
+
+const MEMBERS = [
+  { ...ME, email: 'ci@flux.test', role: 'EDITOR' },
+  { ...MIRA, email: 'mira@flux.test', role: 'LEAD' },
+  { ...JAE, email: 'jae@flux.test', role: 'EDITOR' },
+].map((m) => ({ ...m, projectId: 'ci-p1' }));
 
 function tasks() {
   return [
@@ -72,7 +249,11 @@ function tasks() {
       statusName: 'In Progress',
       statusCategory: 'IN_PROGRESS',
       dueDate: day(0),
-      assignees: [{ accountId: 'ci-a1', firstName: 'CI', lastName: 'Tester' }],
+      assignees: [ME],
+      reporterId: JAE.accountId,
+      reporterFirstName: JAE.firstName,
+      reporterLastName: JAE.lastName,
+      labels: ['gestures', 'ios'],
     },
     {
       id: 'ci-t2',
@@ -126,6 +307,10 @@ function route(method, path, query) {
   // The Projects tab asks for one status group at a time.
   const list = path.match(/^\/projects\/([^/]+)\/tasks$/);
   if (list) {
+    // Every task has a due date, so the calendar's drawer is empty.
+    if (query.get('onlyUnscheduled') === 'true') {
+      return [200, page([])];
+    }
     const status = query.get('status');
     return [
       200,
@@ -142,6 +327,15 @@ function route(method, path, query) {
   if (path === '/projects/ci-p1/task-view-settings') {
     return [200, {}];
   }
+  if (path === '/projects/ci-p1/resolutions') {
+    return [200, RESOLUTIONS];
+  }
+  if (path === '/projects/ci-p1/labels') {
+    return [200, LABELS];
+  }
+  if (path === '/projects/ci-p1/members/assignable') {
+    return [200, MEMBERS];
+  }
   const task = path.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)$/);
   if (task) {
     const found = tasks().find(
@@ -149,27 +343,29 @@ function route(method, path, query) {
     );
     return found ? [200, found] : null;
   }
-  // What task detail fetches besides the task: no comments, activity,
-  // attachments or subtasks, and not watched.
+  // What task detail fetches besides the task: CI-1 has comments and
+  // activity; nothing has attachments or subtasks, and nothing is watched.
   const sub = path.match(
-    /^\/projects\/[^/]+\/tasks\/[^/]+\/(activities|attachments|children|comments|subscription)$/
+    /^\/projects\/[^/]+\/tasks\/([^/]+)\/(activities|attachments|children|comments|subscription)$/
   );
   if (sub) {
+    const first = sub[1] === 'ci-t1';
     const bodies = {
-      activities: page([]),
+      activities: page(first ? activities() : []),
       attachments: [],
       children: [],
-      comments: page([]),
+      comments: page(first ? comments() : []),
       subscription: { subscribed: false },
     };
-    return [200, bodies[sub[1]]];
+    return [200, bodies[sub[2]]];
   }
   if (path === '/notifications') {
-    return [200, page([])];
+    return [200, page(notificationsFor(query))];
   }
-  // The Inbox tab's badge, loaded on sign-in.
+  // The Inbox tab's badge and its Mentions count.
   if (path === '/notifications/unread-count') {
-    return [200, { unreadCount: 0 }];
+    query.set('isRead', 'false');
+    return [200, { unreadCount: notificationsFor(query).length }];
   }
   return null;
 }

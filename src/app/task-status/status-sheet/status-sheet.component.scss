@@ -37,7 +37,7 @@ ion-item {
 
   &.current {
     --background:
-      linear-gradient(var(--group-wash), var(--group-wash)), var(--flux-bg);
+      linear-gradient(var(--group-wash), var(--group-wash)), var(--flux-surface);
 
     .name {
       font: var(--flux-font-sheet-item-current);

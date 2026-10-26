@@ -29,7 +29,7 @@ const GROUP_HUE_COLORS: Record<
   [dot: string, text: string, wash: string]
 > = {
   gray: ['n8', 'na11', 'na2'],
-  blue: ['blue9', 'blue11', 'bluea3'],
+  blue: ['bluedot', 'blue11', 'bluea3'],
   amber: ['amber9', 'amber11', 'ambera2'],
   green: ['green9', 'green11', 'greena2'],
   purple: ['purple9', 'purple11', 'purplea3'],
@@ -37,13 +37,23 @@ const GROUP_HUE_COLORS: Record<
   red: ['red9', 'red11', 'reda3'],
 };
 
-/** A group header's colours, as `--group-dot`, `--group-text` and `--group-wash`. */
+/**
+ * A group header's colours, as `--group-dot`, `--group-text` and
+ * `--group-wash`, plus `--group-solid` and `--group-on-solid` for a fill in
+ * the hue (the list's swipe action): 9 in both schemes, with dark text on
+ * the light ones (gray 8, amber 9), where white is under 2:1.
+ */
 export function groupHueColors(hue: GroupHue): Record<string, string> {
   const [dot, text, wash] = GROUP_HUE_COLORS[hue];
+  const light = hue === 'gray' || hue === 'amber';
   return {
     '--group-dot': `var(--flux-${dot})`,
     '--group-text': `var(--flux-${text})`,
     '--group-wash': `var(--flux-${wash})`,
+    '--group-solid': `var(--flux-${hue === 'gray' ? 'n8' : `${hue}9`})`,
+    '--group-on-solid': light
+      ? 'var(--ion-color-warning-contrast)'
+      : 'var(--ion-color-primary-contrast)',
   };
 }
 

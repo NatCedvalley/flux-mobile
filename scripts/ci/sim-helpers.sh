@@ -1,6 +1,7 @@
 # Simulator helpers shared by the iOS CI scripts (ios-swipe-back.sh,
-# ios-large-text.sh), which source this file. They need UDID (a booted
-# simulator), OUT_DIR (where screenshots go), idb, and python3 with Pillow.
+# ios-large-text.sh, ios-design-screens.sh), which source this file. They
+# need UDID (a booted simulator), OUT_DIR (where screenshots go), idb, and
+# python3 with Pillow.
 
 tap() {
   # shellcheck disable=SC2086

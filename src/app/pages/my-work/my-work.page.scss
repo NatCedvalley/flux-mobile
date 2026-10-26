@@ -1,4 +1,9 @@
-// Title block (handoff 3a): title, then the date and assigned count.
+// Title block (handoff 3a): title, then the date and assigned count. The
+// title's own 16px is the gutter, so the toolbar adds none.
+.title-bar {
+  --padding-start: 0;
+}
+
 .flux-screen-title {
   padding-bottom: 0;
 }
@@ -55,10 +60,15 @@
   --min-height: 0;
 }
 
+// Full width: in a toolbar, Ionic sizes the segment to its labels.
 ion-segment {
   --background: var(--flux-na3);
+  width: 100%;
   min-height: 36px;
-  border-radius: var(--flux-radius-segmented);
+  // 3px above and below the 30px chip; Ionic's indicator adds 2px at
+  // the sides, so 1px here makes those 3px too.
+  padding: 3px 1px;
+  border-radius: var(--flux-radius-segmented-track);
 }
 
 ion-segment-button {
@@ -67,7 +77,8 @@ ion-segment-button {
   --border-radius: var(--flux-radius-segmented);
   --color: var(--flux-na11);
   --color-checked: var(--flux-n12);
-  min-height: 36px;
+  min-height: 30px;
+  margin: 0;
   font: var(--flux-font-segment-label);
   letter-spacing: var(--flux-tracking-segment-label);
 

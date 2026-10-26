@@ -143,10 +143,24 @@ export class QueueReplayService {
       message: lines.join(' '),
       duration: TOAST_MS,
       position: 'bottom',
-      positionAnchor: TAB_BAR,
+      positionAnchor: anchor(),
     });
     await toast.present();
   }
+}
+
+/**
+ * What the toast sits above: the docked footer of the page showing (task
+ * detail's), else the tab bar, unless a page covers it (FM-57).
+ */
+function anchor(): HTMLElement | string | undefined {
+  const footer = document.querySelector<HTMLElement>(
+    'ion-tabs .ion-page:not(.ion-page-hidden) > ion-footer'
+  );
+  if (footer) {
+    return footer;
+  }
+  return document.querySelector('ion-tab-bar[inert]') ? undefined : TAB_BAR;
 }
 
 function key(item: QueueItem): string {

@@ -201,6 +201,46 @@ describe('QueueReplayService', () => {
     });
   });
 
+  describe('where the toast sits', () => {
+    afterEach(() => document.querySelector('ion-tabs')?.remove());
+
+    async function refuse(): Promise<unknown> {
+      vi.spyOn(api, 'changeTaskStatus').mockRejectedValue(new ApiError(400));
+      online.set(true);
+      await service.replay();
+      return toasts.create.mock.calls[0][0].positionAnchor;
+    }
+
+    it('sits above the tab bar', async () => {
+      expect(await refuse()).toBe('tab-bar');
+    });
+
+    it('sits above task detail’s docked bar, which covers the tab bar', async () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `<ion-tabs>
+          <div class="ion-page ion-page-hidden"><ion-footer id="hidden"></ion-footer></div>
+          <div class="ion-page"><ion-footer id="shown"></ion-footer></div>
+          <ion-tab-bar id="tab-bar" inert></ion-tab-bar>
+        </ion-tabs>`
+      );
+
+      expect(await refuse()).toBe(document.getElementById('shown'));
+    });
+
+    it('sits at the bottom on a covered tab bar with no docked bar', async () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `<ion-tabs>
+          <div class="ion-page"></div>
+          <ion-tab-bar id="tab-bar" inert></ion-tab-bar>
+        </ion-tabs>`
+      );
+
+      expect(await refuse()).toBeUndefined();
+    });
+  });
+
   it('counts several refusals in one toast', async () => {
     await writeQueue.enqueueStatus({
       ...TO_TODO,

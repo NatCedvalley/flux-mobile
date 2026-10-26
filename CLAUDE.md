@@ -113,7 +113,7 @@ Android 10) report a 0 bottom inset while the gesture pill covers the tab
 bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
 `--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
 win. The same Redmi reports 0 with MIUI's button navigation too, where the
-47dp bar then covers the tab bar's labels (FM-56 found it; its own ticket).
+47dp bar then covers the tab bar's labels (FM-60).
 Releases (handoff screen 3k) has no tab.
 
 ### My Work

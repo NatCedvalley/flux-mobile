@@ -1610,7 +1610,7 @@ reach the mock IAM (checked in its log). After each tap or swipe the script
 polls screenshots for up to 45 s, because idb can deliver input ~15 s late
 on a slow runner: switching to Projects must change over 2% of pixels,
 opening the task over 20%, and the swipe must bring the screen back to within
-2% of the list. Detail changes about 35%. The limit stays well above the
+2% of the list. Detail changes about 58%. The limit stays well above the
 ~7% of the tapped row's pressed highlight, which can hold still while a slow
 runner loads the detail page; at 5% the script once swiped on the list
 before detail opened. Moving the login fields, the tab bar or the Projects list's

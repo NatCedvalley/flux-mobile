@@ -10,9 +10,15 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { ThemeService } from '../theme/theme.service';
 import { StatusBarService } from './status-bar.service';
 
-vi.mock('@capacitor/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@capacitor/core')>()),
+// Whole, not over importOriginal(): in the full suite that hit the module
+// before it had loaded. registerPlugin serves the plugins ThemeService
+// imports.
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => false },
+  registerPlugin: () => ({}),
   SystemBars: { setStyle: vi.fn() },
+  SystemBarType: { StatusBar: 'StatusBar', NavigationBar: 'NavigationBar' },
+  SystemBarsStyle: { Dark: 'DARK', Light: 'LIGHT', Default: 'DEFAULT' },
 }));
 
 vi.mock('@capacitor/status-bar', () => ({

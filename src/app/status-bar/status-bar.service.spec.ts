@@ -1,9 +1,19 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Capacitor } from '@capacitor/core';
+import {
+  Capacitor,
+  SystemBarType,
+  SystemBars,
+  SystemBarsStyle,
+} from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { ThemeService } from '../theme/theme.service';
 import { StatusBarService } from './status-bar.service';
+
+vi.mock('@capacitor/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@capacitor/core')>()),
+  SystemBars: { setStyle: vi.fn() },
+}));
 
 vi.mock('@capacitor/status-bar', () => ({
   StatusBar: { setStyle: vi.fn() },
@@ -17,6 +27,7 @@ describe('StatusBarService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(StatusBar.setStyle).mockResolvedValue(undefined);
+    vi.mocked(SystemBars.setStyle).mockResolvedValue(undefined);
     dark = signal(false);
     TestBed.configureTestingModule({
       providers: [{ provide: ThemeService, useValue: { dark } }],
@@ -35,6 +46,7 @@ describe('StatusBarService', () => {
     TestBed.tick();
 
     expect(StatusBar.setStyle).not.toHaveBeenCalled();
+    expect(SystemBars.setStyle).not.toHaveBeenCalled();
   });
 
   it('uses dark text on the light theme', () => {
@@ -92,5 +104,43 @@ describe('StatusBarService', () => {
     TestBed.tick();
 
     expect(StatusBar.setStyle).not.toHaveBeenCalled();
+  });
+
+  it('gives the navigation bar dark buttons on the light theme', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+
+    service.init();
+    TestBed.tick();
+
+    expect(SystemBars.setStyle).toHaveBeenCalledWith({
+      style: SystemBarsStyle.Light,
+      bar: SystemBarType.NavigationBar,
+    });
+  });
+
+  it("follows the theme with the navigation bar, whatever the OS's", () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    service.init();
+    TestBed.tick();
+
+    dark.set(true);
+    TestBed.tick();
+
+    expect(SystemBars.setStyle).toHaveBeenLastCalledWith({
+      style: SystemBarsStyle.Dark,
+      bar: SystemBarType.NavigationBar,
+    });
+  });
+
+  it('leaves the navigation bar alone while a card sheet is open', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    service.init();
+    TestBed.tick();
+    vi.mocked(SystemBars.setStyle).mockClear();
+
+    service.forceDark(true);
+    TestBed.tick();
+
+    expect(SystemBars.setStyle).not.toHaveBeenCalled();
   });
 });

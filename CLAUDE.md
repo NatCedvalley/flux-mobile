@@ -919,7 +919,8 @@ are queued.
   holds the new copy) and reported; a 403 or 404 reports it removed. A
   conflict or failure puts the server's status back and says so in one
   toast ("CHK-142 changed on the server, so your status change wasn’t
-  sent.", "Couldn’t move CHK-142: …", or a count). A conflict keeps the
+  sent.", "Couldn’t move CHK-142: …", or a count), above task detail's
+  docked bar while detail shows, else the tab bar. A conflict keeps the
   server's status as `current`. Conflicts and failures stay in the queue
   until the person settles them in the pending changes sheet, or a newer
   change to that task is queued or sent online (`dropUnsent()`). After a replay that settled

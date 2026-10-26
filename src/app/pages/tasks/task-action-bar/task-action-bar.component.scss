@@ -1,14 +1,13 @@
 // Handoff 3e's docked action bar: a 48px outline comment button and the
-// primary "Move to <next>" on `--bg`. Detail sits in a tab, so the tab bar
-// below already keeps clear of the safe area.
+// primary "Move to <next>" on `--bg`, on the home indicator: detail covers
+// the tab bar, and sets `--flux-docked-bottom` (FM-57). Detail holds it in
+// its `ion-footer`.
 :host {
   display: block;
-}
-
-ion-footer {
   background: var(--flux-bg);
   border-top: 1px solid var(--flux-na4);
   box-shadow: var(--flux-shadow-docked);
+  padding-bottom: var(--flux-docked-bottom, 0px);
 }
 
 .actions {

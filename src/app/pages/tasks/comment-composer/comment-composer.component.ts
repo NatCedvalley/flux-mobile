@@ -8,7 +8,6 @@ import {
 } from '@angular/core';
 import {
   IonButton,
-  IonFooter,
   IonIcon,
   IonTextarea,
   type TextareaCustomEvent,
@@ -36,7 +35,7 @@ export type CommentDraft = { body: string; mentionedAccountIds: string[] };
   selector: 'app-comment-composer',
   templateUrl: './comment-composer.component.html',
   styleUrls: ['./comment-composer.component.scss'],
-  imports: [IonFooter, IonTextarea, IonButton, IonIcon],
+  imports: [IonTextarea, IonButton, IonIcon],
 })
 export class CommentComposerComponent {
   /** A post is in flight: Send waits for it. */

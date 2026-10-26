@@ -172,3 +172,18 @@ html.plt-android {
     var(--flux-android-min-bottom-inset)
   );
 }
+
+/*
+ * Task detail has no tab bar in the design (3e–3g), so it covers it: the
+ * page reaches down over the bar (TabsPage measures its height), and the
+ * tab outlet paints above the bar's own z-index of 10. Hiding the bar would
+ * resize the pages instead, which jumps on the way back, as an iOS swipe
+ * only navigates once it ends (FM-57).
+ */
+ion-tabs > .tabs-inner {
+  z-index: 11;
+}
+
+ion-tabs app-task-detail.ion-page {
+  bottom: calc(-1 * var(--flux-tab-bar-height, 0px));
+}

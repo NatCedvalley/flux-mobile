@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { IonButton, IonFooter, IonIcon } from '@ionic/angular';
+import { IonButton, IonIcon } from '@ionic/angular';
 import type { WorkflowStatus } from '@core/api';
 
 /**
@@ -11,7 +11,7 @@ import type { WorkflowStatus } from '@core/api';
   selector: 'app-task-action-bar',
   templateUrl: './task-action-bar.component.html',
   styleUrls: ['./task-action-bar.component.scss'],
-  imports: [IonFooter, IonButton, IonIcon],
+  imports: [IonButton, IonIcon],
 })
 export class TaskActionBarComponent {
   /** The next status in the project's workflow, if any. */

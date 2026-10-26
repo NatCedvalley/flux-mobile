@@ -250,6 +250,22 @@ ion-back-button {
   line-height: calc(17px * var(--flux-text-scale));
 }
 
+// The page covers the tab bar (global.scss), so the docked footers keep
+// the home indicator clear themselves: the safe area while the bar is laid
+// out, and none while Ionic hides it for the keyboard (its height is then 0),
+// as the bar left the composer on the keyboard before.
+:host {
+  --flux-docked-bottom: min(
+    var(--ion-safe-area-bottom, 0px),
+    var(--flux-tab-bar-height, 0px)
+  );
+}
+
 ion-content {
   --background: var(--flux-panel);
+}
+
+// A VIEWER gets no docked footer, so the content keeps it clear instead.
+ion-content.no-footer {
+  --padding-bottom: var(--flux-docked-bottom);
 }

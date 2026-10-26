@@ -66,6 +66,7 @@ describe('tab routes', () => {
       }
       expect(leaf.params).toEqual({ projectId: 'p1', taskId: '1' });
       expect(leaf.data['backHref']).toBe(`/tabs/${tab}`);
+      expect(leaf.data['coversTabBar']).toBe(true);
     }
   );
 
@@ -87,10 +88,27 @@ describe('tab routes', () => {
       }
       expect(leaf.params).toEqual({ projectId: 'p1', taskId: '1' });
       expect(leaf.data['backHref']).toBe(`/tabs/${tab}`);
+      expect(leaf.data['coversTabBar']).toBe(true);
     }
   );
 
   it('opens Settings within the My Work stack', async () => {
     expect(await open('/tabs/my-work/settings')).toBe(SettingsPage);
+  });
+
+  it.each([
+    '/tabs/my-work',
+    '/tabs/my-work/search',
+    '/tabs/my-work/settings',
+    '/tabs/projects',
+    '/tabs/inbox',
+  ])('leaves the tab bar showing on %s', async (url) => {
+    await open(url);
+
+    let leaf = TestBed.inject(Router).routerState.snapshot.root;
+    while (leaf.firstChild) {
+      leaf = leaf.firstChild;
+    }
+    expect(leaf.data['coversTabBar']).toBeUndefined();
   });
 });

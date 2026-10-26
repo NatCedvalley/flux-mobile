@@ -1,16 +1,14 @@
 // Handoff 3f's composer: a min-44px field (radius 14, `--n2`, 1px `--na5`)
 // with the @ button inside it, and a 44px Send that turns solid indigo once
-// there is text. Detail sits in a tab, so the tab bar below keeps clear of
-// the safe area, as for the action bar. The field's height cap is in
-// global.scss.
+// there is text. It keeps the home indicator clear with detail's
+// `--flux-docked-bottom`, as the action bar does. The field's height cap is
+// in global.scss.
 :host {
   display: block;
-}
-
-ion-footer {
   background: var(--flux-bg);
   border-top: 1px solid var(--flux-na4);
   box-shadow: var(--flux-shadow-docked);
+  padding-bottom: var(--flux-docked-bottom, 0px);
 }
 
 .row {

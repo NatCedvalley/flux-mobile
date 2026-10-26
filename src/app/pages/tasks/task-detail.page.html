@@ -232,7 +232,7 @@
   <app-offline-banner />
 </ion-header>
 
-<ion-content>
+<ion-content [class.no-footer]="!showComposer() && !canComment()">
   <ion-refresher
     slot="fixed"
     (ionRefresh)="refresh($event)"
@@ -339,23 +339,29 @@
   </ion-infinite-scroll>
 </ion-content>
 
-@if (showComposer()) {
-  <app-comment-composer
-    [sending]="sending()"
-    [canAttach]="canEdit()"
-    [attaching]="!!uploading()"
-    (send)="postComment($event)"
-    (mention)="openMentions()"
-    (attach)="openAttachSource()"
-  />
-} @else if (canComment()) {
-  <app-task-action-bar
-    [next]="next()"
-    [canMove]="canMove()"
-    [moveDisabled]="!statusReady()"
-    (comment)="openComposer()"
-    (move)="moveNext()"
-  />
+<!-- A direct child of the page, so Ionic's transition slides the docked bar
+     with the content, uncovering the tab bar under it on the way back. -->
+@if (showComposer() || canComment()) {
+  <ion-footer class="ion-no-border">
+    @if (showComposer()) {
+      <app-comment-composer
+        [sending]="sending()"
+        [canAttach]="canEdit()"
+        [attaching]="!!uploading()"
+        (send)="postComment($event)"
+        (mention)="openMentions()"
+        (attach)="openAttachSource()"
+      />
+    } @else {
+      <app-task-action-bar
+        [next]="next()"
+        [canMove]="canMove()"
+        [moveDisabled]="!statusReady()"
+        (comment)="openComposer()"
+        (move)="moveNext()"
+      />
+    }
+  </ion-footer>
 }
 
 <ion-modal

@@ -1,57 +1,55 @@
-<ion-footer class="ion-no-border">
-  <div class="row">
-    <div class="field">
-      <ion-textarea
-        aria-label="Comment"
-        placeholder="Write a comment…"
-        [value]="text()"
-        [autoGrow]="true"
-        [rows]="1"
-        autocapitalize="sentences"
-        (ionInput)="onInput($event)"
-      ></ion-textarea>
-      <ion-button
-        class="at"
-        fill="clear"
-        aria-label="Mention someone"
-        aria-haspopup="dialog"
-        (click)="atTapped()"
-      >
-        <ion-icon
-          slot="icon-only"
-          name="at-sign"
-          aria-hidden="true"
-        ></ion-icon>
-      </ion-button>
-      @if (canAttach()) {
-        <ion-button
-          class="attach"
-          fill="clear"
-          aria-label="Attach a file"
-          [disabled]="attaching()"
-          aria-haspopup="dialog"
-          (click)="attach.emit()"
-        >
-          <ion-icon
-            slot="icon-only"
-            name="paperclip"
-            aria-hidden="true"
-          ></ion-icon>
-        </ion-button>
-      }
-    </div>
+<div class="row">
+  <div class="field">
+    <ion-textarea
+      aria-label="Comment"
+      placeholder="Write a comment…"
+      [value]="text()"
+      [autoGrow]="true"
+      [rows]="1"
+      autocapitalize="sentences"
+      (ionInput)="onInput($event)"
+    ></ion-textarea>
     <ion-button
-      class="send"
-      aria-label="Send"
-      [class.ready]="!!text().trim()"
-      [disabled]="!canSend()"
-      (click)="submit()"
+      class="at"
+      fill="clear"
+      aria-label="Mention someone"
+      aria-haspopup="dialog"
+      (click)="atTapped()"
     >
       <ion-icon
         slot="icon-only"
-        name="send"
+        name="at-sign"
         aria-hidden="true"
       ></ion-icon>
     </ion-button>
+    @if (canAttach()) {
+      <ion-button
+        class="attach"
+        fill="clear"
+        aria-label="Attach a file"
+        [disabled]="attaching()"
+        aria-haspopup="dialog"
+        (click)="attach.emit()"
+      >
+        <ion-icon
+          slot="icon-only"
+          name="paperclip"
+          aria-hidden="true"
+        ></ion-icon>
+      </ion-button>
+    }
   </div>
-</ion-footer>
+  <ion-button
+    class="send"
+    aria-label="Send"
+    [class.ready]="!!text().trim()"
+    [disabled]="!canSend()"
+    (click)="submit()"
+  >
+    <ion-icon
+      slot="icon-only"
+      name="send"
+      aria-hidden="true"
+    ></ion-icon>
+  </ion-button>
+</div>

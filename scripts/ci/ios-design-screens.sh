@@ -32,12 +32,13 @@ AVATAR='368 94'
 CREATE_BUTTON='356 739'
 # The create sheet is a card from 10 pt under the safe area.
 CREATE_CANCEL='48 104'
-# Projects: the header's switcher, the List/Board/Calendar segment, and
+# Projects: the header's switcher, the middle of each third of the
+# full-width List/Board/Calendar segment (16-374 pt, 114-150 pt down), and
 # CI-1, the third row (under To Do's two), which has comments and activity.
 SWITCHER='102 88'
-LIST_VIEW='51 134'
-BOARD_VIEW='156 134'
-CALENDAR_VIEW='261 134'
+LIST_VIEW='76 132'
+BOARD_VIEW='195 132'
+CALENDAR_VIEW='314 132'
 CI_1_ROW='177 433'
 # Task detail: the status pill, ⋯, and the Comments and Activity tabs.
 STATUS_PILL='75 164'

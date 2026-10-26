@@ -1,35 +1,33 @@
-<ion-footer class="ion-no-border">
-  <div class="actions">
+<div class="actions">
+  <ion-button
+    class="comment"
+    fill="outline"
+    aria-label="Write a comment"
+    (click)="comment.emit()"
+  >
+    <ion-icon
+      slot="icon-only"
+      name="message-circle"
+      aria-hidden="true"
+    ></ion-icon>
+  </ion-button>
+  @if (canMove()) {
     <ion-button
-      class="comment"
-      fill="outline"
-      aria-label="Write a comment"
-      (click)="comment.emit()"
+      class="move"
+      expand="block"
+      [disabled]="moveDisabled()"
+      (click)="move.emit()"
     >
       <ion-icon
-        slot="icon-only"
-        name="message-circle"
+        slot="start"
+        name="arrow-right"
         aria-hidden="true"
       ></ion-icon>
+      @if (next(); as next) {
+        Move to {{ next.name ?? next.slug }}
+      } @else {
+        Change status
+      }
     </ion-button>
-    @if (canMove()) {
-      <ion-button
-        class="move"
-        expand="block"
-        [disabled]="moveDisabled()"
-        (click)="move.emit()"
-      >
-        <ion-icon
-          slot="start"
-          name="arrow-right"
-          aria-hidden="true"
-        ></ion-icon>
-        @if (next(); as next) {
-          Move to {{ next.name ?? next.slug }}
-        } @else {
-          Change status
-        }
-      </ion-button>
-    }
-  </div>
-</ion-footer>
+  }
+</div>

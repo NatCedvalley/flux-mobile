@@ -116,6 +116,17 @@ win. The same Redmi reports 0 with MIUI's button navigation too, where the
 47dp bar then covers the tab bar's labels (FM-60).
 Releases (handoff screen 3k) has no tab.
 
+Task detail has no tab bar (3e–3g), but stays routed under the tabs, so it
+covers the bar rather than hiding it (FM-57). `TabsPage` writes the bar's
+height (border box, so the safe area counts; 0 while Ionic hides it for the
+keyboard) to `--flux-tab-bar-height`, and `global.scss` extends
+`app-task-detail`'s page down by that much and raises `.tabs-inner` above
+the bar's z-index. Nothing resizes, so back, iOS swipe-back and Android Back
+just slide detail away from the list and bar as they were. Hiding the bar
+would resize the pages, which jumps: an iOS swipe only navigates once it
+ends, and `NavigationEnd` comes as a back transition starts. The route's
+`coversTabBar` data makes the covered bar `inert` for screen readers.
+
 ### My Work
 
 My Work (handoff 3a) has three segments, each one `GET /dashboard/my-tasks`
@@ -422,7 +433,11 @@ The docked action bar (`task-action-bar/`) has a comment button (it opens
 the Comments tab and focuses the composer). For an EDITOR+ it also has "Move
 to <next status>", or "Change status" when there is no next one. A VIEWER
 gets no bar. The caller's role and the project's `categoryPositions` come
-from `MyProjectsService`.
+from `MyProjectsService`. The bar and the composer sit on the home
+indicator, padded by `--flux-docked-bottom` (detail's: the safe area, or 0
+while the keyboard is open), and a VIEWER's content gets the same padding.
+Detail holds them in its own `ion-footer`, because Ionic's iOS transition
+only slides a page's direct `ion-footer`'s children with its content.
 
 - List rows pass themselves in the navigation state (`[state]="{ task }"`),
   so the header fills from the row while the task loads and only the body
@@ -625,7 +640,8 @@ toast that they need a connection.
   - Delete asks first with an `ion-alert`. COMMENT_HAS_REPLIES shows the
     server's message.
 - The composer relies on Capacitor's `resize: 'body'` to stay above the
-  keyboard, and on Ionic hiding the tab bar while the keyboard is open.
+  keyboard. Its safe-area padding drops to 0 while Ionic hides the tab bar
+  for the keyboard.
 
 **Rich text.** Descriptions and comments are stored as MARKDOWN, HTML or
 EDITORJS, and older rows hold Editor.js JSON under MARKDOWN, so the format

@@ -6,14 +6,15 @@ import { TabsPage } from './tabs.page';
  * to that list. Tasks are project-scoped, hence both ids. `backHref` is where
  * the back button goes when the page is opened directly (a deep link).
  * `under` is the page the rows link from (their link is relative), such as
- * a tab's search page.
+ * a tab's search page. `coversTabBar`: the page covers the tab bar, as the
+ * design's detail has none (FM-57).
  */
 function taskDetail(tab: string, under = ''): Route {
   return {
     path: `${under}tasks/:projectId/:taskId`,
     loadComponent: () =>
       import('../pages/tasks/task-detail.page').then((m) => m.TaskDetailPage),
-    data: { backHref: `/tabs/${tab}` },
+    data: { backHref: `/tabs/${tab}`, coversTabBar: true },
   };
 }
 

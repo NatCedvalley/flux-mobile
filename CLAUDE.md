@@ -1472,7 +1472,9 @@ text doesn't apply to them.
 - Cards (task detail's, the board's, comment bubbles) and sheets
   (`ion-modal.flux-sheet`, the create sheet, `sheet.scss`) are on
   `--surface`, not `--bg`: the same white in light, a step up from the
-  `--panel` canvas in dark (3n). Headers and docked bars stay `--bg`.
+  `--panel` canvas in dark (3n). Headers and docked bars stay `--bg`. A
+  field on a sheet is filled with `--na3`, not `--n3`, which is the same
+  colour as dark `--surface`.
 - `global.scss`'s primary colour for clear buttons is wrapped in
   `:where()`, so a page's own `--color` wins (the header icons' `--na11`).
   Ionic's toolbar rules outrank a plain class too: an outline button in a

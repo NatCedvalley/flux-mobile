@@ -179,6 +179,11 @@ export type TaskPreview = Pick<
 const COMMENTS_PAGE_SIZE = 100;
 const ACTIVITY_PAGE_SIZE = 50;
 
+/** The scroll offset (px) past which Comments and Activity condense the header. */
+const COLLAPSE_AFTER = 24;
+/** The offset at or under which it opens again, also iOS's bounce at the top. */
+const EXPAND_AT = 4;
+
 /** The comment sheet open, and the comment it was opened on. */
 type CommentSheet = { mode: CommentSheetMode; comment: TaskComment };
 
@@ -272,6 +277,12 @@ export class TaskDetailPage {
   protected readonly today = computed(() => localIsoDate(this.now()));
 
   protected readonly tab = signal<DetailTab>('details');
+  /** Comments or Activity scrolled down, which condenses the header. */
+  private readonly scrolled = signal(false);
+  /** The two-line header of 3f and 3g; Details (3e) keeps the full one. */
+  protected readonly collapsed = computed(
+    () => this.tab() !== 'details' && !!this.header() && this.scrolled()
+  );
 
   private readonly ids = computed(() => ({
     projectId: this.projectId(),
@@ -412,6 +423,8 @@ export class TaskDetailPage {
   });
   private readonly composer = viewChild(CommentComposerComponent);
   private readonly content = viewChild(IonContent);
+  /** The title and chips, which condensing the header takes away. */
+  private readonly fullHead = viewChild<ElementRef<HTMLElement>>('fullHead');
 
   /** The bell: set as soon as it's tapped, put back if the server refuses. */
   protected readonly watching = linkedSignal(() =>
@@ -705,8 +718,36 @@ export class TaskDetailPage {
 
   protected select(tab: DetailTab): void {
     this.tab.set(tab);
+    // The tabs share one scroll, which keeps its offset across them.
+    if (tab === 'details') {
+      this.scrolled.set(false);
+    } else {
+      afterNextRender(() => void this.onScroll(), { injector: this.injector });
+    }
     if (tab === 'activity' && !this.activityStarted) {
       void this.startActivity();
+    }
+  }
+
+  /**
+   * Condenses the header past `COLLAPSE_AFTER`, and restores it at the top.
+   * It only condenses when the content can stay scrolled once the title and
+   * chips are gone: otherwise the taller content would clamp the scroll back
+   * to the top, and the header would open again at once.
+   */
+  protected async onScroll(): Promise<void> {
+    const content = this.content();
+    if (!content || this.tab() === 'details') {
+      return;
+    }
+    const scroll = await content.getScrollElement();
+    if (scroll.scrollTop <= EXPAND_AT) {
+      this.scrolled.set(false);
+    } else if (!this.scrolled() && scroll.scrollTop > COLLAPSE_AFTER) {
+      const freed = this.fullHead()?.nativeElement.offsetHeight ?? 0;
+      this.scrolled.set(
+        scroll.scrollHeight - scroll.clientHeight > freed + COLLAPSE_AFTER
+      );
     }
   }
 

@@ -276,6 +276,8 @@ $flux-shadows: (
     0 1px 2px rgba(0, 0, 0, 0.04),
   ),
   docked: 0 -4px 20px rgba(0, 0, 0, 0.06),
+  // Task detail's header once condensed on scroll (3f, 3g).
+  header-lift: 0 1px 8px rgba(0, 0, 0, 0.05),
   sheet: (
     light: 0 -12px 40px rgba(0, 0, 0, 0.28),
     dark: 0 -12px 40px rgba(0, 0, 0, 0.5),
@@ -558,6 +560,21 @@ $flux-type: (
   detail-status: (
     size: 13px,
     weight: 650,
+  ),
+  // The header condensed on scroll (3f, 3g): key, inline status, title.
+  detail-condensed-key: (
+      size: 12px,
+      weight: 650,
+      mono: true,
+    ),
+  detail-condensed-status: (
+    size: 11px,
+    weight: 650,
+  ),
+  detail-condensed-title: (
+    size: 13px,
+    line: 17px,
+    weight: 550,
   ),
   detail-chip: (
     size: 12.5px,

@@ -1,0 +1,64 @@
+// Handoff 3f, 3g: the header condensed to two lines in the nav row, the key
+// and status, then the title.
+:host {
+  display: block;
+  min-width: 0;
+  padding-inline-start: var(--flux-space-2);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-space-6);
+  min-width: 0;
+}
+
+.key,
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.key {
+  font: var(--flux-font-detail-condensed-key);
+  letter-spacing: var(--flux-tracking-detail-condensed-key);
+  color: var(--flux-pa11);
+}
+
+// The status in its hue, with no fill: a button for an EDITOR+, as the full
+// pill is. 24px tall, the smallest target WCAG 2.5.8 allows, but its negative
+// margins leave the line 16px, so the title sits close under it (3f).
+.status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--flux-space-4);
+  min-height: 24px;
+  margin-block: -4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: var(--flux-font-detail-condensed-status);
+  letter-spacing: var(--flux-tracking-detail-condensed-status);
+  color: var(--status-text);
+  white-space: nowrap;
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--flux-radius-pill);
+    background: var(--status-dot);
+  }
+
+  .sync {
+    font-size: 11px;
+  }
+}
+
+.title {
+  margin: 0;
+  font: var(--flux-font-detail-condensed-title);
+  letter-spacing: var(--flux-tracking-detail-condensed-title);
+  color: var(--flux-n12);
+}

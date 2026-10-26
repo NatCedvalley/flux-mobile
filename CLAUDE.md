@@ -463,6 +463,21 @@ only slides a page's direct `ion-footer`'s children with its content.
 - Pull-to-refresh reloads everything; each part has its own error state
   with Retry.
 
+**Condensed header** (FM-58, 3f/3g). Scrolling Comments or Activity more
+than 24px condenses the header, and it opens again within 4px of the top.
+Details (3e) never condenses, and all three tabs share one scroll, so a tab
+switch checks it again. Condensed, the nav row holds back, then
+`app-condensed-header` (`condensed-header/`, its own component to keep the
+page's styles under the 5 kB budget) with the key and the status inline (a
+button that opens the status sheet for an EDITOR+, at least 24px tall) over
+the title on one line, and ⋯. The bell, copy button, type
+icon, title and chips are removed rather than hidden, and the condensed
+title is the page's one `h1`. The tab row stays. It only condenses when the
+content could stay scrolled once the title and chips are gone (`.full-head`'s
+height). Otherwise the taller content clamps the scroll to the top and the
+header opens again at once. The swap is instant: animating the height would
+resize the content on every frame of a scroll.
+
 **Attachments.** `src/app/attachments/`; the backend keeps them on the
 task only (no comment attachments).
 

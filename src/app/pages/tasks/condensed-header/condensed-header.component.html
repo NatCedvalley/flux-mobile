@@ -1,0 +1,55 @@
+<div class="line">
+  <span class="key">{{ taskKey() }}</span>
+  @if (status(); as status) {
+    @if (canMove()) {
+      <button
+        type="button"
+        class="status"
+        [style]="status.colors"
+        [disabled]="statusDisabled()"
+        [attr.aria-label]="
+          'Status: ' +
+          status.name +
+          (pending() ? ', waiting to sync' : '') +
+          '. Change status'
+        "
+        aria-haspopup="dialog"
+        (click)="changeStatus.emit()"
+      >
+        <span
+          class="dot"
+          aria-hidden="true"
+        ></span>
+        {{ status.name }}
+        @if (pending()) {
+          <ion-icon
+            class="sync"
+            name="refresh-cw"
+            aria-hidden="true"
+          ></ion-icon>
+        }
+      </button>
+    } @else {
+      <span
+        class="status"
+        [style]="status.colors"
+      >
+        <span
+          class="dot"
+          aria-hidden="true"
+        ></span>
+        {{ status.name }}
+        @if (pending()) {
+          <ion-icon
+            class="sync"
+            name="refresh-cw"
+            aria-label="Waiting to sync"
+            role="img"
+          ></ion-icon>
+        }
+      </span>
+    }
+  }
+</div>
+<!-- The page's one h1 while condensed, as the full title is otherwise. -->
+<h1 class="title">{{ title() }}</h1>

@@ -858,6 +858,136 @@ describe('TaskDetailPage', () => {
     });
   });
 
+  describe('condensed header', () => {
+    /** The content's scroll element, as each test sets it. */
+    let scroll: {
+      scrollTop: number;
+      scrollHeight: number;
+      clientHeight: number;
+    };
+
+    beforeEach(() => {
+      scroll = { scrollTop: 0, scrollHeight: 2000, clientHeight: 600 };
+      vi.spyOn(IonContent.prototype, 'getScrollElement').mockImplementation(
+        () => Promise.resolve(scroll as unknown as HTMLElement)
+      );
+    });
+
+    async function scrollTo(top: number): Promise<void> {
+      scroll.scrollTop = top;
+      element()
+        .querySelector('ion-content')!
+        .dispatchEvent(new CustomEvent('ionScroll'));
+      await settle();
+    }
+    async function open(name: string): Promise<void> {
+      tab(name).click();
+      // The tab checks the scroll after it renders.
+      await settle();
+      await settle();
+    }
+    const collapsed = () =>
+      element().querySelector('ion-header')!.classList.contains('collapsed');
+
+    it('condenses once Comments scroll down, and opens again at the top', async () => {
+      await create();
+      await settle();
+      await open('Comments');
+
+      await scrollTo(100);
+      expect(collapsed()).toBe(true);
+      expect(text('app-condensed-header .key')).toBe('CHK-142');
+      expect(text('app-condensed-header .status')).toBe('In Progress');
+      expect(text('app-condensed-header .title')).toBe(
+        'Fix 3DS redirect on Safari'
+      );
+      // The title and chips go, and the nav row keeps only ⋯.
+      expect(element().querySelector('.full-head')).toBeNull();
+      expect(element().querySelector('.bell')).toBeNull();
+      expect(element().querySelector('.copy')).toBeNull();
+      expect(element().querySelector('.more')).not.toBeNull();
+      expect(element().querySelectorAll('[role=tab]')).toHaveLength(3);
+      expect(element().querySelectorAll('h1')).toHaveLength(1);
+
+      await scrollTo(20);
+      expect(collapsed()).toBe(true);
+
+      await scrollTo(0);
+      expect(collapsed()).toBe(false);
+      expect(element().querySelector('app-condensed-header')).toBeNull();
+      expect(text('.title')).toBe('Fix 3DS redirect on Safari');
+      expect(element().querySelector('.bell')).not.toBeNull();
+      expect(element().querySelectorAll('h1')).toHaveLength(1);
+    });
+
+    it('condenses Activity too, but never Details', async () => {
+      await create();
+      await settle();
+
+      await scrollTo(100);
+      expect(collapsed()).toBe(false);
+
+      // The tabs share one scroll, so Activity opens already scrolled.
+      await open('Activity');
+      expect(collapsed()).toBe(true);
+
+      await open('Details');
+      expect(collapsed()).toBe(false);
+    });
+
+    it("stays open when the content couldn't stay scrolled once condensed", async () => {
+      await create();
+      await settle();
+      await open('Comments');
+      Object.defineProperty(
+        element().querySelector('.full-head'),
+        'offsetHeight',
+        {
+          value: 120,
+        }
+      );
+
+      // 140px to scroll, but condensing frees 120 of them.
+      scroll.scrollHeight = 740;
+      await scrollTo(30);
+      expect(collapsed()).toBe(false);
+
+      scroll.scrollHeight = 800;
+      await scrollTo(40);
+      expect(collapsed()).toBe(true);
+    });
+
+    it('opens the status sheet from the condensed pill, a plain pill for a VIEWER', async () => {
+      await create({ taskId: '2' });
+      await settle();
+      await open('Comments');
+      await scrollTo(100);
+
+      const pill = element().querySelector<HTMLButtonElement>(
+        'app-condensed-header button.status'
+      )!;
+      expect(pill.getAttribute('aria-label')).toBe(
+        'Status: To Do. Change status'
+      );
+      pill.click();
+      fixture.detectChanges();
+      expect(
+        (
+          fixture.componentInstance as unknown as { sheetOpen(): boolean }
+        ).sheetOpen()
+      ).toBe(true);
+
+      await create({ taskId: '2', api: withRole('VIEWER') });
+      await settle();
+      await open('Comments');
+      await scrollTo(100);
+      expect(
+        element().querySelector('app-condensed-header button.status')
+      ).toBeNull();
+      expect(text('app-condensed-header span.status')).toBe('To Do');
+    });
+  });
+
   it('fetches subtasks for a container only', async () => {
     await create({ taskId: '6' });
     await settle();

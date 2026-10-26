@@ -79,8 +79,19 @@ ion-back-button {
   }
 }
 
+// Handoff 3f, 3g: scrolled Comments or Activity condense the header to two
+// lines in the nav row (app-condensed-header), with a lift.
+ion-header.collapsed {
+  box-shadow: var(--flux-shadow-header-lift);
+}
+
 .head {
   padding: 0 var(--flux-space-16);
+}
+
+// Holds its children's margins, so its height is all that condensing frees.
+.full-head {
+  display: flow-root;
 }
 
 .title {

@@ -1,7 +1,10 @@
 // The segmented control as on My Work: `--na3` track, the checked chip in
 // `--n1` (dark `--n5`) with a small shadow.
+// Full width: the toolbar's content is an inline-flex box, where a block
+// shrinks to its labels.
 :host {
   display: block;
+  width: 100%;
 }
 
 // Full width: in a toolbar, Ionic sizes the segment to its labels.

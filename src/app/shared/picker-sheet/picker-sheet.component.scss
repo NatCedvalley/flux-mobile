@@ -8,8 +8,10 @@
   --min-height: 0;
 }
 
+// `--na3`: the handoff's `--n3` in light, still visible on the dark sheet's
+// `--surface`, which `--n3` matches.
 ion-searchbar {
-  --background: var(--flux-n3);
+  --background: var(--flux-na3);
   --border-radius: var(--flux-radius-field);
   --box-shadow: none;
   --icon-color: var(--flux-na10);

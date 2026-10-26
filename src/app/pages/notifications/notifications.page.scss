@@ -1,5 +1,11 @@
 // Title block (handoff 3l): title, then the unread and mention counts, with
-// Mark all read at the end.
+// Mark all read at the end. The title's and the button's own 16px are the
+// gutters, so the toolbar adds none.
+.title-bar {
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
 .flux-screen-title {
   padding-bottom: 0;
 }
@@ -12,18 +18,24 @@
   color: var(--flux-na11);
 }
 
-// A 34px outline button: `check-check` and 12.5/600 in indigo.
-.mark-all {
-  --border-color: var(--flux-na6);
-  --border-radius: var(--flux-radius-button);
+// A 34px outline button (3l): `check-check` and 12.5/600 in `--n12`, a
+// `--na4` outline, radius 9. `ion-buttons ion-button` outranks Ionic's 4px
+// radius for toolbar buttons, and the border colour goes on the part
+// because in a toolbar Ionic draws an outline in the text colour.
+ion-buttons ion-button.mark-all {
+  --border-radius: var(--flux-radius-chip-select);
   --border-width: 1px;
-  --color: var(--flux-pa11);
+  --color: var(--flux-n12);
   --padding-start: var(--flux-space-10);
   --padding-end: var(--flux-space-10);
   height: 34px;
   margin-inline-end: var(--flux-space-16);
   font: var(--flux-font-inbox-action);
   letter-spacing: var(--flux-tracking-inbox-action);
+
+  &::part(native) {
+    border-color: var(--flux-na4);
+  }
 
   ion-icon {
     margin-inline-end: var(--flux-space-6);
@@ -46,7 +58,10 @@ ion-segment {
   --background: var(--flux-na3);
   width: 100%;
   min-height: 36px;
-  border-radius: var(--flux-radius-segmented);
+  // 3px above and below the 30px chip; Ionic's indicator adds 2px at
+  // the sides, so 1px here makes those 3px too.
+  padding: 3px 1px;
+  border-radius: var(--flux-radius-segmented-track);
 }
 
 ion-segment-button {
@@ -60,7 +75,8 @@ ion-segment-button {
   // nothing moves at the default size.
   --padding-start: var(--flux-space-8);
   --padding-end: var(--flux-space-8);
-  min-height: 36px;
+  min-height: 30px;
+  margin: 0;
   font: var(--flux-font-segment-label);
   letter-spacing: var(--flux-tracking-segment-label);
 
@@ -108,7 +124,8 @@ ion-item-divider {
 // Swipe actions, both at the end: Mark read in indigo (a full swipe
 // commits it) and Mute in gray.
 ion-item-option {
-  font: var(--flux-font-meta-strong);
+  font: var(--flux-font-swipe-action);
+  letter-spacing: var(--flux-tracking-swipe-action);
 
   ion-icon {
     margin-bottom: var(--flux-space-3);

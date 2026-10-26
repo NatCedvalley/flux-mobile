@@ -1,6 +1,6 @@
 // Handoff 3j: the switcher sheet's content.
 ion-toolbar {
-  --background: var(--flux-bg);
+  --background: var(--flux-surface);
   --padding-start: var(--flux-space-16);
   --padding-end: var(--flux-space-8);
 }
@@ -21,10 +21,11 @@ ion-title {
   letter-spacing: var(--flux-tracking-sheet-action);
 }
 
-// 40px field on `--n3`, radius 11.
+// 40px field on `--n3`, radius 11. Ionic pads a toolbar in a modal by 8px,
+// so 8 more puts the field on the 16px gutter.
 .search-bar {
-  --padding-start: var(--flux-space-16);
-  --padding-end: var(--flux-space-16);
+  --padding-start: var(--flux-space-8);
+  --padding-end: var(--flux-space-8);
   --padding-bottom: var(--flux-space-12);
   --min-height: 0;
 }
@@ -41,7 +42,7 @@ ion-searchbar {
 }
 
 ion-content {
-  --background: var(--flux-bg);
+  --background: var(--flux-surface);
 }
 
 ion-list {
@@ -78,13 +79,13 @@ ion-item {
   --min-height: 64px;
   --padding-start: var(--flux-space-16);
   --border-color: var(--flux-na3);
-  --background: var(--flux-bg);
+  --background: var(--flux-surface);
 
   --inner-padding-end: var(--flux-space-4);
 
   &.current {
     --background:
-      linear-gradient(var(--flux-pa2), var(--flux-pa2)), var(--flux-bg);
+      linear-gradient(var(--flux-pa2), var(--flux-pa2)), var(--flux-surface);
   }
 }
 
@@ -182,7 +183,8 @@ ion-item {
 ion-item-option.pin {
   --background: var(--flux-p9);
   min-width: 76px;
-  font: var(--flux-font-meta-strong);
+  font: var(--flux-font-swipe-action);
+  letter-spacing: var(--flux-tracking-swipe-action);
 
   ion-icon {
     font-size: 18px;

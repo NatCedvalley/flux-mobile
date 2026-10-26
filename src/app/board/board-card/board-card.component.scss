@@ -1,4 +1,5 @@
-// Handoff 3c card: radius 14, `--bg`, the card shadow, 12px padding.
+// Handoff 3c card: radius 14, `--surface` (white in light, a step up from
+// the canvas in dark), the card shadow, 12px padding.
 :host {
   position: relative;
   display: block;
@@ -34,7 +35,7 @@
   display: block;
   padding: var(--flux-space-12);
   border-radius: var(--flux-radius-card-lg);
-  background: var(--flux-bg);
+  background: var(--flux-surface);
   box-shadow: var(--flux-shadow-card);
   color: inherit;
   text-decoration: none;

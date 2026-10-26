@@ -46,7 +46,9 @@ ion-back-button {
   --color: var(--flux-primary-text);
 }
 
-ion-button.button-clear:not(.ion-color) {
+// :where() keeps this at zero specificity, so a page's own `--color` (the
+// header icon buttons' --na11) still wins (FM-56).
+:where(ion-button.button-clear:not(.ion-color)) {
   --color: var(--flux-primary-text);
 }
 
@@ -80,6 +82,8 @@ ion-alert .alert-button:not(.alert-button-role-destructive) {
  * Global because an ion-modal's content is moved out of its page.
  */
 ion-modal.flux-sheet {
+  // Sheets sit a step up from the page in dark, like cards (3n).
+  --background: var(--flux-surface);
   --height: calc(100% - 120px);
   --border-radius: var(--flux-radius-sheet);
   --box-shadow: var(--flux-shadow-sheet);
@@ -101,6 +105,7 @@ ion-modal.flux-sheet {
  * behind it (`presentingElement`), with the sheet's 22px corners.
  */
 ion-modal.flux-create-sheet {
+  --background: var(--flux-surface);
   --border-radius: var(--flux-radius-sheet);
   --box-shadow: var(--flux-shadow-sheet);
 }
@@ -118,6 +123,18 @@ ion-modal.flux-sheet.flux-sheet-auto {
     display: block;
     contain: content;
   }
+}
+
+/*
+ * Search fields (3j): 40px tall with 14px text, where Ionic's iOS searchbar
+ * is 36px with 17px. Global because Stencil renders the input, out of
+ * reach of the components' encapsulated styles; the doubled class outranks
+ * Ionic's own rule.
+ */
+ion-searchbar .searchbar-input.searchbar-input {
+  height: 40px;
+  font: var(--flux-font-search-field);
+  letter-spacing: var(--flux-tracking-search-field);
 }
 
 /*

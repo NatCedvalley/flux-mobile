@@ -196,7 +196,7 @@ app-board-card {
   flex: none;
   padding: var(--flux-space-12);
   border-radius: var(--flux-radius-card-lg);
-  background: var(--flux-bg);
+  background: var(--flux-surface);
   box-shadow: var(--flux-shadow-card);
   opacity: 0;
   animation: fade-in 150ms ease-out 200ms forwards;
@@ -267,7 +267,7 @@ ion-skeleton-text {
 // The reorder sheet: a title over four moves, like the calendar's day sheet.
 .reorder-sheet {
   padding-bottom: var(--ion-safe-area-bottom);
-  background: var(--flux-bg);
+  background: var(--flux-surface);
 
   ion-list {
     padding: 0;
@@ -275,7 +275,7 @@ ion-skeleton-text {
 
   ion-item {
     --min-height: 52px;
-    --background: var(--flux-bg);
+    --background: var(--flux-surface);
     --border-color: var(--flux-na3);
     font: var(--flux-font-sheet-item);
     letter-spacing: var(--flux-tracking-sheet-item);

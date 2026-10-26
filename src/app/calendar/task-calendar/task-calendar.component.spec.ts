@@ -139,7 +139,7 @@ describe('TaskCalendarComponent', () => {
     expect(keys('2026-10-13')).toEqual(['CHK-150']);
     expect(pill('2026-10-13', '2').classList).not.toContain('overdue');
     expect(pill('2026-10-13', '2').style.getPropertyValue('--group-dot')).toBe(
-      'var(--flux-blue9)'
+      'var(--flux-bluedot)'
     );
     for (const iso of ['2026-10-17', '2026-10-18', '2026-10-19']) {
       expect(keys(iso)).toEqual(['CHK-131']);

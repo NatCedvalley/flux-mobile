@@ -139,6 +139,11 @@ $flux-hues: (
   // To Do
   blue: (
       9: #0090ff,
+      // The To Do dot: 9 in light, 11 in dark, where 9 is hard to see (3m).
+      dot: (
+          light: #0090ff,
+          dark: #70b8ff,
+        ),
       11: (
         // Ours: the handoff's #0d74ce is 4.15:1 on its a3 wash.
         light: #0c6bbf,
@@ -316,6 +321,8 @@ $flux-radius: (
   card-lg: 14px,
   docked: 13px,
   segmented: 9px,
+  // The segmented control's track, around its 9px chips.
+  segmented-track: 11px,
   // The switcher's search field and project swatches.
   field: 11px,
   sheet: 22px,
@@ -492,6 +499,11 @@ $flux-type: (
     size: 10.5px,
     weight: 650,
   ),
+  // The labels under a swipe action's icon (3b).
+  swipe-action: (
+      size: 10.5px,
+      weight: 650,
+    ),
   // Project switcher (3j): the 38px swatch, the project name and the
   // title row's Done.
   project-swatch: (
@@ -755,6 +767,11 @@ $flux-type: (
     size: 14px,
     weight: 600,
   ),
+  // A search field's text and placeholder (3j).
+  search-field: (
+      size: 14px,
+      weight: 450,
+    ),
   // Inbox (FM-43, 3l): Mark all read, a row's lead (the actor, bold while
   // unread), its verb and its subject.
   inbox-action: (

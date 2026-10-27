@@ -174,10 +174,14 @@ app-comment-composer ion-textarea[auto-grow] {
  * gesture pill still covers the bottom of the screen. Keep at least the
  * gesture bar's height clear, so the tab bar and any docked footer stay
  * tappable. Real insets larger than that (button navigation) still win.
+ * On Android 10 and lower Capacitor injects a 0 bottom inset even with
+ * button navigation, so NavigationInsetPlugin writes the bar's height to
+ * `--flux-android-nav-inset` (FM-60).
  */
 html.plt-android {
   --ion-safe-area-bottom: max(
     var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)),
+    var(--flux-android-nav-inset, 0px),
     var(--flux-android-min-bottom-inset)
   );
 }

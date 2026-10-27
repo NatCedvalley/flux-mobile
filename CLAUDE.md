@@ -108,12 +108,49 @@ or the login page). Ionic's own handler only pops, so without it Back did
 nothing on a tab root. It runs at priority 1, so open alerts and sheets
 (100) still close first.
 
-Android draws the app under its navigation bar, and some phones (MIUI on
-Android 10) report a 0 bottom inset while the gesture pill covers the tab
-bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
+Android draws the app under its navigation bar, and on some phones (MIUI on
+Android 10) the WebView saw a 0 bottom inset while the gesture pill covered
+the tab bar. `global.scss` therefore keeps `--ion-safe-area-bottom` at least
 `--flux-android-min-bottom-inset` (16px) on Android; larger real insets still
-win. The same Redmi reports 0 with MIUI's button navigation too, where the
-47dp bar then covers the tab bar's labels (FM-60).
+win.
+
+On Android 10 and lower, Capacitor's own bottom inset is always 0 (FM-60).
+Its `SystemBars` plugin handles insets in one of two ways:
+
+- With a WebView of 140 or later and `viewport-fit=cover`, it leaves the
+  WebView under the bars and injects `--safe-area-inset-*`.
+- With an older WebView, it pads the window by the bars instead and
+  injects 0s.
+
+It injects the bottom as 0 while the keyboard is open, and asks that of a
+copy of the insets it built with `WindowInsetsCompat.Builder`. Below
+Android 11, androidx can only guess whether the keyboard is open, by
+comparing the bottom inset with the root's stable insets. The copy doesn't
+carry those, so any bottom inset reads as an open keyboard. On the Redmi
+Note 8 Pro (WebView 155) with MIUI's button navigation, the root insets had
+a 130px bottom, but the copy reported a 130px "keyboard". The top was
+injected (27px) and the bottom wasn't, so the 47dp bar covered the tab
+bar's labels.
+
+`NavigationInsetPlugin` (`MainActivity`) fills the gap:
+
+- An insets listener on the WebView reads the root insets' bottom, less
+  the window's bottom padding (all of it on an older WebView, so 0 there),
+  and 0 while the keyboard is open.
+- It writes that, in whole dp like SystemBars, to `--flux-android-nav-inset`
+  on `<html>`, which is the third value in `global.scss`'s `max()`.
+- It writes again after every page load (`onPageCommitVisible`). That
+  listener is added in `handleOnStart()`, because the bridge replaces its
+  listener list after plugins load.
+
+MIUI's full screen gestures report a 44px (16dp) bottom for the pill,
+which Capacitor dropped the same way. The plugin writes 16px, the same as
+the floor, so that layout is unchanged. Where Capacitor already gets the
+value right, the `max()` gives the same result. The Pixel 4a API 34 emulator (WebView 113) pads the window and
+stays at 16px in both modes. It reports its 3-button bar as 24dp, the same
+as the gesture bar, so the buttons overlap the app's bottom edge a little:
+that's the emulator's own report.
+
 Releases (handoff screen 3k) has no tab.
 
 Task detail has no tab bar (3e–3g), but stays routed under the tabs, so it
@@ -1176,9 +1213,12 @@ devtools Network tab.
 
 It also configures `@capacitor/keyboard` with `resize: 'body'`, so the
 body shrinks to the space above the keyboard and text fields (the edit
-sheets) stay visible. `resizeOnFullScreen` is needed too, because the
-Android WebView runs edge to edge. The settings reach the native projects
-through `cap sync` (which `npm run android`/`ios` run).
+sheets) stay visible. `resizeOnFullScreen` is also set, but under
+Capacitor 8 it does nothing on Android. The keyboard plugin skips its
+resize whenever the `SystemBars` class exists, which is always, and
+SystemBars pads the window by the keyboard itself. The setting only makes
+SystemBars log a warning. The settings reach the native projects through
+`cap sync` (which `npm run android`/`ios` run).
 
 ### Biometric unlock
 

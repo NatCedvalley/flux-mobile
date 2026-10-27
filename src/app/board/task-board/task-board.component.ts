@@ -22,6 +22,7 @@ import type { Task, WorkflowStatus } from '@core/api';
 import { type LoadedGroup, statusHue } from '@core/project-list';
 import { blockedReason } from '@core/task-status';
 import { groupHueColors } from '../../projects/project-colors';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import { impact } from '../../task-status/haptics';
 import { BoardCardComponent } from '../board-card/board-card.component';
 import { BoardDrag, type Pickup } from './board-drag';
@@ -77,6 +78,7 @@ export const GLIDE_AFTER_MS = 100;
     IonLabel,
     IonList,
     IonModal,
+    FluxSheetDirective,
     IonSkeletonText,
   ],
   host: {

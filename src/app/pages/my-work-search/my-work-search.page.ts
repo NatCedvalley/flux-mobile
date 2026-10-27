@@ -38,6 +38,7 @@ import { SEARCH_DEBOUNCE_MS, debounced } from '../../shared/debounced';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import { SearchLabelDirective } from '../../shared/search-label.directive';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 import { TaskRowComponent } from '../../shared/task-row/task-row.component';
@@ -69,6 +70,7 @@ const PAGE_SIZE = 50;
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     IonModal,
+    FluxSheetDirective,
     EmptyStateComponent,
     ErrorStateComponent,
     FilterButtonComponent,

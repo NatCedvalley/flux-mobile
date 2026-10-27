@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { IonIcon, IonModal } from '@ionic/angular';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import { ConnectivityService } from '../connectivity.service';
 import { changeCount } from '../pending-changes';
 import { PendingChangesSheetComponent } from '../pending-changes-sheet/pending-changes-sheet.component';
@@ -19,7 +20,12 @@ type Band = { icon: string; text: string; opens: boolean };
   selector: 'app-offline-banner',
   templateUrl: './offline-banner.component.html',
   styleUrls: ['./offline-banner.component.scss'],
-  imports: [IonIcon, IonModal, PendingChangesSheetComponent],
+  imports: [
+    IonIcon,
+    IonModal,
+    FluxSheetDirective,
+    PendingChangesSheetComponent,
+  ],
   host: { role: 'status' },
 })
 export class OfflineBannerComponent {

@@ -1,7 +1,8 @@
 // A stand-in for flux-iam's sign-in endpoints, for CI runs that drive the
-// app in a simulator with no backend (see .github/workflows/ios-simulator.yml).
-// Any email and password sign in, as a fixed test account. Not for local
-// development: use the real stack from the flux repo (CLAUDE.md §5).
+// app in a simulator with no backend (see .github/workflows/ios-simulator.yml),
+// and for the Playwright tests (e2e/). Any email and password sign in, as a
+// fixed test account. Not for local development: use the real stack from
+// the flux repo (CLAUDE.md §5).
 //
 //   node scripts/ci/mock-iam.mjs            # listens on :9001
 //   MOCK_IAM_PORT=9101 node scripts/ci/mock-iam.mjs

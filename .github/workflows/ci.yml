@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -33,3 +33,17 @@ jobs:
       - run: npm test -- --configuration=ci
 
       - run: npm run build
+
+      # Playwright's own dev server and the CI mocks (playwright.config.ts):
+      # the build above is production, with the real API URLs.
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore

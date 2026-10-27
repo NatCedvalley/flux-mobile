@@ -18,6 +18,7 @@ import {
 import { PushRegistration } from '@core/push';
 import { buildInfo } from '../../environments/build-info';
 import { AuthService } from '../auth/auth.service';
+import { hasFirebaseConfig } from '../firebase/firebase-config';
 import { FLUX_API } from '../providers/flux-api.token';
 import { NotificationState } from './notification-state';
 
@@ -48,7 +49,7 @@ export class PushService {
   private readonly dismissed = signal(false);
 
   /** False on web and in a build without the platform's Firebase file. */
-  readonly available = isAvailable();
+  readonly available = hasFirebaseConfig();
 
   /**
    * The OS permission for notifications, re-checked on resume. Null until
@@ -192,13 +193,4 @@ async function withAppSwitch(
   }
   const { enabled } = await NotificationState.check();
   return enabled ? 'granted' : 'denied';
-}
-
-function isAvailable(): boolean {
-  if (!Capacitor.isNativePlatform()) {
-    return false;
-  }
-  return Capacitor.getPlatform() === 'ios'
-    ? buildInfo.push.ios
-    : buildInfo.push.android;
 }

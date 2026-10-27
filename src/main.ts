@@ -1,4 +1,9 @@
-import { inject, provideAppInitializer } from '@angular/core';
+import {
+  ErrorHandler,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import {
   RouteReuseStrategy,
@@ -16,6 +21,8 @@ import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { AuthService } from './app/auth/auth.service';
 import { BackButtonService } from './app/back-button/back-button.service';
+import { CrashErrorHandler } from './app/crash/crash-error-handler';
+import { CrashReportingService } from './app/crash/crash-reporting.service';
 import { registerFluxIcons } from './app/icons/register-icons';
 import { InboxService } from './app/inbox/inbox.service';
 import { AppLockService } from './app/lock/app-lock.service';
@@ -42,6 +49,11 @@ registerFluxIcons();
 
 bootstrapApplication(AppComponent, {
   providers: [
+    // JS errors go to Crashlytics as well as the console (staging and
+    // production native builds only). The listeners add errors and promise
+    // rejections from outside Angular, which zoneless Angular never sees.
+    { provide: ErrorHandler, useClass: CrashErrorHandler },
+    provideBrowserGlobalErrorListeners(),
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     // iOS geometry for sheets, segments and items on both platforms, as the
     // design handoff requires. It also enables swipe-back on every stack.
@@ -119,6 +131,8 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(ConnectivityService).init()),
     provideAppInitializer(() => inject(StatusBarService).init()),
     provideAppInitializer(() => inject(BackButtonService).init()),
+    // Not awaited: crash reporting setup mustn't hold up the first screen.
+    provideAppInitializer(() => void inject(CrashReportingService).init()),
     // Not awaited: push setup mustn't hold up the first screen.
     provideAppInitializer(() => void inject(PushService).init()),
     // Listens for push taps here, so a cold start's tap isn't lost.

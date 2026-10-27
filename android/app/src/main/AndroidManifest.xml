@@ -39,6 +39,12 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="task_updates" />
+
+        <!-- Crashlytics collects nothing until CrashReportingService turns it
+             on, which it does only in staging and production builds. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
     </application>
 
     <!-- Permissions -->

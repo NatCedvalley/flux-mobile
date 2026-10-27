@@ -10,7 +10,8 @@
 //
 // `push` records which Firebase config files are present. The push plugin
 // crashes the app when asked for a token without one, so the app keeps push
-// off on a platform whose file was missing at build time.
+// off on a platform whose file was missing at build time. Crash reporting
+// reads it too (hasFirebaseConfig() in src/app/firebase/).
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

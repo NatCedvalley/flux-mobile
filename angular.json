@@ -129,11 +129,22 @@
             "buildTarget": "::development",
             "setupFiles": ["src/test-setup.ts"],
             "isolate": true,
-            "coverageReporters": ["text-summary", "html", "lcov"]
+            "runnerConfig": true,
+            "coverageReporters": ["text-summary", "html", "lcov"],
+            "coverageInclude": ["src/**/*.ts"],
+            "coverageExclude": [
+              "**/*.spec.ts",
+              "src/test-setup.ts",
+              "src/main.ts",
+              "src/environments/**",
+              "src/core/api/generated/**",
+              "src/core/mock/**"
+            ]
           },
           "configurations": {
             "ci": {
-              "watch": false
+              "watch": false,
+              "coverage": true
             }
           }
         },

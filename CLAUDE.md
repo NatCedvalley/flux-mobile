@@ -1519,6 +1519,27 @@ text doesn't apply to them.
 - Segmented controls are a 36px track (`--flux-radius-segmented-track`,
   11px) with the 30px chip 3px in, and full width.
 
+**Motion** (FM-59). The handoff's sheet and swipe timing, where Ionic's
+iOS defaults are 500 ms:
+
+- `flux-sheet` modals open in 280 ms and close in 220 ms on
+  `cubic-bezier(.32,.72,0,1)`. `FluxSheetDirective`
+  (`src/app/shared/flux-sheet.directive.ts`, selector
+  `ion-modal.flux-sheet`) sets their `enterAnimation` and `leaveAnimation`
+  to `sheet-animation.ts`, a copy of Ionic's iOS sheet animation, which it
+  doesn't export. A component that declares a `flux-sheet` must import the
+  directive, or the sheet silently keeps 500 ms. The copy keeps Ionic's
+  child ids (`wrapperAnimation`, `backdropAnimation`, `contentAnimation`)
+  because the sheet's drag gesture is built from `enterAnimation` and finds
+  them by id.
+- Snapping between breakpoints after a drag, `setCurrentBreakpoint()` and
+  drag-to-dismiss stay Ionic's 500 ms: the gesture passes its own duration.
+- The create sheet (a card modal) keeps Ionic's card animation, which also
+  re-lays out the page behind on rotation; a custom animation turns that off.
+- A swiped row settles in 180 ms ease-out (`global.scss`, overriding
+  `ion-item-sliding`'s transition). The expandable button's growth on a
+  full swipe is still Ionic's 0.6 s.
+
 Text follows the OS text size (iOS Dynamic Type, Android's font size) up to
 120%, as the handoff asks. `variables.scss` multiplies every type role's size
 and line height by `--flux-text-scale` (1 by default), except a role marked

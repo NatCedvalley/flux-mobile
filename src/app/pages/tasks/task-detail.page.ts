@@ -101,6 +101,7 @@ import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import {
   type PickerItem,
   PickerSheetComponent,
@@ -218,6 +219,7 @@ type ListView<T> = {
     IonContent,
     IonFooter,
     IonModal,
+    FluxSheetDirective,
     IonRefresher,
     IonRefresherContent,
     IonInfiniteScroll,

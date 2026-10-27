@@ -20,6 +20,7 @@ import { AuthService } from '../../auth/auth.service';
 import { AppLockService } from '../../lock/app-lock.service';
 import { unsentChangesMessage } from '../../offline/pending-changes';
 import { WriteQueueService } from '../../offline/write-queue.service';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import {
   PickerSheetComponent,
   type PickerItem,
@@ -49,6 +50,7 @@ const THEME_ITEMS: readonly (PickerItem & { id: ThemePreference })[] = [
     IonNote,
     IonToggle,
     IonModal,
+    FluxSheetDirective,
     PickerSheetComponent,
     RouterLink,
   ],

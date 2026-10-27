@@ -102,6 +102,7 @@ import { FLUX_API } from '../../providers/flux-api.token';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
 import { FilterButtonComponent } from '../../shared/filter-button/filter-button.component';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { SkeletonRowsComponent } from '../../shared/skeleton-rows/skeleton-rows.component';
 import { CreateTaskFabComponent } from '../../task-create/create-task-fab/create-task-fab.component';
@@ -175,6 +176,7 @@ const TAB_BAR = 'tab-bar';
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     IonModal,
+    FluxSheetDirective,
     IonRefresher,
     IonRefresherContent,
     CreateTaskFabComponent,

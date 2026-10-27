@@ -50,6 +50,7 @@ import { AuthService } from '../../auth/auth.service';
 import { projectSwatch, projectTint } from '../../projects/project-colors';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { DateSheetComponent } from '../../shared/date-sheet/date-sheet.component';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import {
   type PickerItem,
   PickerSheetComponent,
@@ -103,6 +104,7 @@ const typeLabel = (type: string) => type[0] + type.slice(1).toLowerCase();
     IonTextarea,
     IonToggle,
     IonModal,
+    FluxSheetDirective,
     CreateChipComponent,
     PickerSheetComponent,
     DateSheetComponent,

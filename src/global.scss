@@ -126,6 +126,15 @@ ion-modal.flux-sheet.flux-sheet-auto {
 }
 
 /*
+ * A swiped row settles (opens, closes or snaps back) in the handoff's 180ms
+ * ease-out, where Ionic's is 500ms. The element selector outranks Ionic's
+ * `.item-sliding-active-slide .item`. Sheet timing is FluxSheetDirective's.
+ */
+ion-item-sliding.item-sliding-active-slide .item {
+  transition: transform 180ms ease-out;
+}
+
+/*
  * Search fields (3j): 40px tall with 14px text, where Ionic's iOS searchbar
  * is 36px with 17px. Global because Stencil renders the input, out of
  * reach of the components' encapsulated styles; the doubled class outranks

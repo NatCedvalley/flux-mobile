@@ -45,6 +45,7 @@ import { WriteQueueService } from '../../offline/write-queue.service';
 import { groupHueColors } from '../../projects/project-colors';
 import { FLUX_API } from '../../providers/flux-api.token';
 import { ErrorStateComponent } from '../../shared/error-state/error-state.component';
+import { FluxSheetDirective } from '../../shared/flux-sheet.directive';
 import { ProjectTaskRowComponent } from '../../shared/project-task-row/project-task-row.component';
 import { TaskEditService } from '../../task-edit/task-edit.service';
 import { impact } from '../../task-status/haptics';
@@ -93,6 +94,7 @@ const TAB_BAR = 'tab-bar';
     IonIcon,
     IonList,
     IonModal,
+    FluxSheetDirective,
     ErrorStateComponent,
     ProjectTaskRowComponent,
     UnscheduledListComponent,

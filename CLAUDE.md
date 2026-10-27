@@ -24,6 +24,25 @@ over HTTP once that integration is built.
 - A husky pre-commit hook runs `lint-staged` (ESLint `--fix` then Prettier)
   on staged files and blocks the commit if either fails
 
+**Coverage floors** (FM-61) live in `vitest-base.config.mts` (the test
+target's `runnerConfig`) and are checked whenever coverage runs:
+`npm run test:coverage` and the `ci` configuration, which turns coverage
+on. Plain `npm test` doesn't measure it.
+
+| Scope       | Statements | Branches | Functions | Lines |
+| ----------- | ---------- | -------- | --------- | ----- |
+| All of src  | 92         | 85       | 89        | 92    |
+| `src/core/` | 95         | 89       | 92        | 95    |
+
+- Each floor is the baseline measured on 2026-10-27, rounded down. Raise
+  them as coverage grows; don't lower one to land a change.
+- They aren't in angular.json, because its `coverageThresholds` can't hold
+  a per-folder floor. The file also raises `testTimeout` to 15 s: under
+  coverage, the Projects list's paging specs passed 5 s on a slow PC.
+- `coverageInclude` is all of `src/**/*.ts`, so a file no spec imports
+  counts as 0% and lowers the total. Left out: specs, `test-setup.ts`,
+  `main.ts`, `src/environments/`, the generated API types and the mock API.
+
 Bundle identifier / app name: `asia.justflux.mobile` / **Flux** (set in
 `capacitor.config.ts` and mirrored into `android/` and `ios/` by `cap sync`).
 
@@ -1405,7 +1424,7 @@ Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
 e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 — see [§6 Environments](#6-environments).
 
-Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/index.html` and `coverage/lcov.info`, no enforced threshold), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
+Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/app/index.html` and `coverage/app/lcov.info`, and fails below the floors in [§2](#2-stack)), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
 
 ### Reaching the local backend
 
@@ -1635,6 +1654,12 @@ reproducible locally:
 | Lint   | `npm run lint`                         |
 | Test   | `npm test -- --configuration=ci`       |
 | Build  | `npm run build` (production web build) |
+
+The Test step measures coverage (the `ci` configuration turns it on) and
+fails below the floors in [§2](#2-stack), printing which one was missed,
+e.g. `Coverage for branches (85.61%) does not meet global threshold (86%)`.
+Coverage about doubles the step's test run in CI (56 s to 114 s). Run the same command
+locally to check before pushing.
 
 Any failing step fails the job. The `main: require CI` ruleset (repo
 Settings → Rules) requires the `verify` check to pass on `main`, with no

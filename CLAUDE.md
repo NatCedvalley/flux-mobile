@@ -1658,7 +1658,7 @@ reproducible locally:
 The Test step measures coverage (the `ci` configuration turns it on) and
 fails below the floors in [§2](#2-stack), printing which one was missed,
 e.g. `Coverage for branches (85.61%) does not meet global threshold (86%)`.
-Coverage adds about a quarter to the step's time. Run the same command
+Coverage about doubles the step's test run in CI (56 s to 114 s). Run the same command
 locally to check before pushing.
 
 Any failing step fails the job. The `main: require CI` ruleset (repo

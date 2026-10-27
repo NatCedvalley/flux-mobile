@@ -13,11 +13,11 @@ export default defineConfig({
     coverage: {
       thresholds: {
         statements: 92,
-        branches: 85,
+        branches: 86,
         functions: 89,
         lines: 92,
         'src/core/**': {
-          statements: 95,
+          statements: 96,
           branches: 89,
           functions: 92,
           lines: 95,

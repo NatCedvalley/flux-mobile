@@ -21,6 +21,9 @@ over HTTP once that integration is built.
   `vi.mock` of a plugin could arrive after another spec had already loaded
   the real one (seen in `app-lock.service.spec.ts`). It roughly doubles
   the suite's time, still under 30 s.
+- End-to-end: **Playwright** (FM-62), `e2e/*.e2e.ts` (the suffix keeps
+  them out of `ng test`), Chromium at the iPhone 17's 402×874. See
+  [End-to-end tests](#end-to-end-tests).
 - A husky pre-commit hook runs `lint-staged` (ESLint `--fix` then Prettier)
   on staged files and blocks the commit if either fails
 
@@ -1424,7 +1427,7 @@ Each platform also has `:staging` and (Android/iOS only) `:prod` variants,
 e.g. `npm run android:staging`, `npm run ios:prod`, `npm run start:staging`
 — see [§6 Environments](#6-environments).
 
-Other useful commands: `npm test` (Vitest), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/app/index.html` and `coverage/app/lcov.info`, and fails below the floors in [§2](#2-stack)), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
+Other useful commands: `npm test` (Vitest), `npm run e2e` (Playwright, see [End-to-end tests](#end-to-end-tests)), `npm run test:coverage` (Vitest with coverage — writes a text summary plus `coverage/app/index.html` and `coverage/app/lcov.info`, and fails below the floors in [§2](#2-stack)), `npm run lint` / `npm run lint:fix` (ESLint), `npm run format` / `npm run format:check` (Prettier), `npm run build` (production web build to `www/`, alias `npm run build:staging`/`build:dev` for the other environments), `npm run sync` (`ionic cap sync`, copies web build into both native projects — builds production), `npm run api:generate` (regenerate API types from the running backend — see [§4](#4-api-layer)).
 
 ### Reaching the local backend
 
@@ -1450,7 +1453,34 @@ and everything else to flux-operations at `apiBaseUrl` (dev:
   ("Allow local HTTP in Debug") adds `NSAllowsLocalNetworking` to the built
   `Info.plist`; Release builds never carry it.
 
-To reproduce what CI runs on a PR locally, run `npm run format:check`, `npm run lint`, `npm test -- --configuration=ci` and `npm run build` — see [§9 CI](#9-ci).
+### End-to-end tests
+
+`npm run e2e` runs Playwright (`playwright.config.ts`) over the flows
+staff use daily (FM-62), one file each in `e2e/`: sign in to My Work;
+change CI-2's status from task detail's docked button, then Undo; post a
+comment on CI-1; create a task from My Work (CI-4) and open it from the
+toast; open the Inbox's unread CI-2 assignment, which marks it read, opens
+detail and drops the tab badge from 2 to 1.
+
+- Playwright starts the CI mocks (`scripts/ci/mock-iam.mjs` on 9001,
+  `mock-operations.mjs` on 9003, the dev environment's URLs) and
+  `npm start` on 4200, the dev build. The mocks are never reused: with a
+  real backend on 9001 or 9003, the run stops with "port already used"
+  rather than test real data. An `ng serve` already on 4200 is reused
+  locally, never in CI.
+- The operations mock keeps what the tests write (status changes, comments,
+  created tasks, notification reads) as an overlay on its fixtures, and
+  `POST /__mock/reset` drops it. The `e2e/fixtures.ts` `test` resets it
+  before every test, so the tests run one at a time (`workers: 1`).
+- Each test signs in (`signIn()`), since the web session is in memory.
+- Locators are roles, labels and text, which pierce Ionic's open shadow
+  roots; the app has no test ids. An `ion-item button`'s visible text is
+  slotted, so match a row by its accessible name, not `toContainText`.
+- No retries: a flaky flow fails. A failure keeps a trace in
+  `test-results/` (`npx playwright show-trace <path>/trace.zip`).
+- Once per machine: `npx playwright install chromium`.
+
+To reproduce what CI runs on a PR locally, run `npm run format:check`, `npm run lint`, `npm test -- --configuration=ci`, `npm run build` and `npm run e2e` — see [§9 CI](#9-ci).
 
 ## 6. Environments
 
@@ -1654,6 +1684,13 @@ reproducible locally:
 | Lint   | `npm run lint`                         |
 | Test   | `npm test -- --configuration=ci`       |
 | Build  | `npm run build` (production web build) |
+| E2E    | `npm run e2e` (Playwright, dev build)  |
+
+The E2E step first installs Chromium with its system packages
+(`npx playwright install --with-deps chromium`), and on a failure uploads
+`test-results/` (each failed test's trace) as the `playwright-traces`
+artifact. It serves its own dev build, because the Build step's production
+build calls the real API URLs. See [End-to-end tests](#end-to-end-tests).
 
 The Test step measures coverage (the `ci` configuration turns it on) and
 fails below the floors in [§2](#2-stack), printing which one was missed,
@@ -1699,7 +1736,9 @@ flux-operations on `localhost:9003` (one project, `CI`, with its
 workflow statuses (one closed) and three tasks dated around today, so My
 Work and the Projects list have rows; CI-1 has a comment thread and
 activity, and the Inbox three notifications, so the design screenshots
-below aren't empty states; it answers GETs only), and
+below aren't empty states; it also takes the writes the
+[end-to-end tests](#end-to-end-tests) make, but the simulator scripts only
+read, so they always get the fixtures), and
 `scripts/ci/ios-swipe-back.sh` drives
 the simulator with [idb](https://fbidb.io/) (`idb-companion` from Homebrew,
 `fb-idb` on Python 3.11). It signs in, opens the first task on the Projects

@@ -3,7 +3,12 @@
 // simulator with no backend (see .github/workflows/ios-simulator.yml). CI-1
 // has a comment thread and activity, and there are three notifications, so
 // the design screenshots (ios-design-screens.sh) aren't empty states. It
-// doesn't check the token, and answers GETs only. Not for local
+// doesn't check the token.
+//
+// The Playwright tests (e2e/) also write: a status change, a comment, a new
+// task and a notification read change what later GETs answer, until
+// `POST /__mock/reset`, which each test sends first. The simulator scripts
+// only read, so they always get the fixtures below. Not for local
 // development: use the real stack from the flux repo (CLAUDE.md §5).
 //
 //   node scripts/ci/mock-operations.mjs            # listens on :9003
@@ -210,7 +215,7 @@ function notifications() {
 function notificationsFor(query) {
   const types = query.get('type')?.split(',') ?? [];
   const isRead = query.get('isRead');
-  return notifications().filter(
+  return currentNotifications().filter(
     (n) =>
       (!types.length || types.includes(n.type)) &&
       (isRead === null || String(n.isRead) === isRead)
@@ -282,6 +287,135 @@ function tasks() {
   ];
 }
 
+/** What the e2e tests' writes changed, on top of the fixtures. */
+function fresh() {
+  return {
+    // Task id → { slug, resolution } of its last status change.
+    status: {},
+    // Ids of notifications marked read.
+    read: new Set(),
+    // Task id → the comments posted on it.
+    added: {},
+    // Tasks created, after the fixtures.
+    created: [],
+  };
+}
+
+let state = fresh();
+
+/** The task fields a status slug sets. */
+function statusFields(slug) {
+  const status = STATUSES.find((s) => s.slug === slug);
+  return {
+    status: status.slug,
+    statusName: status.name,
+    statusCategory: status.category,
+  };
+}
+
+/** The fixture tasks and created ones, with their status changes. */
+function currentTasks() {
+  return [...tasks(), ...state.created].map((t) => {
+    const change = state.status[t.id];
+    return change
+      ? {
+          ...t,
+          ...statusFields(change.slug),
+          resolution: change.resolution,
+        }
+      : t;
+  });
+}
+
+function currentNotifications() {
+  return notifications().map((n) =>
+    state.read.has(n.id) ? { ...n, isRead: true } : n
+  );
+}
+
+/** A write's answer, or null for a 404. */
+function write(method, path, body) {
+  if (method === 'POST' && path === '/__mock/reset') {
+    state = fresh();
+    return [204, null];
+  }
+  const status = path.match(/^\/projects\/[^/]+\/tasks\/([^/]+)\/status$/);
+  if (method === 'PATCH' && status) {
+    if (!STATUSES.some((s) => s.slug === body.status)) {
+      return [
+        400,
+        { code: 'VALIDATION_ERROR', message: `No status ${body.status}` },
+      ];
+    }
+    if (!currentTasks().some((t) => t.id === status[1])) {
+      return null;
+    }
+    state.status[status[1]] = {
+      slug: body.status,
+      resolution: body.resolution,
+    };
+    return [200, currentTasks().find((t) => t.id === status[1])];
+  }
+  const comment = path.match(/^\/projects\/[^/]+\/tasks\/([^/]+)\/comments$/);
+  if (method === 'POST' && comment) {
+    const added = (state.added[comment[1]] ??= []);
+    const posted = {
+      id: `ci-c-new-${added.length + 1}`,
+      taskId: comment[1],
+      authorId: ME.accountId,
+      authorFirstName: ME.firstName,
+      authorLastName: ME.lastName,
+      body: body.body,
+      bodyFormat: body.bodyFormat ?? 'MARKDOWN',
+      createdAt: new Date().toISOString(),
+      reactions: [],
+      replies: [],
+    };
+    added.push(posted);
+    return [201, posted];
+  }
+  if (method === 'POST' && path === '/projects/ci-p1/tasks') {
+    const number =
+      Math.max(...currentTasks().map((t) => Number(t.taskKey.slice(3)))) + 1;
+    const assignee = [ME, MIRA, JAE].find(
+      (p) => p.accountId === body.assigneeId
+    );
+    const task = {
+      id: `ci-t${number}`,
+      ...PROJECT,
+      taskKey: `CI-${number}`,
+      title: body.title,
+      description: body.description,
+      type: body.type ?? 'TASK',
+      priority: body.priority ?? 'MEDIUM',
+      // No status is the default, so a new task starts in the first TODO.
+      ...statusFields('todo'),
+      dueDate: body.dueDate,
+      assignees: assignee ? [assignee] : [],
+      reporterId: ME.accountId,
+      reporterFirstName: ME.firstName,
+      reporterLastName: ME.lastName,
+      labels: [],
+      createdAt: new Date().toISOString(),
+    };
+    state.created.push(task);
+    return [201, task];
+  }
+  const read = path.match(/^\/notifications\/([^/]+)\/read$/);
+  if (method === 'PATCH' && read) {
+    const found = notifications().find((n) => n.id === read[1]);
+    if (!found) {
+      return [
+        404,
+        { code: 'NOTIFICATION_NOT_FOUND', message: 'Notification not found' },
+      ];
+    }
+    state.read.add(found.id);
+    return [200, { ...found, isRead: true }];
+  }
+  return null;
+}
+
 function page(content) {
   return {
     content,
@@ -294,12 +428,12 @@ function page(content) {
   };
 }
 
-function route(method, path, query) {
+function route(method, path, query, body) {
   if (method !== 'GET') {
-    return null;
+    return write(method, path, body);
   }
   if (path === '/dashboard/my-tasks') {
-    return [200, page(query.get('scope') === 'watching' ? [] : tasks())];
+    return [200, page(query.get('scope') === 'watching' ? [] : currentTasks())];
   }
   if (path === '/projects/mine') {
     return [200, page(MY_PROJECTS)];
@@ -315,7 +449,7 @@ function route(method, path, query) {
     return [
       200,
       page(
-        tasks().filter(
+        currentTasks().filter(
           (t) => t.projectId === list[1] && (!status || t.status === status)
         )
       ),
@@ -338,7 +472,7 @@ function route(method, path, query) {
   }
   const task = path.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)$/);
   if (task) {
-    const found = tasks().find(
+    const found = currentTasks().find(
       (t) => t.projectId === task[1] && t.id === task[2]
     );
     return found ? [200, found] : null;
@@ -354,7 +488,10 @@ function route(method, path, query) {
       activities: page(first ? activities() : []),
       attachments: [],
       children: [],
-      comments: page(first ? comments() : []),
+      comments: page([
+        ...(first ? comments() : []),
+        ...(state.added[sub[1]] ?? []),
+      ]),
       subscription: { subscribed: false },
     };
     return [200, bodies[sub[2]]];
@@ -376,20 +513,35 @@ createServer((req, res) => {
   // Harmless on native (CapacitorHttp skips CORS); lets a browser use it too.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  // A browser's preflight only lets GET, HEAD and POST through without this.
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE'
+  );
   if (req.method === 'OPTIONS') {
     res.writeHead(204).end();
     return;
   }
-  const [status, body] = route(req.method, path, url.searchParams) ?? [
-    404,
-    { code: 'NOT_FOUND', message: `No mock for ${req.method} ${path}` },
-  ];
-  console.log(
-    `${new Date().toISOString()} ${req.method} ${req.url} → ${status}`
-  );
-  // Drain the request body before answering.
-  req.resume();
+  const chunks = [];
+  req.on('data', (chunk) => chunks.push(chunk));
   req.on('end', () => {
+    const text = Buffer.concat(chunks).toString();
+    const [status, body] = route(
+      req.method,
+      path,
+      url.searchParams,
+      text ? JSON.parse(text) : {}
+    ) ?? [
+      404,
+      { code: 'NOT_FOUND', message: `No mock for ${req.method} ${path}` },
+    ];
+    console.log(
+      `${new Date().toISOString()} ${req.method} ${req.url} → ${status}`
+    );
+    if (body === null) {
+      res.writeHead(status).end();
+      return;
+    }
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
   });

@@ -156,6 +156,16 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             archive
 
+      # Kept before the upload, so a dSYM Crashlytics reports missing can
+      # still be uploaded by hand from its console (dSYMs → Upload).
+      - name: Keep dSYMs
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-dsyms
+          path: ${{ runner.temp }}/Flux.xcarchive/dSYMs/
+          if-no-files-found: error
+          retention-days: 30
+
       # Crashlytics symbolicates native crashes with these. The tool comes
       # with the firebase-ios-sdk package the archive resolved.
       - name: Upload dSYMs to Crashlytics

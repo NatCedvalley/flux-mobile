@@ -1440,7 +1440,13 @@ Firebase project and config files as push. `CrashReportingService`
   - The release workflow checks that the APK has the build ID.
 - **iOS.** The SPM package needs `symlink: true`, like push, so on Windows
   edit `Package.swift` by hand. The release workflow uploads the archive's
-  dSYMs with the firebase-ios-sdk checkout's `upload-symbols`.
+  dSYMs with the firebase-ios-sdk checkout's `upload-symbols`, and keeps
+  them as the `ios-dsyms` artifact (30 days).
+  - In the FM-63 check, build 11's `App.app.dSYM` was logged as
+    submitted, yet Crashlytics listed it as missing when its first crash
+    came in. That was the iOS app's first Crashlytics report. If a crash
+    stays unprocessed, download `ios-dsyms` from that run and upload the
+    zip under Crashlytics → dSYMs.
 - **Testing it.** Release builds can't be driven from devtools, and a
   staging build can't sign in (placeholder URLs). So:
   1. On a throwaway branch, add buttons that call
@@ -1941,7 +1947,7 @@ team `44UNNHB3V6`, that its version and build number are the expected
 ones, and that it carries `GoogleService-Info.plist` and is signed with
 `aps-environment` production. It writes these to the job summary, and uploads
 `flux-<configuration>-<version>-<buildNumber>.ipa` as an `ios-release`
-artifact (kept 30 days). If `upload` is set, `xcrun altool --upload-app`
+artifact and the archive's dSYMs as `ios-dsyms` (both kept 30 days). If `upload` is set, `xcrun altool --upload-app`
 sends it to App Store Connect; the build then appears under TestFlight once
 Apple finishes processing. The keychain, profile and API key are removed at
 the end of every run.

@@ -68,8 +68,9 @@ src/
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push, opening
               one and the Inbox's permission card (push/), crash
-              reporting and its error handler (crash/), the Firebase
-              config check push and crash share (firebase/), the Inbox's unread
+              reporting and its error handler (crash/), usage
+              analytics (analytics/), the Firebase config check and
+              reporting gate they share (firebase/), the Inbox's unread
               counts and its row (inbox/), the connection state, the
               offline banner and toasts, the read cache's wipe, the
               write queue, its replay and the pending changes sheet
@@ -1392,7 +1393,8 @@ Firebase project and config files as push. `CrashReportingService`
 
 - **When it's on.** Only in staging and production builds that pass
   `hasFirebaseConfig()` (`src/app/firebase/`, which push uses too: native,
-  with the platform's file in `buildInfo.push`).
+  with the platform's file in `buildInfo.push`). That gate is
+  `firebaseReportingEnabled()`, which usage analytics shares.
   - Collection is off natively until the service turns it on:
     `firebase_crashlytics_collection_enabled` in `AndroidManifest.xml`,
     `FirebaseCrashlyticsCollectionEnabled` in `Info.plist`.
@@ -1457,6 +1459,70 @@ Firebase project and config files as push. `CrashReportingService`
      console a few minutes later. To see the user id, throw while signed
      in and relaunch before signing out.
   4. Then delete the branch.
+
+### Usage analytics
+
+Firebase Analytics through `@capacitor-firebase/analytics` (FM-64), in the
+same Firebase project and config files as push and Crashlytics.
+`AnalyticsService` (`src/app/analytics/`, an app initializer that isn't
+awaited) drives it. It sends usage counts only: there's no user id (Firebase
+counts users by its own per-install id) and nothing a person typed or reads.
+
+- **When it's on.** The same gate as crash reporting
+  (`firebaseReportingEnabled()`): staging and production builds with the
+  platform's file. A dev build that has the file only calls
+  `setEnabled({ enabled: false })`, since the switch is kept on the device.
+  On web, and in builds without the file, the plugin is never called.
+- **Native flags.** All off until the service turns collection on, or off
+  for good:
+  - `firebase_analytics_collection_enabled` (`AndroidManifest.xml`) and
+    `FIREBASE_ANALYTICS_COLLECTION_ENABLED` (`Info.plist`).
+  - Automatic screen reporting
+    (`google_analytics_automatic_screen_reporting_enabled`,
+    `FirebaseAutomaticScreenReportingEnabled`): the app has one activity and
+    one view controller, so the service logs screens itself.
+  - Nothing for ads: `google_analytics_adid_collection_enabled` and
+    `google_analytics_default_allow_ad_personalization_signals` (Android),
+    `GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` (iOS). The
+    manifest removes the ad permissions the SDK adds (`AD_ID`,
+    `ACCESS_ADSERVICES_AD_ID`, `ACCESS_ADSERVICES_ATTRIBUTION`), and iOS links
+    `FirebaseAnalyticsCore` without the IDFA through the plugin's
+    `AnalyticsWithoutAdIdSupport` SPM trait (`packageTraits` in
+    `capacitor.config.ts`, which needs `swiftToolsVersion` 6.1). Like push,
+    the SPM package needs `symlink: true`, so on Windows edit
+    `Package.swift` by hand.
+- **User property.** `environment` is `environment.name` (`staging` or
+  `prod`). flux-web's apps are in the same project, and this tells mobile
+  staging from production. Register it in GA as a user-scoped custom
+  dimension to filter reports by it.
+- **Screens.** On every `NavigationEnd`, `setCurrentScreen()` with the
+  matched routes' patterns joined (`screenName()`, `src/core/analytics/`),
+  e.g. `tabs/inbox/tasks/:projectId/:taskId`. They come from the route
+  config, never the URL, so ids and query strings stay out. A screen shown
+  while setting up waits for collection to be on.
+- **Events.** `AnalyticsEvent` (`src/core/analytics/`) types every event,
+  and each parameter is one of a fixed set of values. `log()` is a no-op
+  while off, waits for the setup, and only logs a failure.
+
+  | Event           | Params                                                                            | Logged                                                                                                       |
+  | --------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+  | `login`         | `method`: `password`                                                              | `AuthService.login()` succeeds                                                                               |
+  | `status_change` | `outcome`: `sent` or `queued`; `category`: the new status's category              | `TaskStatusService.move()` sends or queues a change; not its Undo, nor the board's quiet move after a create |
+  | `comment_post`  | `outcome`: `sent` or `queued`                                                     | `CommentService.post()` posts or queues a comment                                                            |
+  | `task_create`   | `type`: the task type (`TASK`, `BUG`, …)                                          | `TaskCreateService.create()`'s POST succeeds                                                                 |
+  | `push_open`     | `from`: `tap` (the system's notification) or `toast`; `target`: `task` or `inbox` | `PushOpenService` opens a push (`notification_open` is reserved by Firebase)                                 |
+  | `offline_start` | none                                                                              | `ConnectivityService.online` turns false, or a cold start finds it so                                        |
+
+- **Checking it in DebugView** (Firebase console → Analytics → DebugView):
+  - Android: `adb shell setprop debug.firebase.analytics.app asia.justflux.mobile`,
+    then run a production build with `google-services.json` present
+    (`npm run android:prod`, or the release APK). `setprop … .none.` turns
+    it off again. A dev build sends nothing.
+  - iOS (no Mac here): on a throwaway branch, set the
+    `/google/firebase/debug_mode` and `/google/measurement/debug_mode` user
+    defaults to true in `AppDelegate` (what `-FIRDebugEnabled` does), run
+    the iOS release workflow from it, install from TestFlight, and delete
+    the branch afterwards.
 
 ### Regenerating API types
 

@@ -17,6 +17,7 @@ import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular';
 import { HttpFluxApi } from '@core/api';
 import { MemoryTokenStore } from '@core/auth';
 import { CachingFluxApi, MemoryCacheStore } from '@core/offline';
+import { AnalyticsService } from './app/analytics/analytics.service';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { AuthService } from './app/auth/auth.service';
@@ -133,6 +134,8 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => inject(BackButtonService).init()),
     // Not awaited: crash reporting setup mustn't hold up the first screen.
     provideAppInitializer(() => void inject(CrashReportingService).init()),
+    // Not awaited either: usage analytics, under the same gate (FM-64).
+    provideAppInitializer(() => void inject(AnalyticsService).init()),
     // Not awaited: push setup mustn't hold up the first screen.
     provideAppInitializer(() => void inject(PushService).init()),
     // Listens for push taps here, so a cold start's tap isn't lost.

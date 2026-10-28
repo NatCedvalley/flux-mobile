@@ -29,9 +29,17 @@ const config: CapacitorConfig = {
   experimental: {
     ios: {
       spm: {
+        // Package traits need Swift tools 6.1 (Xcode 16.3+).
+        swiftToolsVersion: '6.1',
+        // Analytics without the IDFA (no AdSupport), as Android leaves out
+        // the advertising ID (FM-64).
+        packageTraits: {
+          '@capacitor-firebase/analytics': ['AnalyticsWithoutAdIdSupport'],
+        },
         // The Firebase plugins' SPM packages need this to avoid a package
         // identity collision (their READMEs; Capacitor CLI 8.4+).
         packageOptions: {
+          '@capacitor-firebase/analytics': { symlink: true },
           '@capacitor-firebase/crashlytics': { symlink: true },
           '@capacitor-firebase/messaging': { symlink: true },
         },

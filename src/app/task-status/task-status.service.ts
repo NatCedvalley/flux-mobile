@@ -4,6 +4,7 @@ import type { Task, WorkflowStatus } from '@core/api';
 import type { QueuedStatus } from '@core/offline';
 import { ApiError } from '@core/auth';
 import { withStatus } from '@core/task-status';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import {
   OFFLINE_MESSAGES,
@@ -58,6 +59,7 @@ export class TaskStatusService {
   private readonly connectivity = inject(ConnectivityService);
   private readonly writeQueue = inject(WriteQueueService);
   private readonly offlineToast = inject(OfflineToastService);
+  private readonly analytics = inject(AnalyticsService);
 
   /**
    * Moves `task` to `to`, with a resolution when `to` is closed. Offline, or
@@ -102,6 +104,7 @@ export class TaskStatusService {
     }
     // An earlier conflict or failure is moot now, and would keep the glyph.
     void this.writeQueue.dropUnsent(taskId);
+    this.logged('sent', to, undoable);
     const fresh = await this.refetch(projectId, taskId);
     if (fresh) {
       view.apply(fresh);
@@ -142,10 +145,25 @@ export class TaskStatusService {
     // Not fetched again: offline, that would be the saved copy from before.
     const moved = withStatus(task, to, resolution);
     this.changes.report(moved);
+    this.logged('queued', to, undoable);
     if (undoable) {
       await this.offerUndo(task, moved, to, view);
     }
     return 'queued';
+  }
+
+  /** Counts a change the person made; an Undo (not `undoable`) isn't one. */
+  private logged(
+    outcome: 'sent' | 'queued',
+    to: WorkflowStatus,
+    undoable: boolean
+  ): void {
+    if (undoable) {
+      void this.analytics.log({
+        name: 'status_change',
+        params: { outcome, category: to.category },
+      });
+    }
   }
 
   /** Offers to move `moved` back to the status `task` had. */

@@ -1,9 +1,11 @@
+import type { MockInstance } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
 import { type TaskDraft, emptyDraft } from '@core/task-create';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { FLUX_API } from '../providers/flux-api.token';
 import { TaskCreateService } from './task-create.service';
@@ -13,6 +15,7 @@ describe('TaskCreateService', () => {
   let toast: { create: ReturnType<typeof vi.fn> };
   let service: TaskCreateService;
   let online: ReturnType<typeof signal<boolean>>;
+  let log: MockInstance<AnalyticsService['log']>;
   const draft = (fields: Partial<TaskDraft> = {}): TaskDraft => ({
     ...emptyDraft('p1'),
     title: 'New one',
@@ -31,6 +34,7 @@ describe('TaskCreateService', () => {
       ],
     });
     service = TestBed.inject(TaskCreateService);
+    log = vi.spyOn(TestBed.inject(AnalyticsService), 'log');
   });
 
   it('creates the task', async () => {
@@ -39,6 +43,10 @@ describe('TaskCreateService', () => {
     expect(created?.task).toMatchObject({ taskKey: 'CHK-161', type: 'BUG' });
     expect(created?.labelsFailed).toBe(false);
     expect(toast.create).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'task_create',
+      params: { type: 'BUG' },
+    });
   });
 
   it('attaches the labels after the create, one at a time, by id', async () => {
@@ -123,6 +131,7 @@ describe('TaskCreateService', () => {
     expect(toast.create).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Task quota exceeded' })
     );
+    expect(log).not.toHaveBeenCalled();
   });
 
   it('says the task was created, with Open', async () => {

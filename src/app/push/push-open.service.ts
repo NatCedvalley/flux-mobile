@@ -13,6 +13,7 @@ import {
 import { NavController, ToastController } from '@ionic/angular';
 import { ApiError } from '@core/auth';
 import { type PushMessage, parsePushData, pushTarget } from '@core/push';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { AuthService } from '../auth/auth.service';
 import { InboxService } from '../inbox/inbox.service';
 import { AppLockService } from '../lock/app-lock.service';
@@ -21,6 +22,9 @@ import { PushService } from './push.service';
 
 /** How long a foreground push's toast stays. */
 const TOAST_MS = 5000;
+
+/** Where a push was opened from: the system's notification, or our toast. */
+type PushSource = 'tap' | 'toast';
 
 /**
  * What a push does once it's here: a tap opens its task on the Inbox stack
@@ -42,11 +46,16 @@ export class PushOpenService {
   private readonly toasts = inject(ToastController);
   private readonly injector = inject(Injector);
   private readonly available = inject(PushService).available;
+  private readonly analytics = inject(AnalyticsService);
 
-  /** A tap waiting to be opened. Its message is null if it couldn't be read. */
-  private readonly pending = signal<{ message: PushMessage | null } | null>(
-    null
-  );
+  /**
+   * A tap (or a toast's Open) waiting to be opened. Its message is null if
+   * it couldn't be read.
+   */
+  private readonly pending = signal<{
+    message: PushMessage | null;
+    from: PushSource;
+  } | null>(null);
   private toast: HTMLIonToastElement | undefined;
 
   /** Runs once at startup, where push is available. */
@@ -56,7 +65,7 @@ export class PushOpenService {
     }
     void FirebaseMessaging.addListener(
       'notificationActionPerformed',
-      ({ notification }) => this.open(parsePushData(notification.data))
+      ({ notification }) => this.open(parsePushData(notification.data), 'tap')
     );
     void FirebaseMessaging.addListener(
       'notificationReceived',
@@ -76,7 +85,7 @@ export class PushOpenService {
             this.pending.set(null);
           } else if (!this.lock.locked()) {
             this.pending.set(null);
-            untracked(() => void this.go(tap.message));
+            untracked(() => void this.go(tap.message, tap.from));
           }
         },
         { injector: this.injector }
@@ -85,19 +94,26 @@ export class PushOpenService {
   }
 
   /** A tap, or a toast's Open. The last one wins. */
-  private open(message: PushMessage | null): void {
-    this.pending.set({ message });
+  private open(message: PushMessage | null, from: PushSource): void {
+    this.pending.set({ message, from });
   }
 
   /**
    * Lands on the Inbox first, so the task opens over it: back returns
    * there, and Android's Back pops instead of leaving the app.
    */
-  private async go(message: PushMessage | null): Promise<void> {
+  private async go(
+    message: PushMessage | null,
+    from: PushSource
+  ): Promise<void> {
     if (message) {
       void this.markRead(message.notificationId);
     }
     const target = pushTarget(message);
+    void this.analytics.log({
+      name: 'push_open',
+      params: { from, target: target.kind },
+    });
     await this.nav.navigateBack('/tabs/inbox', { animated: false });
     if (target.kind === 'task') {
       await this.nav.navigateForward([
@@ -140,7 +156,7 @@ export class PushOpenService {
       message: notification.body,
       duration: TOAST_MS,
       position: 'top',
-      buttons: [{ text: 'Open', handler: () => this.open(message) }],
+      buttons: [{ text: 'Open', handler: () => this.open(message, 'toast') }],
     });
     void this.toast?.dismiss();
     this.toast = toast;

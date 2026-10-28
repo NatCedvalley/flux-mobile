@@ -41,7 +41,7 @@
             ],
             "scripts": [],
             "browser": "src/main.ts",
-            "externalDependencies": ["firebase/messaging"]
+            "externalDependencies": ["firebase/analytics", "firebase/messaging"]
           },
           "configurations": {
             "production": {

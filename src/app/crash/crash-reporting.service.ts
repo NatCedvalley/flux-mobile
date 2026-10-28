@@ -2,11 +2,13 @@ import { Injectable, Injector, effect, inject } from '@angular/core';
 import { FirebaseCrashlytics } from '@capacitor-firebase/crashlytics';
 import { App } from '@capacitor/app';
 import { crashKeys, exceptionReport } from '@core/crash';
-import type { AppEnvironment } from '../../environments/environment.model';
 import { buildInfo } from '../../environments/build-info';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../auth/auth.service';
-import { hasFirebaseConfig } from '../firebase/firebase-config';
+import {
+  firebaseReportingEnabled,
+  hasFirebaseConfig,
+} from '../firebase/firebase-config';
 
 /**
  * Crash reporting with Firebase Crashlytics: native crashes, and the JS
@@ -23,7 +25,7 @@ export class CrashReportingService {
   private readonly injector = inject(Injector);
 
   /** Whether reports are sent from this build. */
-  readonly enabled = hasFirebaseConfig() && environmentName() !== 'dev';
+  readonly enabled = firebaseReportingEnabled();
 
   /** Runs once at startup. Never rejects: a failure leaves reports off. */
   async init(): Promise<void> {
@@ -78,12 +80,4 @@ export class CrashReportingService {
       console.error('Recording an error failed', failure);
     }
   }
-}
-
-/**
- * Widened to every environment's name: each build's file narrows it to its
- * own, so comparing it with another name wouldn't compile.
- */
-function environmentName(): AppEnvironment['name'] {
-  return environment.name;
 }

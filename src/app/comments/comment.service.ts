@@ -3,6 +3,7 @@ import { ToastController } from '@ionic/angular';
 import type { CommentReaction, TaskComment } from '@core/api';
 import { ApiError } from '@core/auth';
 import { reactionToggles } from '@core/comments';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import {
   OFFLINE_MESSAGES,
@@ -38,6 +39,7 @@ export class CommentService {
   private readonly online = inject(ConnectivityService).online;
   private readonly offlineToast = inject(OfflineToastService);
   private readonly writeQueue = inject(WriteQueueService);
+  private readonly analytics = inject(AnalyticsService);
 
   /**
    * Posts a Markdown comment. The response has no reactions or replies.
@@ -54,13 +56,22 @@ export class CommentService {
       return this.enqueue(target, body, mentionedAccountIds, false);
     }
     try {
-      return await this.api.addTaskComment(target.projectId, target.taskId, {
-        body,
-        bodyFormat: 'MARKDOWN',
-        mentionedAccountIds: mentionedAccountIds.length
-          ? [...mentionedAccountIds]
-          : undefined,
+      const comment = await this.api.addTaskComment(
+        target.projectId,
+        target.taskId,
+        {
+          body,
+          bodyFormat: 'MARKDOWN',
+          mentionedAccountIds: mentionedAccountIds.length
+            ? [...mentionedAccountIds]
+            : undefined,
+        }
+      );
+      void this.analytics.log({
+        name: 'comment_post',
+        params: { outcome: 'sent' },
       });
+      return comment;
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
         return this.enqueue(target, body, mentionedAccountIds, true);
@@ -166,6 +177,10 @@ export class CommentService {
       await this.toast('Couldn’t post the comment', target.anchor);
       return undefined;
     }
+    void this.analytics.log({
+      name: 'comment_post',
+      params: { outcome: 'queued' },
+    });
     return 'queued';
   }
 

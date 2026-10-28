@@ -1,9 +1,11 @@
+import type { MockInstance } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
 import type { Task, WorkflowStatus } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { WriteQueueService } from '../offline/write-queue.service';
 import { FLUX_API } from '../providers/flux-api.token';
@@ -30,6 +32,7 @@ describe('TaskStatusService', () => {
   let writeQueue: WriteQueueService;
   let changes: TaskChangesService;
   let service: TaskStatusService;
+  let log: MockInstance<AnalyticsService['log']>;
   let task: Task;
   let shown: Task | undefined;
   const view = { apply: (t: Task) => (shown = t) };
@@ -50,6 +53,7 @@ describe('TaskStatusService', () => {
     writeQueue = TestBed.inject(WriteQueueService);
     changes = TestBed.inject(TaskChangesService);
     service = TestBed.inject(TaskStatusService);
+    log = vi.spyOn(TestBed.inject(AnalyticsService), 'log');
     await writeQueue.queue.load('a1');
     task = await api.getTask('p1', '1'); // CHK-142, in progress
     shown = undefined;
@@ -76,6 +80,10 @@ describe('TaskStatusService', () => {
       undefined,
       expect.any(Function)
     );
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'status_change',
+      params: { outcome: 'sent', category: 'TODO' },
+    });
   });
 
   it('queues a change offline without trying the server', async () => {
@@ -95,6 +103,10 @@ describe('TaskStatusService', () => {
       state: 'queued',
     });
     expect(undo.offer).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'status_change',
+      params: { outcome: 'queued', category: 'DONE' },
+    });
   });
 
   it('queues a change that gets no response', async () => {
@@ -105,6 +117,10 @@ describe('TaskStatusService', () => {
     expect(shown?.status).toBe('todo');
     expect(writeQueue.items()).toHaveLength(1);
     expect(toasts.create).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'status_change',
+      params: { outcome: 'queued', category: 'TODO' },
+    });
   });
 
   it('queues a change to a task with one still queued, even online', async () => {
@@ -130,6 +146,8 @@ describe('TaskStatusService', () => {
 
     expect(shown?.status).toBe('in_progress');
     expect(writeQueue.items()).toEqual([]);
+    // The change is counted, its Undo isn't.
+    expect(log).toHaveBeenCalledTimes(1);
   });
 
   it('still puts back a change the server refuses', async () => {
@@ -144,6 +162,7 @@ describe('TaskStatusService', () => {
     expect(toasts.create).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Nope' })
     );
+    expect(log).not.toHaveBeenCalled();
   });
 
   it('puts the change back when there is no account to queue it for', async () => {

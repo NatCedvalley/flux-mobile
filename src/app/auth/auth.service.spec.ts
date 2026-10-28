@@ -2,7 +2,8 @@ import type { MockInstance } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { AuthSession, MemoryTokenStore } from '@core/auth';
+import { ApiError, AuthSession, MemoryTokenStore } from '@core/auth';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { TOKEN_STORE } from '../providers/token-store.token';
 import { AuthService } from './auth.service';
@@ -70,5 +71,22 @@ describe('AuthService', () => {
     TestBed.tick();
 
     expect(resume).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts a sign-in, and not a refused one', async () => {
+    const log = vi.spyOn(TestBed.inject(AnalyticsService), 'log');
+    const login = vi
+      .spyOn(AuthSession.prototype, 'login')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new ApiError(401));
+
+    await service.login('ada@acme.test', 'secret');
+    await expect(service.login('ada@acme.test', 'wrong')).rejects.toThrow();
+
+    expect(login).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'login',
+      params: { method: 'password' },
+    });
   });
 });

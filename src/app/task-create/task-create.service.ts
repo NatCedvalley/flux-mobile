@@ -4,6 +4,7 @@ import type { Label, Task } from '@core/api';
 import { ApiError } from '@core/auth';
 import { type TaskDraft, createTaskBody } from '@core/task-create';
 import type { PickedFile } from '../attachments/file-source.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import {
   OFFLINE_MESSAGES,
@@ -38,6 +39,7 @@ export class TaskCreateService {
   private readonly toasts = inject(ToastController);
   private readonly online = inject(ConnectivityService).online;
   private readonly offlineToast = inject(OfflineToastService);
+  private readonly analytics = inject(AnalyticsService);
 
   /**
    * Creates `draft`, attaching its labels (`labels` are the project's, to
@@ -62,6 +64,10 @@ export class TaskCreateService {
       await this.error(error);
       return undefined;
     }
+    void this.analytics.log({
+      name: 'task_create',
+      params: { type: draft.type },
+    });
     const labelIds = draft.labelNames.flatMap((name) => {
       const id = labels.find((l) => l.name === name)?.id;
       return id ? [id] : [];

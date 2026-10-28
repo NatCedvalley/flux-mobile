@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
 import { AuthClient, AuthSession } from '@core/auth';
 import { environment } from '../../environments/environment';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { TOKEN_STORE } from '../providers/token-store.token';
 
@@ -25,6 +26,7 @@ export class AuthService {
   );
   private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly state = signal(this.session.state);
   private restoring?: Promise<void>;
 
@@ -70,8 +72,9 @@ export class AuthService {
   }
 
   /** Rejects with `ApiError` when the server refuses or can't be reached. */
-  login(email: string, password: string): Promise<void> {
-    return this.session.login(email, password);
+  async login(email: string, password: string): Promise<void> {
+    await this.session.login(email, password);
+    void this.analytics.log({ name: 'login', params: { method: 'password' } });
   }
 
   /** Ends the session on the server where possible; always signs out here. */

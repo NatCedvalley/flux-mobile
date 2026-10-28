@@ -1,9 +1,11 @@
+import type { MockInstance } from 'vitest';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular';
 import type { TaskComment } from '@core/api';
 import { ApiError } from '@core/auth';
 import { InMemoryFluxApi } from '@core/mock/in-memory-flux-api';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { WriteQueueService } from '../offline/write-queue.service';
 import { FLUX_API } from '../providers/flux-api.token';
@@ -15,6 +17,7 @@ describe('CommentService', () => {
   let online: ReturnType<typeof signal<boolean>>;
   let writeQueue: WriteQueueService;
   let service: CommentService;
+  let log: MockInstance<AnalyticsService['log']>;
   const target = {
     projectId: 'p1',
     taskId: '1',
@@ -37,6 +40,7 @@ describe('CommentService', () => {
     writeQueue = TestBed.inject(WriteQueueService);
     await writeQueue.queue.load('a1');
     service = TestBed.inject(CommentService);
+    log = vi.spyOn(TestBed.inject(AnalyticsService), 'log');
   });
 
   it('posts Markdown with the mentions', async () => {
@@ -49,6 +53,19 @@ describe('CommentService', () => {
       bodyFormat: 'MARKDOWN',
       mentionedAccountIds: ['a2'],
     });
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'comment_post',
+      params: { outcome: 'sent' },
+    });
+  });
+
+  it('counts nothing when the post is refused', async () => {
+    vi.spyOn(api, 'addTaskComment').mockRejectedValue(
+      new ApiError(403, { message: 'No' })
+    );
+
+    expect(await service.post(target, 'Hi', [])).toBeUndefined();
+    expect(log).not.toHaveBeenCalled();
   });
 
   it('leaves the mentions out when there are none', async () => {
@@ -77,6 +94,10 @@ describe('CommentService', () => {
         }),
       ]);
       expect(writeQueue.items()[0]).not.toHaveProperty('attempted');
+      expect(log).toHaveBeenCalledExactlyOnceWith({
+        name: 'comment_post',
+        params: { outcome: 'queued' },
+      });
     });
 
     it('queues a comment whose POST got no response, as attempted', async () => {
@@ -109,6 +130,7 @@ describe('CommentService', () => {
         message: 'Couldn’t post the comment',
         positionAnchor: 'bar',
       });
+      expect(log).not.toHaveBeenCalled();
     });
 
     it('says edits, deletes and reactions need a connection', async () => {

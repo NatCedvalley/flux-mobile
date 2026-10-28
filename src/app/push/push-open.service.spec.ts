@@ -5,6 +5,7 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { NavController, ToastController } from '@ionic/angular';
 import type { FluxApi } from '@core/api';
 import { ApiError } from '@core/auth';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { AuthService } from '../auth/auth.service';
 import { InboxService } from '../inbox/inbox.service';
 import { AppLockService } from '../lock/app-lock.service';
@@ -36,6 +37,7 @@ describe('PushOpenService', () => {
   let nav: { navigateBack: Mock; navigateForward: Mock };
   let toast: { create: Mock };
   let toasts: { present: Mock; dismiss: Mock }[];
+  let log: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,6 +63,7 @@ describe('PushOpenService', () => {
       navigateForward: vi.fn().mockResolvedValue(true),
     };
     toasts = [];
+    log = vi.fn().mockResolvedValue(undefined);
     toast = {
       create: vi.fn(() => {
         const t = {
@@ -83,6 +86,7 @@ describe('PushOpenService', () => {
         { provide: FLUX_API, useValue: { markNotificationRead: markRead } },
         { provide: NavController, useValue: nav },
         { provide: ToastController, useValue: toast },
+        { provide: AnalyticsService, useValue: { log } },
       ],
     });
   });
@@ -137,6 +141,10 @@ describe('PushOpenService', () => {
     expect(markRead).toHaveBeenCalledWith('n1');
     expect(inbox.refresh).toHaveBeenCalled();
     expect(inbox.listsChanged).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      name: 'push_open',
+      params: { from: 'tap', target: 'task' },
+    });
   });
 
   it('waits for the lock to be passed', async () => {
@@ -168,6 +176,7 @@ describe('PushOpenService', () => {
 
     expect(opened()).toEqual([]);
     expect(markRead).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -191,6 +200,10 @@ describe('PushOpenService', () => {
 
     expect(opened()).toEqual(['/tabs/inbox']);
     expect(markRead).toHaveBeenCalledWith('n1');
+    expect(log).toHaveBeenCalledWith({
+      name: 'push_open',
+      params: { from: 'tap', target: 'inbox' },
+    });
   });
 
   it('opens the Inbox for data it could not read, with nothing to mark', async () => {
@@ -256,6 +269,10 @@ describe('PushOpenService', () => {
         ['/tabs/inbox/tasks', 'p1', 't1'],
       ]);
       expect(markRead).toHaveBeenCalledWith('n1');
+      expect(log).toHaveBeenCalledExactlyOnceWith({
+        name: 'push_open',
+        params: { from: 'toast', target: 'task' },
+      });
     });
 
     it('replaces the toast of an earlier push', async () => {

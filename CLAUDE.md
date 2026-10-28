@@ -1406,6 +1406,14 @@ Firebase project and config files as push. `CrashReportingService`
   - The account's UUID as the user id, set once the session is restored
     and cleared (an empty id) on sign-out, the way push watches the
     account.
+  - Crashlytics keeps one user id per app launch, not per error
+    (`CrashlyticsReport.Session.User`; events have none), and reads it
+    when the next launch sends the report. So a sign-out also takes the
+    id off errors recorded earlier in that launch while signed in, and a
+    report shows whoever was signed in when its launch ended (seen in the
+    FM-63 console check, SDK 20.0.3). Keeping the id after sign-out would
+    tag the next person's errors with the previous account, so it's
+    still cleared.
   - No name, email or other personal data.
 - **JS errors.** `CrashErrorHandler` is the app's `ErrorHandler`.
   - It logs to the console as Angular's does, then calls `record()`,
@@ -1435,11 +1443,14 @@ Firebase project and config files as push. `CrashReportingService`
   dSYMs with the firebase-ios-sdk checkout's `upload-symbols`.
 - **Testing it.** Release builds can't be driven from devtools, and a
   staging build can't sign in (placeholder URLs). So:
-  1. On a throwaway branch, add buttons to the login page that call
-     `FirebaseCrashlytics.crash({ message })` and throw an `Error`.
+  1. On a throwaway branch, add buttons that call
+     `FirebaseCrashlytics.crash({ message })` and throw an `Error`, on the
+     login page and on a signed-in page such as About.
   2. Run both release workflows from that branch, and press the buttons.
-  3. Reports reach the console on the next launch after a crash, and
-     within minutes for an error. Then delete the branch.
+  3. Crashes and errors are both sent on the next launch, and show in the
+     console a few minutes later. To see the user id, throw while signed
+     in and relaunch before signing out.
+  4. Then delete the branch.
 
 ### Regenerating API types
 

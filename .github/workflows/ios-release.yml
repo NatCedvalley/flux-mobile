@@ -156,6 +156,23 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             archive
 
+      # Crashlytics symbolicates native crashes with these. The tool comes
+      # with the firebase-ios-sdk package the archive resolved.
+      - name: Upload dSYMs to Crashlytics
+        run: |
+          UPLOAD_SYMBOLS="$RUNNER_TEMP/DerivedData/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
+          DSYMS="$RUNNER_TEMP/Flux.xcarchive/dSYMs"
+          if [ ! -x "$UPLOAD_SYMBOLS" ]; then
+            echo "::error::Crashlytics' upload-symbols not found at $UPLOAD_SYMBOLS"
+            exit 1
+          fi
+          if [ ! -d "$DSYMS/App.app.dSYM" ]; then
+            echo "::error::App.app.dSYM is missing from the archive"
+            ls -la "$DSYMS" || true
+            exit 1
+          fi
+          "$UPLOAD_SYMBOLS" -gsp ios/App/App/GoogleService-Info.plist -p ios "$DSYMS"
+
       - name: Export IPA
         run: |
           xcodebuild -exportArchive \
@@ -213,6 +230,7 @@ jobs:
             echo "- CFBundleVersion: \`$ACTUAL_BUILD\`"
             echo "- Signing identity: \`$AUTHORITY\`"
             echo "- Push: aps-environment \`$APS_ENVIRONMENT\`"
+            echo "- Crashlytics: dSYMs uploaded"
           } >> "$GITHUB_STEP_SUMMARY"
 
           mkdir -p "$RUNNER_TEMP/artifacts"

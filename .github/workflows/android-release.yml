@@ -136,6 +136,13 @@ jobs:
           CERTS=$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK")
           echo "$CERTS"
 
+          # The Crashlytics Gradle plugin's build ID (its mapping file id):
+          # without it, the SDK refuses to start once Firebase is configured.
+          if ! "$BUILD_TOOLS/aapt2" dump resources "$APK" | grep -q com.google.firebase.crashlytics.mapping_file_id; then
+            echo "::error::The APK has no Crashlytics build ID (com.google.firebase.crashlytics.mapping_file_id)"
+            exit 1
+          fi
+
           AAB_OUTPUT=$(jarsigner -verify "$AAB")
           echo "$AAB_OUTPUT"
           if ! echo "$AAB_OUTPUT" | grep -q "jar verified"; then
@@ -149,6 +156,7 @@ jobs:
             echo "- Configuration: \`$CONFIGURATION\`"
             echo "- versionName: \`$VERSION_NAME\`"
             echo "- versionCode: \`$VERSION_CODE\`"
+            echo "- Crashlytics: build ID present (R8 is off, so there's no mapping file)"
             echo "- Signing certificate:"
             echo ""
             echo '```'

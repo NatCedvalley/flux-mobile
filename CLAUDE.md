@@ -67,7 +67,9 @@ src/
               upload, opening and the file sources (attachments/), the
               project board and its drag (board/), the project calendar
               and its Unscheduled drawer (calendar/), push, opening
-              one and the Inbox's permission card (push/), the Inbox's unread
+              one and the Inbox's permission card (push/), crash
+              reporting and its error handler (crash/), the Firebase
+              config check push and crash share (firebase/), the Inbox's unread
               counts and its row (inbox/), the connection state, the
               offline banner and toasts, the read cache's wipe, the
               write queue, its replay and the pending changes sheet
@@ -1382,6 +1384,63 @@ so iOS needs an FCM token rather than the raw APNs one. `PushService`
   does. At the top it can't meet the Undo toast, the tab bar or task
   detail's docked bar. A newer push replaces it.
 
+### Crash reporting
+
+Crashlytics through `@capacitor-firebase/crashlytics` (FM-63), in the same
+Firebase project and config files as push. `CrashReportingService`
+(`src/app/crash/`, an app initializer that isn't awaited) drives it.
+
+- **When it's on.** Only in staging and production builds that pass
+  `hasFirebaseConfig()` (`src/app/firebase/`, which push uses too: native,
+  with the platform's file in `buildInfo.push`).
+  - Collection is off natively until the service turns it on:
+    `firebase_crashlytics_collection_enabled` in `AndroidManifest.xml`,
+    `FirebaseCrashlyticsCollectionEnabled` in `Info.plist`.
+  - `setEnabled()` is kept on the device, so a dev build that has the
+    file calls `setEnabled({ enabled: false })` and nothing else. Without
+    that, a dev build installed over a staging one would keep reporting.
+  - On web, and in builds without the file, the plugin is never called.
+- **What a report carries.**
+  - Four custom keys from `crashKeys()` (`src/core/crash/`): `environment`,
+    `version`, `build` (`App.getInfo().build`) and `commit`.
+  - The account's UUID as the user id, set once the session is restored
+    and cleared (an empty id) on sign-out, the way push watches the
+    account.
+  - No name, email or other personal data.
+- **JS errors.** `CrashErrorHandler` is the app's `ErrorHandler`.
+  - It logs to the console as Angular's does, then calls `record()`,
+    which sends `recordException`. Both `ErrorHandler` and
+    `provideBrowserGlobalErrorListeners()` are set in `main.ts`.
+  - The app is zoneless, so without the listeners an uncaught error or an
+    unhandled rejection from a `void promise` outside Angular's callbacks
+    never reaches the handler.
+  - `exceptionReport()` turns `error.stack` (V8 on Android, JavaScriptCore
+    on iOS) into frames. The bundles are minified onto a few lines, so
+    each frame's function name carries its column.
+  - Crashlytics doesn't apply JS source maps, so these traces stay minified
+    (accepted with the tooling choice).
+  - Errors caught and logged with `console.error` aren't reported.
+- **Android.** `android/app/build.gradle` applies
+  `com.google.firebase.crashlytics` inside the same `google-services.json`
+  check as the google-services plugin. They must match: once Firebase is
+  configured, the SDK refuses to start without the plugin's build ID
+  (`com.google.firebase.crashlytics.mapping_file_id`, all zeros while
+  there's no mapping).
+  - R8 is off (`minifyEnabled false`), so there's no mapping file and
+    native traces are already readable. If R8 is turned on, the plugin
+    uploads the mapping by itself.
+  - The release workflow checks that the APK has the build ID.
+- **iOS.** The SPM package needs `symlink: true`, like push, so on Windows
+  edit `Package.swift` by hand. The release workflow uploads the archive's
+  dSYMs with the firebase-ios-sdk checkout's `upload-symbols`.
+- **Testing it.** Release builds can't be driven from devtools, and a
+  staging build can't sign in (placeholder URLs). So:
+  1. On a throwaway branch, add buttons to the login page that call
+     `FirebaseCrashlytics.crash({ message })` and throw an `Error`.
+  2. Run both release workflows from that branch, and press the buttons.
+  3. Reports reach the console on the next launch after a crash, and
+     within minutes for an error. Then delete the branch.
+
 ### Regenerating API types
 
 `npm run api:generate` rewrites `src/core/api/generated/` from two specs,
@@ -1797,7 +1856,9 @@ Steps: `npm ci`, writing `android/app/google-services.json` from its secret
 that configuration (which fails if `build-info.ts` has push off for Android),
 `npx cap sync android`, then `./gradlew bundleRelease assembleRelease` on
 JDK 21. It checks that the
-APK verifies with `apksigner` and the AAB with `jarsigner`, writes the signing
+APK verifies with `apksigner` and the AAB with `jarsigner`, and that the APK
+carries the Crashlytics build ID (see [Crash reporting](#crash-reporting)).
+It writes the signing
 certificate's SHA-256 to the job summary, and uploads
 `flux-<configuration>-<version>-<versionCode>.apk` and `.aab` as one
 `android-release` artifact (kept 30 days). Install the APK on a device with
@@ -1861,7 +1922,8 @@ Steps on a `macos-26` runner: `npm ci`, writing
 configuration (which fails if `build-info.ts` has push off for iOS),
 `npx cap sync ios`, then the signing certificate is imported into a temporary
 keychain and the provisioning profile installed. `xcodebuild archive` builds
-the `App` scheme's Release configuration, and `xcodebuild -exportArchive`
+the `App` scheme's Release configuration, its dSYMs go to Crashlytics (see
+[Crash reporting](#crash-reporting)), and `xcodebuild -exportArchive`
 exports an `.ipa` using `ios/App/ExportOptions.plist`. The job checks with
 `codesign` that the app is signed by an Apple Distribution certificate for
 team `44UNNHB3V6`, that its version and build number are the expected

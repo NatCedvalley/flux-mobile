@@ -29,9 +29,10 @@ const config: CapacitorConfig = {
   experimental: {
     ios: {
       spm: {
-        // The push plugin's SPM package needs this to avoid a package
-        // identity collision (its README; Capacitor CLI 8.4+).
+        // The Firebase plugins' SPM packages need this to avoid a package
+        // identity collision (their READMEs; Capacitor CLI 8.4+).
         packageOptions: {
+          '@capacitor-firebase/crashlytics': { symlink: true },
           '@capacitor-firebase/messaging': { symlink: true },
         },
       },

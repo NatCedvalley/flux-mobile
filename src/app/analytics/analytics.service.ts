@@ -4,7 +4,11 @@ import {
   NavigationEnd,
   Router,
 } from '@angular/router';
-import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+import {
+  ConsentStatus,
+  ConsentType,
+  FirebaseAnalytics,
+} from '@capacitor-firebase/analytics';
 import { type AnalyticsEvent, screenName } from '@core/analytics';
 import { environment } from '../../environments/environment';
 import {
@@ -12,6 +16,13 @@ import {
   hasFirebaseConfig,
 } from '../firebase/firebase-config';
 import { ConnectivityService } from '../offline/connectivity.service';
+
+/** Denied before collection starts: the app's usage is never for ads. */
+const AD_CONSENT = [
+  ConsentType.AdStorage,
+  ConsentType.AdUserData,
+  ConsentType.AdPersonalization,
+] as const;
 
 /**
  * Usage analytics with Firebase Analytics (FM-64): screen views by route
@@ -81,6 +92,16 @@ export class AnalyticsService {
       return false;
     }
     try {
+      if (this.enabled) {
+        // These outrank the native defaults, which Firebase was seen to
+        // override (non_personalized_ads back to 0 on a Redmi).
+        for (const type of AD_CONSENT) {
+          await FirebaseAnalytics.setConsent({
+            type,
+            status: ConsentStatus.Denied,
+          });
+        }
+      }
       // The switch is kept on the device, so a dev build installed over a
       // staging one turns it back off.
       await FirebaseAnalytics.setEnabled({ enabled: this.enabled });

@@ -62,6 +62,14 @@
         <meta-data
             android:name="google_analytics_default_allow_ad_personalization_signals"
             android:value="false" />
+        <!-- Consent defaults for a cold start; AnalyticsService also denies
+             these, which outranks them. -->
+        <meta-data
+            android:name="google_analytics_default_allow_ad_storage"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_user_data"
+            android:value="false" />
     </application>
 
     <!-- Permissions -->

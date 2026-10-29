@@ -1483,7 +1483,16 @@ counts users by its own per-install id) and nothing a person typed or reads.
     one view controller, so the service logs screens itself.
   - Nothing for ads: `google_analytics_adid_collection_enabled` and
     `google_analytics_default_allow_ad_personalization_signals` (Android),
-    `GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` (iOS). The
+    `GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS` (iOS), plus
+    the ad storage and ad user data defaults
+    (`google_analytics_default_allow_ad_storage`, `…_ad_user_data`;
+    `GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE`, `…_AD_USER_DATA`).
+    Defaults alone aren't enough: on a Redmi, Firebase set
+    `non_personalized_ads` back to 0 a second after launch. So before
+    turning collection on, the service also denies `AD_STORAGE`,
+    `AD_USER_DATA` and `AD_PERSONALIZATION` with `setConsent()`, which
+    outranks them; if that fails, collection stays off. Analytics storage
+    stays granted. The
     manifest removes the ad permissions the SDK adds (`AD_ID`,
     `ACCESS_ADSERVICES_AD_ID`, `ACCESS_ADSERVICES_ATTRIBUTION`), and iOS links
     `FirebaseAnalyticsCore` without the IDFA through the plugin's

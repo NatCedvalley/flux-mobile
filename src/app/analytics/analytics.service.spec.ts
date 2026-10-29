@@ -8,8 +8,16 @@ import { environment } from '../../environments/environment';
 import { ConnectivityService } from '../offline/connectivity.service';
 import { AnalyticsService } from './analytics.service';
 
+// The consent enums keep the plugin's own string values.
 vi.mock('@capacitor-firebase/analytics', () => ({
+  ConsentType: {
+    AdPersonalization: 'AD_PERSONALIZATION',
+    AdStorage: 'AD_STORAGE',
+    AdUserData: 'AD_USER_DATA',
+  },
+  ConsentStatus: { Denied: 'DENIED' },
   FirebaseAnalytics: {
+    setConsent: vi.fn(),
     setEnabled: vi.fn(),
     setUserProperty: vi.fn(),
     setCurrentScreen: vi.fn(),
@@ -35,6 +43,7 @@ describe('AnalyticsService', () => {
     buildInfo.push = { android: true, ios: true };
     vi.spyOn(Capacitor, 'isNativePlatform').mockImplementation(() => native);
     vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+    vi.mocked(FirebaseAnalytics.setConsent).mockResolvedValue();
     vi.mocked(FirebaseAnalytics.setEnabled).mockResolvedValue();
     vi.mocked(FirebaseAnalytics.setUserProperty).mockResolvedValue();
     vi.mocked(FirebaseAnalytics.setCurrentScreen).mockResolvedValue();
@@ -122,6 +131,7 @@ describe('AnalyticsService', () => {
     expect(FirebaseAnalytics.setEnabled).toHaveBeenCalledWith({
       enabled: false,
     });
+    expect(FirebaseAnalytics.setConsent).not.toHaveBeenCalled();
     expect(FirebaseAnalytics.setUserProperty).not.toHaveBeenCalled();
     expect(FirebaseAnalytics.setCurrentScreen).not.toHaveBeenCalled();
     expect(FirebaseAnalytics.logEvent).not.toHaveBeenCalled();
@@ -144,6 +154,40 @@ describe('AnalyticsService', () => {
       });
     }
   );
+
+  it('denies ad consent before turning collection on', async () => {
+    await create().init();
+
+    const consent = vi.mocked(FirebaseAnalytics.setConsent).mock;
+    expect(consent.calls.map(([options]) => options)).toEqual([
+      { type: 'AD_STORAGE', status: 'DENIED' },
+      { type: 'AD_USER_DATA', status: 'DENIED' },
+      { type: 'AD_PERSONALIZATION', status: 'DENIED' },
+    ]);
+    const [turnedOn] = vi.mocked(FirebaseAnalytics.setEnabled).mock
+      .invocationCallOrder;
+    expect(Math.max(...consent.invocationCallOrder)).toBeLessThan(turnedOn);
+  });
+
+  it('stays off when ad consent cannot be denied', async () => {
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    vi.mocked(FirebaseAnalytics.setConsent).mockRejectedValue(new Error('no'));
+
+    await create().init();
+    await navigate('/tabs/inbox');
+    await service.log({ name: 'login', params: { method: 'password' } });
+    await settle();
+
+    expect(error).toHaveBeenCalledWith(
+      'Setting up analytics failed',
+      expect.any(Error)
+    );
+    expect(FirebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+    expect(FirebaseAnalytics.setCurrentScreen).not.toHaveBeenCalled();
+    expect(FirebaseAnalytics.logEvent).not.toHaveBeenCalled();
+  });
 
   it('logs an event', async () => {
     await create().init();

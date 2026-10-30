@@ -231,6 +231,8 @@ export type UpdateReleaseRequest = {
     releaseType?: 'MAJOR' | 'MINOR' | 'PATCH' | 'HOTFIX';
     releaseNotes?: string;
     targetDate?: string;
+    targetTime?: string;
+    clearTargetTime?: boolean;
 };
 
 export type ReleaseResponse = {
@@ -243,6 +245,7 @@ export type ReleaseResponse = {
     status?: 'NEW' | 'IN_PROGRESS' | 'COMPLETED';
     releaseType?: 'MAJOR' | 'MINOR' | 'PATCH' | 'HOTFIX';
     targetDate?: string;
+    targetTime?: string;
     production?: boolean;
     staging?: boolean;
     createdAt?: string;
@@ -646,6 +649,7 @@ export type CreateReleaseRequest = {
     description?: string;
     releaseType?: 'MAJOR' | 'MINOR' | 'PATCH' | 'HOTFIX';
     targetDate: string;
+    targetTime?: string;
     taskIds?: Array<string>;
 };
 

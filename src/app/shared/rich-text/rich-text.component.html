@@ -2,6 +2,7 @@
   #content
   class="rich-text-content"
   [class.clamped]="!!clamp() && !expanded()"
+  [class.overflowing]="overflowing() && !expanded()"
   [style.--clamp-lines]="clamp()"
   [innerHTML]="html()"
 ></div>

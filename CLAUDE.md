@@ -1822,6 +1822,29 @@ To compare a screen, `.claude/launch.json`'s `design-handoff` serves the
 folder on `localhost:8200`; the phone frames are 390px wide, the screen
 starting 44px into each.
 
+### App icon
+
+The handoff's wave mark (`flux-icon.svg`), white with its halo on an indigo
+9 to violet 9 gradient. `resources/icon/` holds it as three 100-unit SVGs:
+`icon-ios.svg`, `icon-ios-dark.svg` (the gradient on the mark, over a dark
+tile) and `icon-ios-tinted.svg` (grayscale, which iOS 18 tints). The mark
+is shifted 3.3 units right so the solid wave and dot are centred: centred
+with its faint halo, it looked 3% left.
+
+- `node scripts/render-icons.mjs` renders them with Playwright's Chromium:
+  the three 1024px iOS icons in `AppIcon.appiconset` (opaque, since App
+  Store Connect refuses alpha; `Contents.json` lists the dark and tinted
+  appearances), and the Android launcher PNGs for API 24–25, a rounded
+  square and a circle per density. Run it after editing an SVG and commit
+  the output.
+- Android 8+ uses the adaptive icon's vector layers in `res/drawable/`
+  (`ic_launcher_background`, `_foreground`, `_monochrome` for Android 13's
+  themed icons), drawn by hand to match: the foreground puts the SVG's tile
+  on the 72dp the launcher shows (scale 0.72, offset 18, plus the 3.3-unit
+  shift: `translateX` 20.376), which keeps the mark well inside the 66dp
+  safe zone. Edit them alongside the SVG.
+- No Liquid Glass (Icon Composer) icon yet: it needs a Mac.
+
 ## 9. CI
 
 `.github/workflows/ci.yml` runs on every pull request: a single `verify` job

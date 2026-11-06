@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon's wave and dot (resources/icon/icon-ios.svg), drawn in that
+     file's 100-unit tile and scaled onto the 72dp the launcher shows (scale
+     0.72, offset 18). translateX adds the SVG's 3.3-unit shift (2.376dp),
+     which centres the solid wave and dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.72"
+        android:scaleY="0.72"
+        android:translateX="20.376"
+        android:translateY="18">
+        <path
+            android:pathData="M20,50 C20,22 37,22 37,50 C37,78 54,78 54,50 C54,22 71,22 71,50"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="9"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#38FFFFFF"
+            android:pathData="M59,50 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M64,50 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+    </group>
+</vector>

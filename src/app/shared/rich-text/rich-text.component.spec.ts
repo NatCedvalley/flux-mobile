@@ -46,6 +46,8 @@ describe('RichTextComponent', () => {
     expect(content().style.getPropertyValue('--clamp-lines')).toBe('6');
     // jsdom has no layout, so nothing overflows.
     expect(toggle()).toBeNull();
+    // A body that fits keeps its last line unfaded.
+    expect(content().classList).not.toContain('overflowing');
   });
 
   it('expands and collapses with the toggle', () => {
@@ -57,10 +59,12 @@ describe('RichTextComponent', () => {
     ).overflowing.set(true);
     fixture.detectChanges();
     expect(toggle()?.textContent?.trim()).toBe('Show more');
+    expect(content().classList).toContain('overflowing');
 
     toggle()!.click();
     fixture.detectChanges();
     expect(content().classList).not.toContain('clamped');
+    expect(content().classList).not.toContain('overflowing');
     expect(toggle()?.textContent?.trim()).toBe('Show less');
     expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
   });
